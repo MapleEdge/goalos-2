@@ -17,6 +17,7 @@ async function main() {
   await prisma.prerequisite.deleteMany();
   await prisma.stakeholder.deleteMany();
   await prisma.goal.deleteMany();
+  await prisma.value.deleteMany();
 
   // Create goals
   const taGoal = await prisma.goal.create({
@@ -439,6 +440,70 @@ async function main() {
       entityId: startupPrereq1.id,
       eventType: "STATUS_CHANGED",
       payload: { from: "NOT_STARTED", to: "IN_PROGRESS", title: startupPrereq1.title },
+    },
+  });
+
+  // Create user values (rank 1 = most important)
+  await prisma.value.create({
+    data: {
+      label: "Financial Security",
+      rank: 1,
+      description: "Building wealth and financial independence is a top priority",
+      tags: ["money", "wealth", "career", "income"],
+    },
+  });
+
+  await prisma.value.create({
+    data: {
+      label: "Career Growth",
+      rank: 2,
+      description: "Advancing professionally and building expertise",
+      tags: ["career", "education", "skills"],
+    },
+  });
+
+  await prisma.value.create({
+    data: {
+      label: "Knowledge & Learning",
+      rank: 3,
+      description: "Continuous learning and intellectual growth",
+      tags: ["education", "skills", "creative"],
+    },
+  });
+
+  await prisma.value.create({
+    data: {
+      label: "Health & Fitness",
+      rank: 4,
+      description: "Maintaining physical and mental health",
+      tags: ["health", "fitness", "wellness"],
+    },
+  });
+
+  await prisma.value.create({
+    data: {
+      label: "Family",
+      rank: 5,
+      description: "Supporting and being present for family",
+      tags: ["family", "relationships"],
+    },
+  });
+
+  await prisma.value.create({
+    data: {
+      label: "Impact & Giving Back",
+      rank: 6,
+      description: "Making a positive difference in the world",
+      tags: ["impact", "community"],
+    },
+  });
+
+  await prisma.value.create({
+    data: {
+      label: "Romantic Relationships",
+      rank: 7,
+      description: "Finding and nurturing a meaningful romantic partnership",
+      tags: ["relationships", "romantic"],
     },
   });
 

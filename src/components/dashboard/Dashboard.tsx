@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { GoalCard } from "./GoalCard";
 import { RecommendationsPanel } from "./RecommendationsPanel";
 import { CreateGoalForm } from "./CreateGoalForm";
+import { ValuesPanel } from "./ValuesPanel";
+import { SuggestedGoals } from "./SuggestedGoals";
 import { Modal } from "@/components/ui/Modal";
 import type { ReasoningOutput, ReadinessScore } from "@/lib/reasoning/types";
 
@@ -47,6 +49,9 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [suggestRefreshKey, setSuggestRefreshKey] = useState(0);
+  const [prefillTitle, setPrefillTitle] = useState("");
+  const [prefillDescription, setPrefillDescription] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -125,8 +130,17 @@ export function Dashboard() {
               />
             ))}
           </div>
-          <div>
-            <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider mb-4">
+          <div className="space-y-4">
+            <ValuesPanel onChanged={() => setSuggestRefreshKey((k) => k + 1)} />
+            <SuggestedGoals
+              refreshKey={suggestRefreshKey}
+              onCreateGoal={(title, description) => {
+                setPrefillTitle(title);
+                setPrefillDescription(description);
+                setShowCreateGoal(true);
+              }}
+            />
+            <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">
               Recommendations
             </h2>
             {reasoning && <RecommendationsPanel reasoning={reasoning} />}
@@ -140,11 +154,21 @@ export function Dashboard() {
         title="Create New Goal"
       >
         <CreateGoalForm
+          key={`${prefillTitle}-${prefillDescription}`}
           onCreated={() => {
             setShowCreateGoal(false);
+            setPrefillTitle("");
+            setPrefillDescription("");
             setRefreshKey((k) => k + 1);
+            setSuggestRefreshKey((k) => k + 1);
           }}
-          onCancel={() => setShowCreateGoal(false)}
+          onCancel={() => {
+            setShowCreateGoal(false);
+            setPrefillTitle("");
+            setPrefillDescription("");
+          }}
+          initialTitle={prefillTitle}
+          initialDescription={prefillDescription}
         />
       </Modal>
     </div>

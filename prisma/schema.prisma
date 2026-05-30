@@ -177,6 +177,20 @@ model Relationship {
   @@map("relationships")
 }
 
+// ─── User values ─────────────────────────────────────────────────
+
+model Value {
+  id          String   @id @default(uuid())
+  label       String   @unique // e.g. "financial security", "health", "relationships"
+  rank        Int      @default(0) // higher = more important
+  description String?
+  tags        String[] // domain tags for matching, e.g. ["money", "career", "wealth"]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("values")
+}
+
 // ─── Event sourcing ──────────────────────────────────────────────
 
 model Event {
