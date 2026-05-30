@@ -15,10 +15,12 @@ export function AddStakeholderModal({
   const [strength, setStrength] = useState(50);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit() {
     if (!name.trim()) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/stakeholders", {
         method: "POST",
@@ -34,9 +36,15 @@ export function AddStakeholderModal({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         console.error("Add stakeholder failed:", data);
+        setError(data?.error || "Couldn't add stakeholder. Please try again.");
+        setLoading(false);
+        return;
       }
     } catch (err) {
       console.error("Add stakeholder error:", err);
+      setError("Network error. Please try again.");
+      setLoading(false);
+      return;
     }
     setLoading(false);
     onDone();
@@ -104,6 +112,10 @@ export function AddStakeholderModal({
           rows={2}
           className="mb-4 w-full resize-none rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
         />
+
+        {error && (
+          <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
+        )}
 
         <div className="flex justify-end gap-2">
           <button
