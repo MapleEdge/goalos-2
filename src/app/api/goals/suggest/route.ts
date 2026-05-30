@@ -31,25 +31,33 @@ function getGeminiClient(): OpenAI | null {
 
 async function generateWithGemini(
   values: ValueRow[],
-  existingGoals: { title: string; status: string }[]
+  existingGoals: { title: string; description: string | null; status: string; completedAt: Date | null }[]
 ): Promise<GoalSuggestion[] | null> {
   const client = getGeminiClient();
   if (!client) return null;
 
   const activeGoals = existingGoals.filter((g) => g.status === "ACTIVE");
+  const completedGoals = existingGoals.filter((g) => g.status === "COMPLETED");
 
   const valuesContext = values
     .map((v) => `- ${v.label} (rank #${v.rank}, tags: ${v.tags.join(", ")})${v.description ? `: ${v.description}` : ""}`)
     .join("\n");
 
-  const goalsContext = activeGoals.length > 0
-    ? activeGoals.map((g) => `- ${g.title} (${g.status})`).join("\n")
+  const activeContext = activeGoals.length > 0
+    ? activeGoals.map((g) => `- ${g.title}: ${g.description || ""}`).join("\n")
     : "No active goals yet.";
 
-  const systemPrompt = `You are a strategic life coach. Given a user's personal values (ranked by importance) and their current active goals, suggest 5-8 new goals they should consider pursuing.
+  const completedContext = completedGoals.length > 0
+    ? completedGoals.map((g) => `- ${g.title}: ${g.description || ""}`).join("\n")
+    : "No completed goals yet.";
+
+  const systemPrompt = `You are a strategic life coach. Given a user's personal values (ranked by importance), their completed goals, and their current active/in-progress goals, suggest 5-8 new goals they should consider pursuing.
 
 Rules:
 - Do NOT suggest goals that duplicate or closely overlap existing active goals.
+- Build on completed goals — suggest logical next steps, deeper challenges, or extensions of past achievements.
+- Reference completed goals in your reasoning when relevant (e.g., "Since you completed X, you're ready for Y").
+- Consider active goals to avoid overlap but also suggest goals that complement or synergize with them.
 - Each suggestion should clearly align with one or more of their values.
 - Prioritize underserved values (values with no active goals covering them).
 - Higher-ranked values deserve higher priority suggestions.
@@ -61,7 +69,7 @@ Respond with ONLY a valid JSON array of objects, no markdown, no explanation. Ea
 {
   "title": "short goal title",
   "description": "one-sentence description of the goal",
-  "reasoning": "why this goal matters given their values",
+  "reasoning": "why this goal matters given their values and history",
   "alignedValues": ["Value Label 1"],
   "priority": "HIGH" | "MEDIUM" | "LOW"
 }`;
@@ -69,10 +77,13 @@ Respond with ONLY a valid JSON array of objects, no markdown, no explanation. Ea
   const userPrompt = `My values (ranked by importance):
 ${valuesContext}
 
-My current active goals:
-${goalsContext}
+My completed goals:
+${completedContext}
 
-Suggest new goals I should pursue.`;
+My current active goals:
+${activeContext}
+
+Suggest new goals I should pursue, building on what I've already accomplished.`;
 
   try {
     const completion = await client.chat.completions.create({
@@ -175,7 +186,7 @@ const GOAL_TEMPLATES: Record<string, { title: string; description: string; tags:
 };
 
 function computeGoalCoverage(
-  existingGoals: { title: string; status: string; prerequisites: { status: string; confidenceScore: number }[] }[],
+  existingGoals: { title: string; status: string }[],
   valueTags: string[]
 ): Map<string, number> {
   const coverage = new Map<string, number>();
@@ -186,10 +197,7 @@ function computeGoalCoverage(
     for (const goal of activeGoals) {
       const titleLower = goal.title.toLowerCase();
       if (titleLower.includes(tag) || tag.split(/\s+/).some((w) => titleLower.includes(w))) {
-        const totalPrereqs = goal.prerequisites.length;
-        const completedPrereqs = goal.prerequisites.filter((p) => p.status === "COMPLETED").length;
-        const progress = totalPrereqs > 0 ? completedPrereqs / totalPrereqs : 0;
-        tagCoverage = Math.max(tagCoverage, progress);
+        tagCoverage = 1;
       }
     }
     coverage.set(tag, tagCoverage);
@@ -200,7 +208,7 @@ function computeGoalCoverage(
 
 function generateTemplateSuggestions(
   typedValues: ValueRow[],
-  goals: { title: string; status: string; prerequisites: { status: string; confidenceScore: number }[] }[]
+  goals: { title: string; status: string }[]
 ): GoalSuggestion[] {
   const existingGoalTitles = new Set(goals.map((g) => g.title.toLowerCase()));
   const allValueTags = typedValues.flatMap((v) => v.tags);
@@ -267,7 +275,7 @@ export async function GET() {
   const [values, goals] = await Promise.all([
     prisma.value.findMany({ orderBy: { rank: "asc" } }),
     prisma.goal.findMany({
-      include: { prerequisites: true },
+      select: { title: true, description: true, status: true, completedAt: true },
     }),
   ]);
 
