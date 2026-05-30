@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Core entities ───────────────────────────────────────────────
+
+enum GoalStatus {
+  ACTIVE
+  BLOCKED
+  WAITING
+  COMPLETED
+  ARCHIVED
+  PAUSED
+  ABANDONED
+}
+
+model Goal {
+  id              String       @id @default(uuid())
+  title           String
+  description     String?
+  targetDate      DateTime?
+  successCriteria String?
+  status          GoalStatus   @default(ACTIVE)
+  completedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  prerequisites   Prerequisite[]
+  actions         Action[]
+  relationshipsFrom Relationship[] @relation("from")
+  relationshipsTo   Relationship[] @relation("to")
+
+  @@map("goals")
+}
+
+model Stakeholder {
+  id                 String   @id @default(uuid())
+  name               String
+  organization       String?
+  role               String?
+  relationshipStrength Int     @default(0) // 0-100
+  lastInteraction    DateTime?
+  notes              String?
+  capabilities       Json?    // Array of { type: "willingness"|"capability", description, condition? }
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  evidence           Evidence[]
+  relationshipsFrom  Relationship[] @relation("stakeholder_from")
+  relationshipsTo    Relationship[] @relation("stakeholder_to")
+
+  @@map("stakeholders")
+}
+
+enum PrerequisiteStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+}
+
+model Prerequisite {
+  id              String             @id @default(uuid())
+  title           String
+  description     String?
+  status          PrerequisiteStatus @default(NOT_STARTED)
+  confidenceScore Int                @default(0) // 0-100
+  goalId          String
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  goal            Goal               @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  evidence        Evidence[]
+  relationshipsFrom Relationship[]   @relation("prereq_from")
+  relationshipsTo   Relationship[]   @relation("prereq_to")
+
+  @@map("prerequisites")
+}
+
+model Evidence {
+  id              String   @id @default(uuid())
+  title           String
+  description     String?
+  source          String?  // e.g. "meeting", "email", "document"
+  occurredAt      DateTime @default(now())
+  prerequisiteId  String?
+  stakeholderId   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  prerequisite    Prerequisite? @relation(fields: [prerequisiteId], references: [id], onDelete: SetNull)
+  stakeholder     Stakeholder?  @relation(fields: [stakeholderId], references: [id], onDelete: SetNull)
+  relationshipsFrom Relationship[] @relation("evidence_from")
+  relationshipsTo   Relationship[] @relation("evidence_to")
+
+  @@map("evidence")
+}
+
+enum ActionStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  SKIPPED
+}
+
+enum ActionPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model Action {
+  id        String         @id @default(uuid())
+  title     String
+  status    ActionStatus   @default(TODO)
+  priority  ActionPriority @default(MEDIUM)
+  dueDate   DateTime?
+  goalId    String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  goal      Goal           @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  relationshipsFrom Relationship[] @relation("action_from")
+  relationshipsTo   Relationship[] @relation("action_to")
+
+  @@map("actions")
+}
+
+// ─── Relationship graph edges ────────────────────────────────────
+
+enum NodeType {
+  GOAL
+  STAKEHOLDER
+  PREREQUISITE
+  EVIDENCE
+  ACTION
+}
+
+model Relationship {
+  id          String   @id @default(uuid())
+  fromType    NodeType
+  fromId      String
+  toType      NodeType
+  toId        String
+  label       String?  // describes the relationship
+  weight      Float    @default(1.0)
+  createdAt   DateTime @default(now())
+
+  // Polymorphic references (nullable, only one pair populated per row)
+  goalFrom         Goal?         @relation("from", fields: [goalFromId], references: [id], onDelete: Cascade)
+  goalFromId       String?
+  goalTo           Goal?         @relation("to", fields: [goalToId], references: [id], onDelete: Cascade)
+  goalToId         String?
+
+  stakeholderFrom  Stakeholder?  @relation("stakeholder_from", fields: [stakeholderFromId], references: [id], onDelete: Cascade)
+  stakeholderFromId String?
+  stakeholderTo    Stakeholder?  @relation("stakeholder_to", fields: [stakeholderToId], references: [id], onDelete: Cascade)
+  stakeholderToId  String?
+
+  prereqFrom       Prerequisite? @relation("prereq_from", fields: [prereqFromId], references: [id], onDelete: Cascade)
+  prereqFromId     String?
+  prereqTo         Prerequisite? @relation("prereq_to", fields: [prereqToId], references: [id], onDelete: Cascade)
+  prereqToId       String?
+
+  evidenceFrom     Evidence?     @relation("evidence_from", fields: [evidenceFromId], references: [id], onDelete: Cascade)
+  evidenceFromId   String?
+  evidenceTo       Evidence?     @relation("evidence_to", fields: [evidenceToId], references: [id], onDelete: Cascade)
+  evidenceToId     String?
+
+  actionFrom       Action?       @relation("action_from", fields: [actionFromId], references: [id], onDelete: Cascade)
+  actionFromId     String?
+  actionTo         Action?       @relation("action_to", fields: [actionToId], references: [id], onDelete: Cascade)
+  actionToId       String?
+
+  @@unique([fromType, fromId, toType, toId])
+  @@map("relationships")
+}
+
+// ─── User values ─────────────────────────────────────────────────
+
+model Value {
+  id          String   @id @default(uuid())
+  label       String   @unique // e.g. "financial security", "health", "relationships"
+  rank        Int      @default(0) // higher = more important
+  description String?
+  tags        String[] // domain tags for matching, e.g. ["money", "career", "wealth"]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("values")
+}
+
+// ─── Event sourcing ──────────────────────────────────────────────
+
+model Event {
+  id          String   @id @default(uuid())
+  entityType  NodeType
+  entityId    String
+  eventType   String   // e.g. "CREATED", "UPDATED", "STATUS_CHANGED", "RELATIONSHIP_ADDED"
+  payload     Json
+  occurredAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([occurredAt])
+  @@map("events")
+}

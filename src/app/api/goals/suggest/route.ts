@@ -1,0 +1,190 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+interface ValueRow {
+  id: string;
+  label: string;
+  rank: number;
+  description: string | null;
+  tags: string[];
+}
+
+interface GoalSuggestion {
+  title: string;
+  description: string;
+  reasoning: string;
+  alignedValues: string[];
+  priority: "HIGH" | "MEDIUM" | "LOW";
+}
+
+// Maps value tags to potential goal templates
+const GOAL_TEMPLATES: Record<string, { title: string; description: string; tags: string[] }[]> = {
+  money: [
+    { title: "Build emergency fund", description: "Save 6 months of living expenses in a high-yield savings account", tags: ["money", "finance", "saving"] },
+    { title: "Create passive income stream", description: "Develop a source of recurring revenue that doesn't require active work", tags: ["money", "income", "investing"] },
+    { title: "Increase annual income by 20%", description: "Negotiate a raise, switch roles, or add a revenue-generating side project", tags: ["money", "career", "income"] },
+    { title: "Start investment portfolio", description: "Open a brokerage account and begin dollar-cost averaging into diversified funds", tags: ["money", "investing", "wealth"] },
+  ],
+  career: [
+    { title: "Get promoted to next level", description: "Achieve the next career milestone by demonstrating leadership and impact", tags: ["career", "growth", "leadership"] },
+    { title: "Build industry expertise", description: "Become a recognized expert in your domain through publishing and speaking", tags: ["career", "expertise", "reputation"] },
+    { title: "Expand professional network", description: "Build meaningful connections with 20 new people in your industry", tags: ["career", "network", "relationships"] },
+  ],
+  education: [
+    { title: "Complete a certification", description: "Earn a professional certification that advances career credentials", tags: ["education", "career", "skills"] },
+    { title: "Learn a new technical skill", description: "Achieve proficiency in a new technology or methodology", tags: ["education", "skills", "growth"] },
+    { title: "Complete university degree", description: "Graduate with honors from your degree program", tags: ["education", "degree", "academic"] },
+  ],
+  health: [
+    { title: "Establish consistent exercise routine", description: "Work out at least 4 times per week for 3 months", tags: ["health", "fitness", "discipline"] },
+    { title: "Improve nutrition habits", description: "Plan and prepare healthy meals consistently, reduce processed food intake", tags: ["health", "nutrition", "wellness"] },
+    { title: "Complete a physical challenge", description: "Train for and complete a marathon, triathlon, or similar endurance event", tags: ["health", "fitness", "achievement"] },
+  ],
+  relationships: [
+    { title: "Deepen key relationships", description: "Schedule regular quality time with the 5 most important people in your life", tags: ["relationships", "family", "connection"] },
+    { title: "Resolve a strained relationship", description: "Address conflict or distance in an important relationship through open communication", tags: ["relationships", "growth", "emotional"] },
+    { title: "Find a life partner", description: "Actively invest time in meeting potential partners and building genuine connections", tags: ["relationships", "romantic", "love"] },
+  ],
+  creative: [
+    { title: "Complete a creative project", description: "Finish and share a meaningful creative work (book, album, art series, etc.)", tags: ["creative", "expression", "achievement"] },
+    { title: "Develop a creative habit", description: "Dedicate time daily to creative practice and skill development", tags: ["creative", "discipline", "growth"] },
+  ],
+  impact: [
+    { title: "Mentor someone", description: "Commit to regularly mentoring someone who could benefit from your experience", tags: ["impact", "mentorship", "giving"] },
+    { title: "Launch a community initiative", description: "Start or lead a project that benefits your local or professional community", tags: ["impact", "community", "leadership"] },
+    { title: "Contribute to open source", description: "Make meaningful contributions to open-source projects in your field", tags: ["impact", "tech", "community"] },
+  ],
+  wealth: [
+    { title: "Achieve financial independence", description: "Build enough passive income or savings to cover all living expenses", tags: ["wealth", "freedom", "investing"] },
+    { title: "Diversify income sources", description: "Create at least 3 distinct sources of income", tags: ["wealth", "income", "security"] },
+  ],
+  freedom: [
+    { title: "Achieve location independence", description: "Structure work and life to be able to live and work from anywhere", tags: ["freedom", "remote", "lifestyle"] },
+    { title: "Reduce financial obligations", description: "Pay off debts and reduce fixed costs to increase flexibility", tags: ["freedom", "finance", "simplicity"] },
+  ],
+  family: [
+    { title: "Plan a family milestone", description: "Organize a significant family event or tradition", tags: ["family", "relationships", "traditions"] },
+    { title: "Support a family member's goal", description: "Actively help a family member achieve something important to them", tags: ["family", "support", "relationships"] },
+  ],
+  spirituality: [
+    { title: "Establish a meditation practice", description: "Meditate daily for at least 20 minutes over 90 days", tags: ["spirituality", "mindfulness", "discipline"] },
+    { title: "Explore philosophical frameworks", description: "Study and reflect on philosophical or spiritual traditions", tags: ["spirituality", "growth", "wisdom"] },
+  ],
+  adventure: [
+    { title: "Plan a transformative trip", description: "Travel to a new country or region that challenges your perspective", tags: ["adventure", "travel", "growth"] },
+    { title: "Try 12 new experiences this year", description: "Push comfort zone by trying one new activity each month", tags: ["adventure", "growth", "variety"] },
+  ],
+};
+
+function computeGoalCoverage(
+  existingGoals: { title: string; status: string; prerequisites: { status: string; confidenceScore: number }[] }[],
+  valueTags: string[]
+): Map<string, number> {
+  const coverage = new Map<string, number>();
+  const activeGoals = existingGoals.filter((g) => g.status === "ACTIVE");
+
+  for (const tag of valueTags) {
+    let tagCoverage = 0;
+    for (const goal of activeGoals) {
+      const titleLower = goal.title.toLowerCase();
+      if (titleLower.includes(tag) || tag.split(/\s+/).some((w) => titleLower.includes(w))) {
+        // Check progress on this goal
+        const totalPrereqs = goal.prerequisites.length;
+        const completedPrereqs = goal.prerequisites.filter((p) => p.status === "COMPLETED").length;
+        const progress = totalPrereqs > 0 ? completedPrereqs / totalPrereqs : 0;
+        tagCoverage = Math.max(tagCoverage, progress);
+      }
+    }
+    coverage.set(tag, tagCoverage);
+  }
+
+  return coverage;
+}
+
+export async function GET() {
+  const [values, goals] = await Promise.all([
+    prisma.value.findMany({ orderBy: { rank: "asc" } }),
+    prisma.goal.findMany({
+      include: { prerequisites: true },
+    }),
+  ]);
+
+  if (values.length === 0) {
+    return NextResponse.json({
+      suggestions: [],
+      message: "Define your values first to get personalized goal suggestions.",
+    });
+  }
+
+  const typedValues = values as ValueRow[];
+  const existingGoalTitles = new Set(goals.map((g) => g.title.toLowerCase()));
+  const allValueTags = typedValues.flatMap((v) => v.tags);
+  const coverage = computeGoalCoverage(goals, allValueTags);
+
+  const suggestions: GoalSuggestion[] = [];
+  const totalValues = typedValues.length;
+
+  for (const value of typedValues) {
+    // Find candidate templates matching this value's tags
+    const candidates: { title: string; description: string; tags: string[]; matchScore: number }[] = [];
+
+    for (const tag of value.tags) {
+      const templates = GOAL_TEMPLATES[tag] || [];
+      for (const template of templates) {
+        // Skip if goal already exists
+        if (existingGoalTitles.has(template.title.toLowerCase())) continue;
+        // Skip if already added from another tag
+        if (candidates.some((c) => c.title === template.title)) continue;
+
+        // Score: higher for underserved value tags
+        const tagCoverage = coverage.get(tag) ?? 0;
+        const underservedBonus = 1 - tagCoverage;
+        // Lower rank = more important, so invert for scoring
+        const importance = 1 - ((value.rank - 1) / Math.max(totalValues - 1, 1));
+        const matchScore = underservedBonus * importance;
+        candidates.push({ ...template, matchScore });
+      }
+    }
+
+    // Sort by match score and pick top 1-2 per value
+    candidates.sort((a, b) => b.matchScore - a.matchScore);
+    const topCandidates = candidates.slice(0, 2);
+
+    for (const candidate of topCandidates) {
+      // Rank 1-2 = HIGH, 3-4 = MEDIUM, 5+ = LOW
+      const priority: "HIGH" | "MEDIUM" | "LOW" =
+        value.rank <= 2 ? "HIGH" : value.rank <= 4 ? "MEDIUM" : "LOW";
+
+      const coverageInfo = value.tags
+        .map((t) => {
+          const cov = coverage.get(t) ?? 0;
+          return cov > 0 ? `${t} (${Math.round(cov * 100)}% covered)` : `${t} (no active goals)`;
+        })
+        .join(", ");
+
+      suggestions.push({
+        title: candidate.title,
+        description: candidate.description,
+        reasoning: `Aligns with your value "${value.label}" (rank #${value.rank}). Current coverage: ${coverageInfo}.`,
+        alignedValues: [value.label],
+        priority,
+      });
+    }
+  }
+
+  // Deduplicate and sort by priority
+  const seen = new Set<string>();
+  const unique = suggestions.filter((s) => {
+    if (seen.has(s.title)) return false;
+    seen.add(s.title);
+    return true;
+  });
+
+  const priorityOrder = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+  unique.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
+
+  return NextResponse.json({
+    suggestions: unique.slice(0, 8),
+    valuesSummary: typedValues.map((v) => `${v.label} (rank: ${v.rank})`).join(", "),
+  });
+}
