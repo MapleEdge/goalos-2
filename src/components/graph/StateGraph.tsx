@@ -324,7 +324,7 @@ export function StateGraph() {
   }
 
   return (
-    <div className="h-[calc(100vh-56px)]">
+    <div className="h-[calc(100vh-56px)] relative">
       <ReactFlow
         nodes={nodes}
         edges={edgesState}
