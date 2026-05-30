@@ -18,7 +18,7 @@ interface AllocationData {
   allocations: AllocationEntry[];
 }
 
-export function TimeAllocation() {
+export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
   const [data, setData] = useState<AllocationData | null>(null);
   const [period, setPeriod] = useState<"week" | "month" | "all">("week");
   const [loading, setLoading] = useState(true);
@@ -39,7 +39,7 @@ export function TimeAllocation() {
     }
     load();
     return () => { cancelled = true; };
-  }, [period]);
+  }, [period, refreshKey]);
 
   if (loading) {
     return (

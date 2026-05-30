@@ -10,6 +10,8 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   // Clean existing data
+  await prisma.scheduleEvent.deleteMany();
+  await prisma.calendarConnection.deleteMany();
   await prisma.event.deleteMany();
   await prisma.relationship.deleteMany();
   await prisma.evidence.deleteMany();
@@ -504,6 +506,123 @@ async function main() {
       rank: 7,
       description: "Finding and nurturing a meaningful romantic partnership",
       tags: ["relationships", "romantic"],
+    },
+  });
+
+  // Create schedule events across multiple goals for time allocation
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+
+  // TA Goal - study group sessions (Mon/Wed/Fri)
+  for (const dayOffset of [1, 3, 5]) {
+    const start = new Date(weekStart);
+    start.setDate(start.getDate() + dayOffset);
+    start.setHours(14, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(15, 0, 0, 0);
+    await prisma.scheduleEvent.create({
+      data: {
+        title: `Study group session`,
+        description: "Lead classmate study group for CS 301",
+        startTime: start,
+        endTime: end,
+        source: "GOALOS",
+        goalId: taGoal.id,
+        color: "#3b82f6",
+      },
+    });
+  }
+  // TA Goal - office hours (Tuesday)
+  const taOfficeHours = new Date(weekStart);
+  taOfficeHours.setDate(taOfficeHours.getDate() + 2);
+  taOfficeHours.setHours(10, 0, 0, 0);
+  const taOfficeEnd = new Date(taOfficeHours);
+  taOfficeEnd.setHours(11, 0, 0, 0);
+  await prisma.scheduleEvent.create({
+    data: {
+      title: "Office hours with Prof. Chen",
+      description: "Weekly office hours to strengthen relationship",
+      startTime: taOfficeHours,
+      endTime: taOfficeEnd,
+      source: "GOALOS",
+      goalId: taGoal.id,
+      color: "#3b82f6",
+    },
+  });
+
+  // Startup Goal - MVP work blocks (Mon/Tue/Thu 9-12)
+  for (const dayOffset of [1, 2, 4]) {
+    const start = new Date(weekStart);
+    start.setDate(start.getDate() + dayOffset);
+    start.setHours(9, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(12, 0, 0, 0);
+    await prisma.scheduleEvent.create({
+      data: {
+        title: "MVP development sprint",
+        description: "Core feature development for AI productivity tool",
+        startTime: start,
+        endTime: end,
+        source: "GOALOS",
+        goalId: startupGoal.id,
+        color: "#10b981",
+      },
+    });
+  }
+  // Startup Goal - investor outreach (Wednesday)
+  const investorBlock = new Date(weekStart);
+  investorBlock.setDate(investorBlock.getDate() + 3);
+  investorBlock.setHours(16, 0, 0, 0);
+  const investorEnd = new Date(investorBlock);
+  investorEnd.setHours(18, 0, 0, 0);
+  await prisma.scheduleEvent.create({
+    data: {
+      title: "Investor outreach & follow-ups",
+      description: "Email warm intros, update pitch materials",
+      startTime: investorBlock,
+      endTime: investorEnd,
+      source: "GOALOS",
+      goalId: startupGoal.id,
+      color: "#10b981",
+    },
+  });
+
+  // Research Goal - literature review (Tue/Thu 14-16)
+  for (const dayOffset of [2, 4]) {
+    const start = new Date(weekStart);
+    start.setDate(start.getDate() + dayOffset);
+    start.setHours(14, 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(16, 0, 0, 0);
+    await prisma.scheduleEvent.create({
+      data: {
+        title: "Literature review & note-taking",
+        description: "Read and annotate papers for graph-based reasoning survey",
+        startTime: start,
+        endTime: end,
+        source: "GOALOS",
+        goalId: researchGoal.id,
+        color: "#f59e0b",
+      },
+    });
+  }
+  // Research Goal - experiment design (Saturday morning)
+  const satResearch = new Date(weekStart);
+  satResearch.setDate(satResearch.getDate() + 6);
+  satResearch.setHours(10, 0, 0, 0);
+  const satResearchEnd = new Date(satResearch);
+  satResearchEnd.setHours(13, 0, 0, 0);
+  await prisma.scheduleEvent.create({
+    data: {
+      title: "Experiment design work",
+      description: "Draft methodology section and plan experiments",
+      startTime: satResearch,
+      endTime: satResearchEnd,
+      source: "GOALOS",
+      goalId: researchGoal.id,
+      color: "#f59e0b",
     },
   });
 

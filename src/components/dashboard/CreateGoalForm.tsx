@@ -1,6 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { TimeCommitmentStep } from "./TimeCommitmentStep";
+
+interface TimeBlock {
+  day: number;
+  hour: number;
+  selected: boolean;
+}
 
 interface Stakeholder {
   id: string;
@@ -59,6 +66,7 @@ export function CreateGoalForm({
   const [targetDate, setTargetDate] = useState(initialTargetDate);
   const [successCriteria, setSuccessCriteria] = useState(initialSuccessCriteria);
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"details" | "time">("details");
 
   // Stakeholder linking state
   const [showStakeholders, setShowStakeholders] = useState(false);
@@ -230,9 +238,13 @@ export function CreateGoalForm({
     setNewStakeholders((prev) => prev.filter((s) => s.tempId !== tempId));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleNextStep(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
+    setStep("time");
+  }
+
+  async function createGoalWithTimeBlocks(weeklyHours: number, blocks: TimeBlock[]) {
     setLoading(true);
 
     const goalRes = await fetch("/api/goals", {
@@ -290,6 +302,35 @@ export function CreateGoalForm({
       });
     }
 
+    // Create schedule events for confirmed time blocks
+    if (blocks.length > 0) {
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+
+      for (const block of blocks) {
+        if (!block.selected) continue;
+        const blockStart = new Date(weekStart);
+        blockStart.setDate(blockStart.getDate() + block.day);
+        blockStart.setHours(block.hour, 0, 0, 0);
+        const blockEnd = new Date(blockStart);
+        blockEnd.setHours(block.hour + 1, 0, 0, 0);
+
+        await fetch("/api/schedule", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: `Work on: ${title.trim()}`,
+            description: `Weekly time block for goal: ${title.trim()}\nCommitment: ${weeklyHours}h/week`,
+            startTime: blockStart.toISOString(),
+            endTime: blockEnd.toISOString(),
+            goalId: goal.id,
+            color: "#10b981",
+          }),
+        });
+      }
+    }
+
     setLoading(false);
     onCreated();
   }
@@ -302,8 +343,31 @@ export function CreateGoalForm({
       !selectedStakeholders.some((sel) => sel.stakeholderId === s.stakeholderId)
   );
 
+  if (step === "time") {
+    return (
+      <TimeCommitmentStep
+        goalTitle={title}
+        targetDate={targetDate}
+        onConfirm={createGoalWithTimeBlocks}
+        onBack={() => setStep("details")}
+      />
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleNextStep} className="space-y-4">
+      {/* Step indicator */}
+      <div className="flex items-center gap-2 text-xs text-zinc-400">
+        <span className="flex items-center gap-1">
+          <span className="h-5 w-5 rounded-full bg-zinc-900 text-white text-[10px] flex items-center justify-center font-medium">1</span>
+          Details
+        </span>
+        <span className="h-px w-4 bg-zinc-300" />
+        <span className="flex items-center gap-1">
+          <span className="h-5 w-5 rounded-full bg-zinc-200 text-zinc-500 text-[10px] flex items-center justify-center font-medium">2</span>
+          Time
+        </span>
+      </div>
       <div>
         <label className="block text-sm font-medium text-zinc-700 mb-1">
           Goal Title
@@ -698,7 +762,7 @@ export function CreateGoalForm({
           disabled={loading || !title.trim()}
           className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
         >
-          {loading ? "Creating..." : "Create Goal"}
+          Next: Time Commitment
         </button>
       </div>
     </form>

@@ -58,6 +58,7 @@ export function Dashboard() {
   const [prefillTitle, setPrefillTitle] = useState("");
   const [prefillDescription, setPrefillDescription] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("active");
+  const [timeAllocRefreshKey, setTimeAllocRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -194,7 +195,7 @@ export function Dashboard() {
           </div>
           {viewMode === "active" && (
             <div className="space-y-4">
-              <TimeAllocation />
+              <TimeAllocation refreshKey={timeAllocRefreshKey} />
               <ValuesPanel onChanged={() => setSuggestRefreshKey((k) => k + 1)} />
               <SuggestedGoals
                 refreshKey={suggestRefreshKey}
@@ -226,6 +227,7 @@ export function Dashboard() {
             setPrefillDescription("");
             setRefreshKey((k) => k + 1);
             setSuggestRefreshKey((k) => k + 1);
+            setTimeAllocRefreshKey((k) => k + 1);
           }}
           onCancel={() => {
             setShowCreateGoal(false);
