@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { Card, CardTitle } from "@/components/ui/Card";
 
 interface AllocationEntry {
-  goalId: string | null;
-  goalTitle: string;
+  valueId: string | null;
+  valueLabel: string;
   totalMinutes: number;
   eventCount: number;
   color: string;
@@ -102,7 +102,7 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
                 const dashArray = (entry.percentage / 100) * 100;
                 const element = (
                   <circle
-                    key={entry.goalId || "unlinked"}
+                    key={entry.valueId || "unlinked"}
                     cx="18"
                     cy="18"
                     r="15.9155"
@@ -131,13 +131,13 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
         {/* Legend */}
         <div className="space-y-1.5 min-w-0 flex-1">
           {data.allocations.map((entry) => (
-            <div key={entry.goalId || "unlinked"} className="flex items-center gap-2">
+            <div key={entry.valueId || "unlinked"} className="flex items-center gap-2">
               <div
                 className="h-2.5 w-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: entry.color }}
               />
               <span className="text-xs text-zinc-700 truncate flex-1">
-                {entry.goalTitle}
+                {entry.valueLabel}
               </span>
               <span className="text-xs font-medium text-zinc-900 shrink-0">
                 {entry.percentage}%
@@ -151,20 +151,20 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
       <div className="h-3 rounded-full overflow-hidden bg-zinc-100 flex">
         {data.allocations.map((entry) => (
           <div
-            key={entry.goalId || "unlinked"}
+            key={entry.valueId || "unlinked"}
             className="h-full transition-all"
             style={{
               width: `${entry.percentage}%`,
               backgroundColor: entry.color,
               minWidth: entry.percentage > 0 ? "4px" : "0",
             }}
-            title={`${entry.goalTitle}: ${formatMinutes(entry.totalMinutes)} (${entry.percentage}%)`}
+            title={`${entry.valueLabel}: ${formatMinutes(entry.totalMinutes)} (${entry.percentage}%)`}
           />
         ))}
       </div>
 
       <div className="mt-2 flex justify-between text-[10px] text-zinc-400">
-        <span>{data.allocations.length} goal{data.allocations.length !== 1 ? "s" : ""}</span>
+        <span>{data.allocations.length} value{data.allocations.length !== 1 ? "s" : ""}</span>
         <span>avg {avgPerDay}/day</span>
         <span>{data.allocations.reduce((s, a) => s + a.eventCount, 0)} events</span>
       </div>
