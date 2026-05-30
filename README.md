@@ -41,11 +41,12 @@ Analyzes the graph state to produce:
 
 ### Layer 4: AI Enhancement (Optional)
 
-Pluggable AI layer supporting:
-- OpenAI-compatible APIs (GPT-4o, etc.)
-- Local models via Ollama
+Powered by Google Gemini (via the `@google/genai` SDK), used for:
+- Strategic reasoning insights over the graph
+- AI-powered goal suggestions
+- Natural-language command/intent parsing
 
-AI consumes graph state and produces natural-language strategic advice. The graph remains fully useful without AI.
+AI consumes graph state and produces natural-language strategic advice. The graph remains fully useful without AI — every feature falls back gracefully when `GEMINI_API_KEY` is unset.
 
 ### Layer 5: User Interface
 
@@ -61,7 +62,7 @@ AI consumes graph state and produces natural-language strategic advice. The grap
 - **Prisma 7** (with `@prisma/adapter-pg`)
 - **React Flow** (`@xyflow/react`)
 - **Tailwind CSS v4**
-- **OpenAI SDK** (for AI integration)
+- **Google Gemini** via `@google/genai` (for AI integration)
 
 ## Getting Started
 
@@ -103,10 +104,10 @@ Copy `.env.example` to `.env` and configure:
 ```env
 DATABASE_URL="postgresql://goalos:goalos_dev@localhost:5432/goalos?schema=public"
 
-# Optional AI config
-OPENAI_API_KEY=sk-...
-OPENAI_BASE_URL=https://api.openai.com/v1
-OLLAMA_BASE_URL=http://localhost:11434
+# Optional AI config (powered by Google Gemini)
+# Get a key at https://aistudio.google.com/apikey
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-2.5-flash
 ```
 
 ### Scripts

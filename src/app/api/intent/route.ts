@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { getGeminiClient, getGeminiModel } from "@/lib/gemini";
 
 const VALID_INTENTS = [
   "review_all",
@@ -23,14 +23,6 @@ Intents:
 - schedule_query: user asks about their calendar or upcoming events (e.g. "whats on my calendar", "upcoming events")
 - help: user asks for help or available commands (e.g. "help", "what can you do")
 - create_goal: user describes something NEW they want to achieve that is NOT already a goal (e.g. "learn spanish by december", "save money for a house", "run a marathon")`;
-
-function getOllamaClient(): OpenAI | null {
-  const baseURL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
-  return new OpenAI({
-    apiKey: "ollama",
-    baseURL: `${baseURL}/v1`,
-  });
-}
 
 function parseIntent(raw: string): IntentLabel {
   const cleaned = raw.trim().toLowerCase().replace(/^intent[:\s]*/i, "");
@@ -65,25 +57,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "input is required" }, { status: 400 });
   }
 
-  const client = getOllamaClient();
+  const client = getGeminiClient();
   if (!client) {
     return NextResponse.json({ intent: null, llm: false });
   }
 
   try {
-    const model = process.env.OLLAMA_MODEL || "qwen2.5:1.5b";
-
-    const completion = await client.chat.completions.create({
-      model,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: input },
-      ],
-      temperature: 0,
-      max_tokens: 20,
+    const completion = await client.models.generateContent({
+      model: getGeminiModel(),
+      contents: input,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        temperature: 0,
+        maxOutputTokens: 20,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     });
 
-    const raw = completion.choices[0]?.message?.content || "";
+    const raw = completion.text || "";
     const intent = parseIntent(raw);
 
     const result: Record<string, unknown> = { intent, llm: true };

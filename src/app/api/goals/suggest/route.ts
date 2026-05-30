@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import OpenAI from "openai";
+import { getGeminiClient, getGeminiModel } from "@/lib/gemini";
 
 interface ValueRow {
   id: string;
@@ -18,16 +18,7 @@ interface GoalSuggestion {
   priority: "HIGH" | "MEDIUM" | "LOW";
 }
 
-// --- Gemini integration via OpenAI-compatible endpoint ---
-
-function getGeminiClient(): OpenAI | null {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-  return new OpenAI({
-    apiKey,
-    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-  });
-}
+// --- Gemini integration via the @google/genai SDK ---
 
 async function generateWithGemini(
   values: ValueRow[],
@@ -86,22 +77,25 @@ ${activeContext}
 Suggest new goals I should pursue, building on what I've already accomplished.`;
 
   try {
-    const completion = await client.chat.completions.create({
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.8,
-      max_tokens: 4000,
+    const completion = await client.models.generateContent({
+      model: getGeminiModel(),
+      contents: userPrompt,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.8,
+        maxOutputTokens: 4000,
+        responseMimeType: "application/json",
+        // Gemini 2.5 models "think" by default, consuming the token budget
+        // before emitting the answer and truncating the JSON. Disable it so the
+        // full budget is available for the response.
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     });
 
-    const content = completion.choices[0]?.message?.content;
+    const content = completion.text;
     if (!content) return null;
 
-    // Strip markdown code fences if present
-    const cleaned = content.replace(/```(?:json)?\s*/g, "").replace(/```\s*/g, "").trim();
-    const parsed = JSON.parse(cleaned) as GoalSuggestion[];
+    const parsed = JSON.parse(content) as GoalSuggestion[];
 
     if (!Array.isArray(parsed)) return null;
 
