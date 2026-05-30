@@ -22,7 +22,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
 }
 
 /* ─── FullCalendar — match GoalOS zinc design system ─────────────── */
@@ -44,7 +44,7 @@ body {
   --fc-page-bg-color: #fff;
   --fc-neutral-bg-color: #fafafa;      /* zinc-50 */
   --fc-non-business-color: #fafafa;    /* zinc-50 */
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: inherit;
 }
 
 /* ── Toolbar ─────────────────────────────────────────────────────── */
