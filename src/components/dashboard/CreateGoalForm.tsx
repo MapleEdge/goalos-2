@@ -6,15 +6,21 @@ export function CreateGoalForm({
   onCreated,
   onCancel,
   initialTitle = "",
+  initialDescription = "",
+  initialTargetDate = "",
+  initialSuccessCriteria = "",
 }: {
   onCreated: () => void;
   onCancel: () => void;
   initialTitle?: string;
+  initialDescription?: string;
+  initialTargetDate?: string;
+  initialSuccessCriteria?: string;
 }) {
   const [title, setTitle] = useState(initialTitle);
-  const [description, setDescription] = useState("");
-  const [targetDate, setTargetDate] = useState("");
-  const [successCriteria, setSuccessCriteria] = useState("");
+  const [description, setDescription] = useState(initialDescription);
+  const [targetDate, setTargetDate] = useState(initialTargetDate);
+  const [successCriteria, setSuccessCriteria] = useState(initialSuccessCriteria);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
