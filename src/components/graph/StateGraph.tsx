@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import {
   ReactFlow,
   Background,
@@ -14,6 +14,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { GraphNode } from "./GraphNode";
+import { NodeEditModal } from "./NodeEditModal";
 
 interface GoalData {
   id: string;
@@ -61,6 +62,7 @@ export function StateGraph() {
   const [relationships, setRelationships] = useState<RelationshipData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAllStakeholders, setShowAllStakeholders] = useState(false);
+  const [editNode, setEditNode] = useState<{ id: string; type: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -268,6 +270,36 @@ export function StateGraph() {
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
+  const handleNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      if (node.id === "__stakeholder_summary") {
+        setShowAllStakeholders(true);
+        return;
+      }
+      const nodeType = (node.data as { nodeType?: string }).nodeType;
+      if (nodeType) {
+        setEditNode({ id: node.id, type: nodeType });
+      }
+    },
+    []
+  );
+
+  const reloadData = useCallback(async () => {
+    const [goalsRes, stakeholdersRes, relsRes] = await Promise.all([
+      fetch("/api/goals"),
+      fetch("/api/stakeholders"),
+      fetch("/api/relationships"),
+    ]);
+    const [g, s, r] = await Promise.all([
+      goalsRes.json(),
+      stakeholdersRes.json(),
+      relsRes.json(),
+    ]);
+    setGoals(g);
+    setStakeholders(s);
+    setRelationships(r);
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-56px)]">
@@ -298,6 +330,7 @@ export function StateGraph() {
         edges={edgesState}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         fitView
         minZoom={0.2}
@@ -317,6 +350,15 @@ export function StateGraph() {
             ? "Hide unlinked stakeholders"
             : `Show all ${stakeholders.length} stakeholders`}
         </button>
+      )}
+
+      {editNode && (
+        <NodeEditModal
+          nodeId={editNode.id}
+          nodeType={editNode.type as "GOAL" | "PREREQUISITE" | "ACTION" | "EVIDENCE" | "STAKEHOLDER"}
+          onClose={() => setEditNode(null)}
+          onSaved={reloadData}
+        />
       )}
 
       <div className="absolute bottom-4 left-4 flex gap-2 rounded-lg bg-white/90 p-2 shadow-sm backdrop-blur-sm">
