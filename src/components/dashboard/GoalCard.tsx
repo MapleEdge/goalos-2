@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { StatusBadge, PriorityBadge } from "@/components/ui/StatusBadge";
 import { ReadinessGauge } from "@/components/ui/ReadinessGauge";
@@ -87,7 +88,9 @@ export function GoalCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
               <span className={`h-2 w-2 rounded-full flex-shrink-0 ${statusDot[goal.status] || "bg-zinc-400"}`} />
-              <CardTitle>{goal.title}</CardTitle>
+              <Link href={`/goals/${goal.id}`} className="hover:underline">
+                <CardTitle>{goal.title}</CardTitle>
+              </Link>
               <StatusBadge status={goal.status} />
             </div>
             <p className="text-[11px] text-zinc-400 ml-4">
