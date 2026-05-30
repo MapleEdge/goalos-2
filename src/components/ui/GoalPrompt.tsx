@@ -119,12 +119,71 @@ function parseGoalInput(input: string): ParsedGoal {
   return result;
 }
 
+/* ─── Intent detection ──────────────────────────────────────────── */
+
+type Intent =
+  | { type: "review_all" }
+  | { type: "progress"; query: string }
+  | { type: "work_on" }
+  | { type: "navigate"; page: string; label: string }
+  | { type: "schedule_query" }
+  | { type: "help" }
+  | { type: "create_goal"; input: string };
+
+const REVIEW_ALL_PATTERNS = [
+  /^(?:review|show|list|display|see|view)\s+(?:all\s+)?(?:my\s+)?goals?$/i,
+  /^(?:all\s+)?goals?\s+(?:review|summary|overview|report)$/i,
+  /^goals?$/i,
+  /^(?:goal|goals)\s+(?:status|progress)$/i,
+  /^(?:review|summarize|summary)\s+(?:all\s+)?(?:my\s+)?(?:goal|goals|progress)$/i,
+  /^(?:show|give|get)\s+(?:me\s+)?(?:a\s+)?(?:goal|goals|progress)\s+(?:review|summary|overview|report)$/i,
+  /^overview$/i,
+  /^progress\s*report$/i,
+];
+
 const PROGRESS_PATTERNS = [
   /^(?:how\s+is|how(?:'s|\s+are)|what(?:'s|\s+is)\s+the\s+(?:status|progress)|show\s+(?:me\s+)?progress|progress\s+(?:on|for|of|report|update|check)|status\s+(?:of|on|for|update)|update\s+(?:on|me\s+on)|check\s+(?:on|progress)|how\s+am\s+I\s+doing|how\s+(?:are|is)\s+(?:my|the)\s+goal)/i,
 ];
 
-function isProgressQuery(input: string): boolean {
-  return PROGRESS_PATTERNS.some((p) => p.test(input.trim()));
+const WORK_ON_PATTERNS = [
+  /^(?:what\s+should\s+I\s+(?:work\s+on|do|focus\s+on|tackle)|what(?:'s|\s+is)\s+(?:the\s+)?(?:next|most\s+important)|next\s+(?:action|step|task)|what\s+to\s+do|prioritize|priorities|what(?:'s|\s+is)\s+(?:most\s+)?urgent|highest\s+(?:leverage|priority|impact))/i,
+  /^(?:recommend|suggest|advise)(?:\s+(?:me|an?|some))?(?:\s+(?:action|task|next\s+step))?s?$/i,
+];
+
+const SCHEDULE_QUERY_PATTERNS = [
+  /^(?:what(?:'s|\s+is)\s+on\s+(?:my\s+)?(?:calendar|schedule)|upcoming\s+events|today(?:'s)?\s+(?:schedule|events|calendar)|this\s+week(?:'s)?\s+(?:schedule|events|calendar)|my\s+(?:schedule|calendar|events))/i,
+  /^(?:show|open|view)\s+(?:my\s+)?(?:schedule|calendar|events)/i,
+];
+
+const NAV_PATTERNS: { pattern: RegExp; page: string; label: string }[] = [
+  { pattern: /^(?:go\s+to|open|navigate\s+to|show)\s+(?:the\s+)?(?:schedule|calendar)$/i, page: "/schedule", label: "Schedule" },
+  { pattern: /^(?:go\s+to|open|navigate\s+to|show)\s+(?:the\s+)?graph$/i, page: "/graph", label: "Graph" },
+  { pattern: /^(?:go\s+to|open|navigate\s+to|show)\s+(?:the\s+)?(?:timeline|history|events)$/i, page: "/timeline", label: "Timeline" },
+  { pattern: /^(?:go\s+to|open|navigate\s+to|show)\s+(?:the\s+)?(?:dashboard|home)$/i, page: "/", label: "Dashboard" },
+];
+
+const HELP_PATTERNS = [
+  /^(?:help|what\s+can\s+you\s+do|commands|how\s+do\s+I|what\s+commands|what\s+can\s+I\s+(?:say|do|type|ask))\s*\??$/i,
+];
+
+function detectIntent(input: string): Intent {
+  const trimmed = input.trim();
+
+  if (REVIEW_ALL_PATTERNS.some((p) => p.test(trimmed))) return { type: "review_all" };
+
+  if (PROGRESS_PATTERNS.some((p) => p.test(trimmed))) return { type: "progress", query: trimmed };
+
+  if (WORK_ON_PATTERNS.some((p) => p.test(trimmed))) return { type: "work_on" };
+
+  for (const nav of NAV_PATTERNS) {
+    if (nav.pattern.test(trimmed)) return { type: "navigate", page: nav.page, label: nav.label };
+  }
+
+  if (SCHEDULE_QUERY_PATTERNS.some((p) => p.test(trimmed))) return { type: "schedule_query" };
+
+  if (HELP_PATTERNS.some((p) => p.test(trimmed))) return { type: "help" };
+
+  return { type: "create_goal", input: trimmed };
 }
 
 function extractGoalKeywords(input: string): string {
@@ -134,15 +193,32 @@ function extractGoalKeywords(input: string): string {
     .trim();
 }
 
+/* ─── Recommendations data ──────────────────────────────────────── */
+
+interface RecommendedAction {
+  title: string;
+  reason: string;
+  priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  relatedGoalTitle: string;
+}
+
+interface RecommendationsData {
+  highestLeverageActions: RecommendedAction[];
+}
+
 export function GoalPrompt() {
   const [inputValue, setInputValue] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
+  const [recommendationsData, setRecommendationsData] = useState<RecommendationsData | null>(null);
   const [progressLoading, setProgressLoading] = useState(false);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [parsed, setParsed] = useState<ParsedGoal>({ title: "", description: "", targetDate: "", successCriteria: "" });
 
-  const fetchProgress = useCallback(async (query: string) => {
+  const fetchProgress = useCallback(async (query: string, matchAll: boolean) => {
     setProgressLoading(true);
     try {
       const [goalsRes, allocRes] = await Promise.all([
@@ -157,7 +233,7 @@ export function GoalPrompt() {
         if (a.goalId) allocMap.set(a.goalId, { minutes: a.totalMinutes, count: a.eventCount });
       }
 
-      const keywords = extractGoalKeywords(query).toLowerCase();
+      const keywords = matchAll ? "" : extractGoalKeywords(query).toLowerCase();
       const queryWords = keywords.split(/\s+/).filter((w) => w.length > 2);
       let matchedGoalId: string | null = null;
       let bestMatchScore = 0;
@@ -173,7 +249,7 @@ export function GoalPrompt() {
             : 50;
           const allocData = allocMap.get(g.id);
 
-          if (queryWords.length > 0) {
+          if (!matchAll && queryWords.length > 0) {
             const titleLower = g.title.toLowerCase();
             const matchCount = queryWords.filter((w) => titleLower.includes(w)).length;
             if (matchCount > bestMatchScore) {
@@ -195,11 +271,23 @@ export function GoalPrompt() {
           };
         });
 
-      setProgressData({ goals: goalProgress, query, matchedGoalId });
+      setProgressData({ goals: goalProgress, query, matchedGoalId: matchAll ? null : matchedGoalId });
     } catch {
       setProgressData({ goals: [], query, matchedGoalId: null });
     }
     setProgressLoading(false);
+  }, []);
+
+  const fetchRecommendations = useCallback(async () => {
+    setRecommendationsLoading(true);
+    try {
+      const res = await fetch("/api/reasoning");
+      const data = await res.json();
+      setRecommendationsData(data);
+    } catch {
+      setRecommendationsData({ highestLeverageActions: [] });
+    }
+    setRecommendationsLoading(false);
   }, []);
 
   function handleSubmit(e: React.FormEvent) {
@@ -207,12 +295,36 @@ export function GoalPrompt() {
     const trimmed = inputValue.trim();
     if (!trimmed) return;
 
-    if (isProgressQuery(trimmed)) {
-      setShowProgress(true);
-      fetchProgress(trimmed);
-    } else {
-      setParsed(parseGoalInput(trimmed));
-      setShowModal(true);
+    const intent = detectIntent(trimmed);
+
+    switch (intent.type) {
+      case "review_all":
+        setShowProgress(true);
+        fetchProgress(trimmed, true);
+        break;
+      case "progress":
+        setShowProgress(true);
+        fetchProgress(intent.query, false);
+        break;
+      case "work_on":
+        setShowRecommendations(true);
+        fetchRecommendations();
+        break;
+      case "navigate":
+        window.location.href = intent.page;
+        setInputValue("");
+        break;
+      case "schedule_query":
+        window.location.href = "/schedule";
+        setInputValue("");
+        break;
+      case "help":
+        setShowHelp(true);
+        break;
+      case "create_goal":
+        setParsed(parseGoalInput(intent.input));
+        setShowModal(true);
+        break;
     }
   }
 
@@ -234,6 +346,17 @@ export function GoalPrompt() {
     setInputValue("");
   }
 
+  function handleCloseRecommendations() {
+    setShowRecommendations(false);
+    setRecommendationsData(null);
+    setInputValue("");
+  }
+
+  function handleCloseHelp() {
+    setShowHelp(false);
+    setInputValue("");
+  }
+
   return (
     <>
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
@@ -242,8 +365,8 @@ export function GoalPrompt() {
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Tell me your next goal or ask about progress..."
-            className="w-[360px] rounded-full border border-zinc-300 bg-white/95 px-5 py-3 text-sm text-zinc-800 shadow-lg backdrop-blur-sm placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 transition-shadow hover:shadow-xl"
+            placeholder='Try &quot;review all goals&quot; or &quot;what should I work on&quot;'
+            className="w-[420px] rounded-full border border-zinc-300 bg-white/95 px-5 py-3 text-sm text-zinc-800 shadow-lg backdrop-blur-sm placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 transition-shadow hover:shadow-xl"
           />
           {inputValue.trim() && (
             <button
@@ -285,7 +408,7 @@ export function GoalPrompt() {
       <Modal
         open={showProgress}
         onClose={handleCloseProgress}
-        title="Progress Report"
+        title="Goal Review"
       >
         <ProgressPanel
           data={progressData}
@@ -297,6 +420,26 @@ export function GoalPrompt() {
             }
           }}
         />
+      </Modal>
+
+      <Modal
+        open={showRecommendations}
+        onClose={handleCloseRecommendations}
+        title="What Should I Work On?"
+      >
+        <RecommendationsPanel
+          data={recommendationsData}
+          loading={recommendationsLoading}
+          onClose={handleCloseRecommendations}
+        />
+      </Modal>
+
+      <Modal
+        open={showHelp}
+        onClose={handleCloseHelp}
+        title="Available Commands"
+      >
+        <HelpPanel onClose={handleCloseHelp} />
       </Modal>
     </>
   );
@@ -484,6 +627,122 @@ function ProgressPanel({
           Show all {data.goals.length} goals
         </button>
       )}
+
+      <button
+        onClick={onClose}
+        className="w-full rounded-md bg-zinc-900 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-700"
+      >
+        Close
+      </button>
+    </div>
+  );
+}
+
+/* ─── Recommendations panel ─────────────────────────────────────── */
+
+const PRIORITY_STYLE: Record<string, string> = {
+  CRITICAL: "bg-red-100 text-red-700",
+  HIGH: "bg-amber-100 text-amber-700",
+  MEDIUM: "bg-blue-100 text-blue-700",
+  LOW: "bg-zinc-100 text-zinc-600",
+};
+
+function RecommendationsPanel({
+  data,
+  loading,
+  onClose,
+}: {
+  data: RecommendationsData | null;
+  loading: boolean;
+  onClose: () => void;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
+      </div>
+    );
+  }
+
+  const actions = data?.highestLeverageActions || [];
+
+  if (actions.length === 0) {
+    return (
+      <div className="py-8 text-center">
+        <p className="text-sm text-zinc-500">No recommended actions right now.</p>
+        <button
+          onClick={onClose}
+          className="mt-4 rounded-md bg-zinc-900 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-700"
+        >
+          Close
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-zinc-500">
+        Ranked by impact — actions that unblock the most progress across your goals.
+      </p>
+
+      {actions.map((action, i) => (
+        <div key={i} className="rounded-lg border border-zinc-200 p-3 space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="shrink-0 text-sm font-bold text-zinc-400">{i + 1}</span>
+              <span className="text-sm font-semibold text-zinc-900 truncate">{action.title}</span>
+            </div>
+            <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded ${
+              PRIORITY_STYLE[action.priority] || PRIORITY_STYLE.LOW
+            }`}>
+              {action.priority}
+            </span>
+          </div>
+          <p className="text-xs text-zinc-600 leading-relaxed">{action.reason}</p>
+          <p className="text-[10px] text-zinc-400">Goal: {action.relatedGoalTitle}</p>
+        </div>
+      ))}
+
+      <button
+        onClick={onClose}
+        className="w-full rounded-md bg-zinc-900 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-700"
+      >
+        Close
+      </button>
+    </div>
+  );
+}
+
+/* ─── Help panel ────────────────────────────────────────────────── */
+
+const HELP_ITEMS = [
+  { command: "review all goals", description: "See a summary of all your active goals with readiness, prerequisites, and time allocation" },
+  { command: "what should I work on", description: "Get ranked recommendations for highest-impact actions" },
+  { command: "how is [goal name]", description: "Check status and progress on a specific goal" },
+  { command: "show schedule", description: "Open the calendar / schedule view" },
+  { command: "go to graph", description: "Navigate to the goal graph visualization" },
+  { command: "go to timeline", description: "Navigate to the event timeline" },
+  { command: "[any text]", description: "Create a new goal — just describe it naturally" },
+];
+
+function HelpPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-zinc-500">
+        Type any of these commands, or just describe a goal to create it.
+      </p>
+
+      <div className="space-y-2">
+        {HELP_ITEMS.map((item, i) => (
+          <div key={i} className="flex items-start gap-3 rounded-lg border border-zinc-100 bg-zinc-50 p-2.5">
+            <code className="shrink-0 text-xs font-medium text-zinc-800 bg-white px-2 py-0.5 rounded border border-zinc-200">
+              {item.command}
+            </code>
+            <span className="text-xs text-zinc-600 pt-0.5">{item.description}</span>
+          </div>
+        ))}
+      </div>
 
       <button
         onClick={onClose}
