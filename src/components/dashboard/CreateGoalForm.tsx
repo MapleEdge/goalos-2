@@ -402,39 +402,41 @@ export function CreateGoalForm({
                   <div className="mt-2 space-y-2 rounded-lg border border-zinc-300 bg-white p-3">
                     <p className="text-xs font-medium text-zinc-700">Edit Capabilities</p>
                     {editingCapabilities.map((cap, i) => (
-                      <div key={i} className="flex items-start gap-1.5">
-                        <select
-                          value={cap.type}
-                          onChange={(e) => updateCapability(i, "type", e.target.value)}
-                          className="rounded border border-zinc-300 px-1.5 py-1 text-xs focus:border-zinc-500 focus:outline-none"
-                        >
-                          <option value="willingness">willingness</option>
-                          <option value="capability">capability</option>
-                        </select>
+                      <div key={i} className="rounded-lg border border-zinc-200 bg-zinc-50 p-2 space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            value={cap.type}
+                            onChange={(e) => updateCapability(i, "type", e.target.value)}
+                            className="rounded border border-zinc-300 px-1.5 py-1 text-xs focus:border-zinc-500 focus:outline-none"
+                          >
+                            <option value="willingness">willingness</option>
+                            <option value="capability">capability</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => deleteCapability(i)}
+                            className="ml-auto rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
+                            title="Delete"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M4 4l8 8M12 4l-8 8" />
+                            </svg>
+                          </button>
+                        </div>
                         <input
                           type="text"
                           value={cap.description}
                           onChange={(e) => updateCapability(i, "description", e.target.value)}
                           placeholder="Description"
-                          className="flex-1 rounded border border-zinc-300 px-2 py-1 text-xs focus:border-zinc-500 focus:outline-none"
+                          className="w-full rounded border border-zinc-300 px-2 py-1 text-xs focus:border-zinc-500 focus:outline-none"
                         />
                         <input
                           type="text"
                           value={cap.condition || ""}
                           onChange={(e) => updateCapability(i, "condition", e.target.value)}
                           placeholder="Condition (optional)"
-                          className="w-36 rounded border border-zinc-300 px-2 py-1 text-xs focus:border-zinc-500 focus:outline-none"
+                          className="w-full rounded border border-zinc-300 px-2 py-1 text-xs focus:border-zinc-500 focus:outline-none"
                         />
-                        <button
-                          type="button"
-                          onClick={() => deleteCapability(i)}
-                          className="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
-                          title="Delete"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M4 4l8 8M12 4l-8 8" />
-                          </svg>
-                        </button>
                       </div>
                     ))}
                     <button
