@@ -6,6 +6,7 @@ import { RecommendationsPanel } from "./RecommendationsPanel";
 import { CreateGoalForm } from "./CreateGoalForm";
 import { ValuesPanel } from "./ValuesPanel";
 import { SuggestedGoals } from "./SuggestedGoals";
+import { TimeAllocation } from "./TimeAllocation";
 import { Modal } from "@/components/ui/Modal";
 import type { ReasoningOutput, ReadinessScore } from "@/lib/reasoning/types";
 
@@ -193,6 +194,7 @@ export function Dashboard() {
           </div>
           {viewMode === "active" && (
             <div className="space-y-4">
+              <TimeAllocation />
               <ValuesPanel onChanged={() => setSuggestRefreshKey((k) => k + 1)} />
               <SuggestedGoals
                 refreshKey={suggestRefreshKey}
