@@ -41,11 +41,19 @@ export function MarkProgressModal({
 
   async function submit(action: string, body: Record<string, unknown>) {
     setLoading(true);
-    await fetch(`/api/goals/${goal.id}/progress`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, ...body }),
-    });
+    try {
+      const res = await fetch(`/api/goals/${goal.id}/progress`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...body }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error("Progress update failed:", data);
+      }
+    } catch (err) {
+      console.error("Progress update error:", err);
+    }
     setLoading(false);
     onDone();
   }
