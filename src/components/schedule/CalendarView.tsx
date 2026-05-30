@@ -1,6 +1,15 @@
 "use client";
 
-interface ScheduleEvent {
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import listPlugin from "@fullcalendar/list";
+import type { EventClickArg, DateSelectArg, EventDropArg } from "@fullcalendar/core";
+import type { EventResizeDoneArg } from "@fullcalendar/interaction";
+import type { EventInput } from "@fullcalendar/core";
+
+export interface ScheduleEvent {
   id: string;
   title: string;
   description?: string | null;
@@ -20,284 +29,113 @@ interface ScheduleEvent {
 
 interface CalendarViewProps {
   events: ScheduleEvent[];
-  view: "week" | "month";
-  currentDate: Date;
-  onSlotClick: (start: Date, end: Date) => void;
+  onEventClick: (event: ScheduleEvent) => void;
+  onSlotSelect: (start: Date, end: Date, allDay: boolean) => void;
+  onEventDrop: (eventId: string, start: Date, end: Date, allDay: boolean) => void;
+  onEventResize: (eventId: string, start: Date, end: Date) => void;
 }
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-export function CalendarView({
-  events,
-  view,
-  currentDate,
-  onSlotClick,
-}: CalendarViewProps) {
-  if (view === "month") return <MonthView events={events} currentDate={currentDate} onSlotClick={onSlotClick} />;
-  return <WeekView events={events} currentDate={currentDate} onSlotClick={onSlotClick} />;
-}
-
-function WeekView({
-  events,
-  currentDate,
-  onSlotClick,
-}: Omit<CalendarViewProps, "view">) {
-  const weekStart = new Date(currentDate);
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-  weekStart.setHours(0, 0, 0, 0);
-
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    return d;
-  });
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return (
-    <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
-      {/* Day headers */}
-      <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-zinc-200">
-        <div className="border-r border-zinc-100" />
-        {days.map((day, i) => {
-          const isToday = day.getTime() === today.getTime();
-          return (
-            <div
-              key={i}
-              className={`px-2 py-2 text-center border-r border-zinc-100 last:border-r-0 ${
-                isToday ? "bg-blue-50" : ""
-              }`}
-            >
-              <div className="text-xs text-zinc-500">{DAYS[day.getDay()]}</div>
-              <div
-                className={`text-sm font-semibold ${
-                  isToday
-                    ? "inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white"
-                    : "text-zinc-900"
-                }`}
-              >
-                {day.getDate()}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Time grid */}
-      <div className="max-h-[600px] overflow-y-auto">
-        <div className="grid grid-cols-[60px_repeat(7,1fr)] relative">
-          {/* Hour labels + rows */}
-          {HOURS.map((hour) => (
-            <div key={hour} className="contents">
-              <div className="border-r border-zinc-100 pr-2 text-right text-xs text-zinc-400 h-14 flex items-start justify-end pt-0.5">
-                {hour === 0 ? "" : formatHour(hour)}
-              </div>
-              {days.map((day, di) => {
-                const dayEvents = getEventsForHour(events, day, hour);
-                return (
-                  <div
-                    key={di}
-                    className="border-r border-b border-zinc-100 last:border-r-0 h-14 relative cursor-pointer hover:bg-zinc-50 transition-colors"
-                    onClick={() => {
-                      const start = new Date(day);
-                      start.setHours(hour, 0, 0, 0);
-                      const end = new Date(day);
-                      end.setHours(hour + 1, 0, 0, 0);
-                      onSlotClick(start, end);
-                    }}
-                  >
-                    {dayEvents.map((ev) => (
-                      <div
-                        key={ev.id}
-                        className="absolute inset-x-0.5 rounded px-1 py-0.5 text-xs font-medium truncate z-10"
-                        style={{
-                          backgroundColor: ev.color || sourceColor(ev.source),
-                          color: "#fff",
-                          top: `${getEventTopOffset(ev)}%`,
-                          height: `${Math.min(getEventHeight(ev, hour), 100)}%`,
-                          minHeight: "18px",
-                        }}
-                        title={`${ev.title}${ev.location ? ` — ${ev.location}` : ""}`}
-                      >
-                        {ev.title}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MonthView({
-  events,
-  currentDate,
-  onSlotClick,
-}: Omit<CalendarViewProps, "view">) {
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-
-  const firstDay = new Date(year, month, 1);
-  const startDate = new Date(firstDay);
-  startDate.setDate(startDate.getDate() - startDate.getDay());
-
-  const weeks: Date[][] = [];
-  const cursor = new Date(startDate);
-  for (let w = 0; w < 6; w++) {
-    const week: Date[] = [];
-    for (let d = 0; d < 7; d++) {
-      week.push(new Date(cursor));
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    weeks.push(week);
-    if (cursor.getMonth() !== month && cursor.getDay() === 0) break;
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return (
-    <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
-      <div className="grid grid-cols-7 border-b border-zinc-200">
-        {DAYS.map((day) => (
-          <div
-            key={day}
-            className="px-2 py-2 text-center text-xs font-medium text-zinc-500 border-r border-zinc-100 last:border-r-0"
-          >
-            {day}
-          </div>
-        ))}
-      </div>
-      {weeks.map((week, wi) => (
-        <div key={wi} className="grid grid-cols-7 border-b border-zinc-100 last:border-b-0">
-          {week.map((day, di) => {
-            const isCurrentMonth = day.getMonth() === month;
-            const isToday = day.getTime() === today.getTime();
-            const dayEvents = getEventsForDay(events, day);
-            return (
-              <div
-                key={di}
-                className={`min-h-24 border-r border-zinc-100 last:border-r-0 p-1 cursor-pointer hover:bg-zinc-50 transition-colors ${
-                  !isCurrentMonth ? "bg-zinc-50/50" : ""
-                }`}
-                onClick={() => {
-                  const start = new Date(day);
-                  start.setHours(9, 0, 0, 0);
-                  const end = new Date(day);
-                  end.setHours(10, 0, 0, 0);
-                  onSlotClick(start, end);
-                }}
-              >
-                <div
-                  className={`text-xs mb-1 ${
-                    isToday
-                      ? "inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white font-bold"
-                      : isCurrentMonth
-                        ? "text-zinc-700 font-medium"
-                        : "text-zinc-400"
-                  }`}
-                >
-                  {day.getDate()}
-                </div>
-                <div className="space-y-0.5">
-                  {dayEvents.slice(0, 3).map((ev) => (
-                    <div
-                      key={ev.id}
-                      className="rounded px-1 py-0.5 text-xs truncate"
-                      style={{
-                        backgroundColor: ev.color || sourceColor(ev.source),
-                        color: "#fff",
-                      }}
-                      title={ev.title}
-                    >
-                      {ev.title}
-                    </div>
-                  ))}
-                  {dayEvents.length > 3 && (
-                    <div className="text-xs text-zinc-500 pl-1">
-                      +{dayEvents.length - 3} more
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────
-
-function formatHour(hour: number): string {
-  if (hour === 0) return "12 AM";
-  if (hour < 12) return `${hour} AM`;
-  if (hour === 12) return "12 PM";
-  return `${hour - 12} PM`;
+function toFullCalendarEvents(events: ScheduleEvent[]): EventInput[] {
+  return events.map((ev) => ({
+    id: ev.id,
+    title: ev.title,
+    start: ev.startTime,
+    end: ev.endTime,
+    allDay: ev.allDay,
+    backgroundColor: ev.color || sourceColor(ev.source),
+    borderColor: ev.color || sourceColor(ev.source),
+    extendedProps: {
+      description: ev.description,
+      location: ev.location,
+      source: ev.source,
+      goalId: ev.goalId,
+      actionId: ev.actionId,
+    },
+  }));
 }
 
 function sourceColor(source: string): string {
   switch (source) {
-    case "GOOGLE": return "#4285f4";
-    case "MICROSOFT": return "#00a4ef";
-    default: return "#3b82f6";
+    case "GOOGLE":
+      return "#4285f4";
+    case "MICROSOFT":
+      return "#00a4ef";
+    default:
+      return "#3b82f6";
   }
 }
 
-function getEventsForDay(events: ScheduleEvent[], day: Date): ScheduleEvent[] {
-  const dayStart = new Date(day);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(day);
-  dayEnd.setHours(23, 59, 59, 999);
+export function CalendarView({
+  events,
+  onEventClick,
+  onSlotSelect,
+  onEventDrop,
+  onEventResize,
+}: CalendarViewProps) {
+  function handleEventClick(info: EventClickArg) {
+    const raw = events.find((e) => e.id === info.event.id);
+    if (raw) onEventClick(raw);
+  }
 
-  return events.filter((ev) => {
-    const start = new Date(ev.startTime);
-    const end = new Date(ev.endTime);
-    return start <= dayEnd && end >= dayStart;
-  });
-}
+  function handleSelect(info: DateSelectArg) {
+    onSlotSelect(info.start, info.end, info.allDay);
+  }
 
-function getEventsForHour(
-  events: ScheduleEvent[],
-  day: Date,
-  hour: number
-): ScheduleEvent[] {
-  const hourStart = new Date(day);
-  hourStart.setHours(hour, 0, 0, 0);
-  const hourEnd = new Date(day);
-  hourEnd.setHours(hour, 59, 59, 999);
+  function handleEventDrop(info: EventDropArg) {
+    const start = info.event.start;
+    const end = info.event.end;
+    if (!start) return;
+    onEventDrop(
+      info.event.id,
+      start,
+      end || new Date(start.getTime() + 60 * 60 * 1000),
+      info.event.allDay
+    );
+  }
 
-  return events.filter((ev) => {
-    if (ev.allDay) return false;
-    const start = new Date(ev.startTime);
-    const end = new Date(ev.endTime);
-    return start <= hourEnd && end > hourStart;
-  });
-}
+  function handleEventResize(info: EventResizeDoneArg) {
+    const start = info.event.start;
+    const end = info.event.end;
+    if (!start || !end) return;
+    onEventResize(info.event.id, start, end);
+  }
 
-function getEventTopOffset(ev: ScheduleEvent): number {
-  const start = new Date(ev.startTime);
-  return (start.getMinutes() / 60) * 100;
-}
-
-function getEventHeight(ev: ScheduleEvent, hour: number): number {
-  const start = new Date(ev.startTime);
-  const end = new Date(ev.endTime);
-  const hourStart = new Date(start);
-  hourStart.setHours(hour, 0, 0, 0);
-  const hourEnd = new Date(start);
-  hourEnd.setHours(hour + 1, 0, 0, 0);
-
-  const effectiveStart = start > hourStart ? start : hourStart;
-  const effectiveEnd = end < hourEnd ? end : hourEnd;
-  const durationMins =
-    (effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60);
-  return (durationMins / 60) * 100;
+  return (
+    <div className="fc-wrapper rounded-xl border border-zinc-200 bg-white p-4">
+      <FullCalendar
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+        initialView="timeGridWeek"
+        headerToolbar={{
+          left: "prev,next today",
+          center: "title",
+          right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+        }}
+        editable={true}
+        selectable={true}
+        selectMirror={true}
+        dayMaxEvents={true}
+        events={toFullCalendarEvents(events)}
+        eventClick={handleEventClick}
+        select={handleSelect}
+        eventDrop={handleEventDrop}
+        eventResize={handleEventResize}
+        nowIndicator={true}
+        height="auto"
+        expandRows={true}
+        slotMinTime="06:00:00"
+        slotMaxTime="22:00:00"
+        allDaySlot={true}
+        eventTimeFormat={{
+          hour: "numeric",
+          minute: "2-digit",
+          meridiem: "short",
+        }}
+        slotLabelFormat={{
+          hour: "numeric",
+          minute: "2-digit",
+          meridiem: "short",
+        }}
+      />
+    </div>
+  );
 }
