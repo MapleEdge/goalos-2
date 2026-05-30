@@ -55,6 +55,7 @@ Rules:
 - Higher-ranked values deserve higher priority suggestions.
 - Be specific and actionable — avoid vague goals.
 - Assign priority: HIGH for rank 1-2 values, MEDIUM for rank 3-4, LOW for rank 5+.
+- Order the suggestions by priority: all HIGH first, then MEDIUM, then LOW.
 
 Respond with ONLY a valid JSON array of objects, no markdown, no explanation. Each object must have:
 {
@@ -102,6 +103,10 @@ Suggest new goals I should pursue.`;
         Array.isArray(s.alignedValues) &&
         ["HIGH", "MEDIUM", "LOW"].includes(s.priority)
     );
+
+    // Sort by priority (HIGH first, then MEDIUM, then LOW)
+    const priorityOrder = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+    valid.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
 
     return valid.length > 0 ? valid.slice(0, 8) : null;
   } catch {
