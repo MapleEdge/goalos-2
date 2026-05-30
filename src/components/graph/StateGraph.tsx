@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -11,6 +11,9 @@ import {
   useEdgesState,
   MarkerType,
   type NodeTypes,
+  type ReactFlowInstance,
+  type Viewport,
+  useOnViewportChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { GraphNode } from "./GraphNode";
@@ -56,6 +59,39 @@ const STAKEHOLDER_COL_W = 210;
 const STAKEHOLDER_ROW_H = 90;
 const STAKEHOLDER_COMPACT_THRESHOLD = 6;
 
+const VIEWPORT_STORAGE_KEY = "goalos-graph-viewport";
+
+function saveViewport(viewport: Viewport) {
+  try {
+    sessionStorage.setItem(VIEWPORT_STORAGE_KEY, JSON.stringify(viewport));
+  } catch {
+    // sessionStorage unavailable
+  }
+}
+
+function loadViewport(): Viewport | null {
+  try {
+    const raw = sessionStorage.getItem(VIEWPORT_STORAGE_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Viewport;
+    if (typeof v.x === "number" && typeof v.y === "number" && typeof v.zoom === "number") {
+      return v;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function ViewportPersistence() {
+  useOnViewportChange({
+    onChange: (viewport: Viewport) => {
+      saveViewport(viewport);
+    },
+  });
+  return null;
+}
+
 export function StateGraph() {
   const [goals, setGoals] = useState<GoalData[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderData[]>([]);
@@ -63,6 +99,17 @@ export function StateGraph() {
   const [loading, setLoading] = useState(true);
   const [showAllStakeholders, setShowAllStakeholders] = useState(false);
   const [editNode, setEditNode] = useState<{ id: string; type: string } | null>(null);
+  const hasRestoredViewport = useRef(false);
+
+  const handleInit = useCallback((instance: ReactFlowInstance) => {
+    const saved = loadViewport();
+    if (saved && !hasRestoredViewport.current) {
+      instance.setViewport(saved);
+      hasRestoredViewport.current = true;
+    } else {
+      instance.fitView();
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -332,13 +379,14 @@ export function StateGraph() {
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
-        fitView
+        onInit={handleInit}
         minZoom={0.2}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
         <Background color="#e4e4e7" gap={20} />
         <Controls />
+        <ViewportPersistence />
       </ReactFlow>
 
       {stakeholders.length > STAKEHOLDER_COMPACT_THRESHOLD && (
