@@ -34,6 +34,7 @@ export async function PATCH(
         ? new Date(body.lastInteraction)
         : undefined,
       notes: body.notes,
+      ...(body.capabilities !== undefined ? { capabilities: body.capabilities } : {}),
     },
   });
 

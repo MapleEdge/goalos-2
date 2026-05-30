@@ -79,6 +79,11 @@ export function CreateGoalForm({
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const suggestionsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Capability editing state
+  const [editingStakeholderId, setEditingStakeholderId] = useState<string | null>(null);
+  const [editingCapabilities, setEditingCapabilities] = useState<Capability[]>([]);
+  const [savingCapabilities, setSavingCapabilities] = useState(false);
+
   useEffect(() => {
     if (showStakeholders && allStakeholders.length === 0) {
       fetch("/api/stakeholders")
@@ -151,6 +156,45 @@ export function CreateGoalForm({
 
   function dismissSuggestion(id: string) {
     setDismissedSuggestions((prev) => new Set(prev).add(id));
+  }
+
+  async function startEditing(stakeholderId: string) {
+    const res = await fetch(`/api/stakeholders/${stakeholderId}`);
+    const data = await res.json();
+    const caps = (data.capabilities as Capability[] | null) || [];
+    setEditingCapabilities(caps);
+    setEditingStakeholderId(stakeholderId);
+  }
+
+  function updateCapability(index: number, field: keyof Capability, value: string) {
+    setEditingCapabilities((prev) =>
+      prev.map((c, i) => (i === index ? { ...c, [field]: value || null } : c))
+    );
+  }
+
+  function deleteCapability(index: number) {
+    setEditingCapabilities((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addCapability() {
+    setEditingCapabilities((prev) => [
+      ...prev,
+      { type: "willingness", description: "", condition: null },
+    ]);
+  }
+
+  async function saveCapabilities(stakeholderId: string) {
+    setSavingCapabilities(true);
+    const valid = editingCapabilities.filter((c) => c.description.trim());
+    await fetch(`/api/stakeholders/${stakeholderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ capabilities: valid }),
+    });
+    setSavingCapabilities(false);
+    setEditingStakeholderId(null);
+    // Re-trigger suggestions to reflect updated capabilities
+    fetchSuggestions();
   }
 
   function removeSelected(id: string) {
@@ -339,6 +383,13 @@ export function CreateGoalForm({
                     </button>
                     <button
                       type="button"
+                      onClick={() => startEditing(s.stakeholderId)}
+                      className="rounded bg-zinc-600 px-2 py-0.5 text-xs text-white hover:bg-zinc-700"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => dismissSuggestion(s.stakeholderId)}
                       className="rounded px-2 py-0.5 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
                     >
@@ -346,25 +397,95 @@ export function CreateGoalForm({
                     </button>
                   </div>
                 </div>
-                <div className="mt-1.5 space-y-1 pl-8">
-                  {s.matchingCapabilities.map((cap, i) => (
-                    <div key={i} className="text-xs">
-                      <span className={`inline-block rounded px-1.5 py-0.5 font-medium ${
-                        cap.type === "willingness"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}>
-                        {cap.type}
-                      </span>
-                      <span className="ml-1.5 text-zinc-700">{cap.description}</span>
-                      {cap.condition && (
-                        <span className="ml-1 text-zinc-500">
-                          — given <span className="font-medium text-zinc-700">{cap.condition}</span>
-                        </span>
-                      )}
+
+                {editingStakeholderId === s.stakeholderId ? (
+                  <div className="mt-2 space-y-2 rounded-lg border border-zinc-300 bg-white p-3">
+                    <p className="text-xs font-medium text-zinc-700">Edit Capabilities</p>
+                    {editingCapabilities.map((cap, i) => (
+                      <div key={i} className="flex items-start gap-1.5">
+                        <select
+                          value={cap.type}
+                          onChange={(e) => updateCapability(i, "type", e.target.value)}
+                          className="rounded border border-zinc-300 px-1.5 py-1 text-xs focus:border-zinc-500 focus:outline-none"
+                        >
+                          <option value="willingness">willingness</option>
+                          <option value="capability">capability</option>
+                        </select>
+                        <input
+                          type="text"
+                          value={cap.description}
+                          onChange={(e) => updateCapability(i, "description", e.target.value)}
+                          placeholder="Description"
+                          className="flex-1 rounded border border-zinc-300 px-2 py-1 text-xs focus:border-zinc-500 focus:outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={cap.condition || ""}
+                          onChange={(e) => updateCapability(i, "condition", e.target.value)}
+                          placeholder="Condition (optional)"
+                          className="w-36 rounded border border-zinc-300 px-2 py-1 text-xs focus:border-zinc-500 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => deleteCapability(i)}
+                          className="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
+                          title="Delete"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M4 4l8 8M12 4l-8 8" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addCapability}
+                      className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-700"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M8 3v10M3 8h10" strokeLinecap="round" />
+                      </svg>
+                      Add capability
+                    </button>
+                    <div className="flex justify-end gap-2 pt-1 border-t border-zinc-100">
+                      <button
+                        type="button"
+                        onClick={() => setEditingStakeholderId(null)}
+                        className="rounded px-2.5 py-1 text-xs text-zinc-500 hover:bg-zinc-100"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveCapabilities(s.stakeholderId)}
+                        disabled={savingCapabilities}
+                        className="rounded bg-zinc-800 px-2.5 py-1 text-xs text-white hover:bg-zinc-700 disabled:opacity-50"
+                      >
+                        {savingCapabilities ? "Saving..." : "Save"}
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  <div className="mt-1.5 space-y-1 pl-8">
+                    {s.matchingCapabilities.map((cap, i) => (
+                      <div key={i} className="text-xs">
+                        <span className={`inline-block rounded px-1.5 py-0.5 font-medium ${
+                          cap.type === "willingness"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-blue-100 text-blue-700"
+                        }`}>
+                          {cap.type}
+                        </span>
+                        <span className="ml-1.5 text-zinc-700">{cap.description}</span>
+                        {cap.condition && (
+                          <span className="ml-1 text-zinc-500">
+                            — given <span className="font-medium text-zinc-700">{cap.condition}</span>
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
