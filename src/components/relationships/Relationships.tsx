@@ -12,6 +12,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { GraphNode } from "@/components/graph/GraphNode";
+import { RelationshipImprove } from "./RelationshipImprove";
 
 interface GoalData {
   id: string;
@@ -74,7 +75,7 @@ export function Relationships() {
   const [stakeholders, setStakeholders] = useState<StakeholderData[]>([]);
   const [relationships, setRelationships] = useState<RelationshipData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"graph" | "table">("graph");
+  const [view, setView] = useState<"improve" | "graph" | "table">("improve");
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -228,12 +229,13 @@ export function Relationships() {
             Relationships
           </h1>
           <p className="text-sm text-zinc-500">
-            {relationships.length} relationship{relationships.length !== 1 ? "s" : ""} across
-            your goals and stakeholders
+            {view === "improve"
+              ? "Prioritized actions to strengthen the relationships that matter"
+              : `${relationships.length} relationship${relationships.length !== 1 ? "s" : ""} across your goals and stakeholders`}
           </p>
         </div>
         <div className="flex rounded-lg border border-zinc-200 overflow-hidden">
-          {(["graph", "table"] as const).map((v) => (
+          {(["improve", "graph", "table"] as const).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -249,7 +251,9 @@ export function Relationships() {
         </div>
       </div>
 
-      {relationships.length === 0 ? (
+      {view === "improve" ? (
+        <RelationshipImprove />
+      ) : relationships.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-300 bg-white py-20 text-center">
           <h2 className="text-lg font-semibold text-zinc-700">No relationships yet</h2>
           <p className="mt-1 text-sm text-zinc-500">
