@@ -7,6 +7,7 @@ export async function GET() {
     include: {
       prerequisites: { include: { evidence: true } },
       actions: true,
+      value: { select: { id: true, label: true, rank: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
       targetDate: body.targetDate ? new Date(body.targetDate) : null,
       successCriteria: body.successCriteria,
       status: body.status || "ACTIVE",
+      valueId: body.valueId || null,
     },
   });
 
