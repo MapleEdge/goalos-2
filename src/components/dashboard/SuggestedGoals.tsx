@@ -14,6 +14,7 @@ interface SuggestionsResponse {
   suggestions: GoalSuggestion[];
   valuesSummary?: string;
   message?: string;
+  source?: "gemini" | "templates";
 }
 
 export function SuggestedGoals({
@@ -25,6 +26,7 @@ export function SuggestedGoals({
 }) {
   const [data, setData] = useState<SuggestionsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [dismissedTitles, setDismissedTitles] = useState<Set<string>>(new Set());
 
   const fetchSuggestions = useCallback(() => {
@@ -35,15 +37,22 @@ export function SuggestedGoals({
         if (!cancelled) {
           setData(d);
           setLoading(false);
+          setRefreshing(false);
         }
       })
-      .catch(() => { if (!cancelled) setLoading(false); });
+      .catch(() => { if (!cancelled) { setLoading(false); setRefreshing(false); } });
     return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
     return fetchSuggestions();
   }, [refreshKey, fetchSuggestions]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setDismissedTitles(new Set());
+    fetchSuggestions();
+  };
 
   if (loading) return null;
   if (!data || data.suggestions.length === 0) {
@@ -67,11 +76,36 @@ export function SuggestedGoals({
 
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4">
-      <h3 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider mb-3">
-        Suggested Next Goals
-      </h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">
+          Suggested Next Goals
+        </h3>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          title="Refresh suggestions"
+          className="rounded-md p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 transition-colors disabled:opacity-50"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={refreshing ? "animate-spin" : ""}
+          >
+            <path d="M1 1v4h4" />
+            <path d="M15 15v-4h-4" />
+            <path d="M13.5 6A6 6 0 0 0 3 3.5L1 5" />
+            <path d="M2.5 10A6 6 0 0 0 13 12.5l2-1.5" />
+          </svg>
+        </button>
+      </div>
       <p className="text-xs text-zinc-400 mb-3">
-        Based on your values: {data.valuesSummary}
+        {refreshing ? "Generating new suggestions…" : `Based on your values: ${data.valuesSummary}`}
       </p>
       <div className="space-y-3">
         {visible.slice(0, 5).map((s) => (
