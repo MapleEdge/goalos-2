@@ -121,69 +121,112 @@ function parseGoalInput(input: string): ParsedGoal {
 
 /* ─── Intent detection ──────────────────────────────────────────── */
 
-type Intent =
-  | { type: "review_all" }
-  | { type: "progress"; query: string }
-  | { type: "work_on" }
-  | { type: "navigate"; page: string; label: string }
-  | { type: "schedule_query" }
-  | { type: "help" }
-  | { type: "create_goal"; input: string };
+type IntentType =
+  | "review_all"
+  | "progress"
+  | "work_on"
+  | "navigate"
+  | "schedule_query"
+  | "help"
+  | "create_goal";
 
-const REVIEW_ALL_PATTERNS = [
-  /^(?:review|show|list|display|see|view)\s+(?:all\s+)?(?:my\s+)?goals?$/i,
-  /^(?:all\s+)?goals?\s+(?:review|summary|overview|report)$/i,
-  /^goals?$/i,
-  /^(?:goal|goals)\s+(?:status|progress)$/i,
-  /^(?:review|summarize|summary)\s+(?:all\s+)?(?:my\s+)?(?:goal|goals|progress)$/i,
-  /^(?:show|give|get)\s+(?:me\s+)?(?:a\s+)?(?:goal|goals|progress)\s+(?:review|summary|overview|report)$/i,
-  /^overview$/i,
-  /^progress\s*report$/i,
-];
+interface IntentResult {
+  type: IntentType;
+  query?: string;
+  page?: string;
+  label?: string;
+  input?: string;
+}
 
-const PROGRESS_PATTERNS = [
-  /^(?:how\s+is|how(?:'s|\s+are)|what(?:'s|\s+is)\s+the\s+(?:status|progress)|show\s+(?:me\s+)?progress|progress\s+(?:on|for|of|report|update|check)|status\s+(?:of|on|for|update)|update\s+(?:on|me\s+on)|check\s+(?:on|progress)|how\s+am\s+I\s+doing|how\s+(?:are|is)\s+(?:my|the)\s+goal)/i,
-];
+const NAV_KEYWORDS: Record<string, { page: string; label: string }> = {
+  schedule: { page: "/schedule", label: "Schedule" },
+  calendar: { page: "/schedule", label: "Schedule" },
+  graph: { page: "/graph", label: "Graph" },
+  timeline: { page: "/timeline", label: "Timeline" },
+  history: { page: "/timeline", label: "Timeline" },
+  dashboard: { page: "/", label: "Dashboard" },
+  home: { page: "/", label: "Dashboard" },
+};
 
-const WORK_ON_PATTERNS = [
-  /^(?:what\s+should\s+I\s+(?:work\s+on|do|focus\s+on|tackle)|what(?:'s|\s+is)\s+(?:the\s+)?(?:next|most\s+important)|next\s+(?:action|step|task)|what\s+to\s+do|prioritize|priorities|what(?:'s|\s+is)\s+(?:most\s+)?urgent|highest\s+(?:leverage|priority|impact))/i,
-  /^(?:recommend|suggest|advise)(?:\s+(?:me|an?|some))?(?:\s+(?:action|task|next\s+step))?s?$/i,
-];
+function extractNavTarget(input: string): { page: string; label: string } {
+  const lower = input.toLowerCase();
+  for (const [keyword, target] of Object.entries(NAV_KEYWORDS)) {
+    if (lower.includes(keyword)) return target;
+  }
+  return { page: "/", label: "Dashboard" };
+}
 
-const SCHEDULE_QUERY_PATTERNS = [
-  /^(?:what(?:'s|\s+is)\s+on\s+(?:my\s+)?(?:calendar|schedule)|upcoming\s+events|today(?:'s)?\s+(?:schedule|events|calendar)|this\s+week(?:'s)?\s+(?:schedule|events|calendar)|my\s+(?:schedule|calendar|events))/i,
-  /^(?:show|open|view)\s+(?:my\s+)?(?:schedule|calendar|events)/i,
-];
+function buildIntent(type: IntentType, input: string): IntentResult {
+  switch (type) {
+    case "navigate": {
+      const nav = extractNavTarget(input);
+      return { type, page: nav.page, label: nav.label };
+    }
+    case "schedule_query":
+      return { type, page: "/schedule", label: "Schedule" };
+    case "progress":
+      return { type, query: input };
+    case "create_goal":
+      return { type, input };
+    default:
+      return { type };
+  }
+}
 
-const NAV_PATTERNS: { pattern: RegExp; page: string; label: string }[] = [
-  { pattern: /^(?:go\s+to|open|navigate\s+to|show)\s+(?:the\s+)?(?:schedule|calendar)$/i, page: "/schedule", label: "Schedule" },
-  { pattern: /^(?:go\s+to|open|navigate\s+to|show)\s+(?:the\s+)?graph$/i, page: "/graph", label: "Graph" },
-  { pattern: /^(?:go\s+to|open|navigate\s+to|show)\s+(?:the\s+)?(?:timeline|history|events)$/i, page: "/timeline", label: "Timeline" },
-  { pattern: /^(?:go\s+to|open|navigate\s+to|show)\s+(?:the\s+)?(?:dashboard|home)$/i, page: "/", label: "Dashboard" },
-];
-
-const HELP_PATTERNS = [
-  /^(?:help|what\s+can\s+you\s+do|commands|how\s+do\s+I|what\s+commands|what\s+can\s+I\s+(?:say|do|type|ask))\s*\??$/i,
-];
-
-function detectIntent(input: string): Intent {
+async function detectIntent(input: string): Promise<IntentResult> {
   const trimmed = input.trim();
 
-  if (REVIEW_ALL_PATTERNS.some((p) => p.test(trimmed))) return { type: "review_all" };
+  try {
+    const res = await fetch("/api/intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input: trimmed }),
+    });
+    const data = await res.json();
 
-  if (PROGRESS_PATTERNS.some((p) => p.test(trimmed))) return { type: "progress", query: trimmed };
-
-  if (WORK_ON_PATTERNS.some((p) => p.test(trimmed))) return { type: "work_on" };
-
-  for (const nav of NAV_PATTERNS) {
-    if (nav.pattern.test(trimmed)) return { type: "navigate", page: nav.page, label: nav.label };
+    if (data.llm && data.intent) {
+      return buildIntent(data.intent as IntentType, trimmed);
+    }
+  } catch {
+    // LLM unavailable — fall through to regex
   }
 
-  if (SCHEDULE_QUERY_PATTERNS.some((p) => p.test(trimmed))) return { type: "schedule_query" };
+  return detectIntentRegex(trimmed);
+}
 
-  if (HELP_PATTERNS.some((p) => p.test(trimmed))) return { type: "help" };
+/* ─── Regex fallback ────────────────────────────────────────────── */
 
-  return { type: "create_goal", input: trimmed };
+function detectIntentRegex(input: string): IntentResult {
+  if (/^(?:review|show|list|display|see|view)\s+(?:all\s+)?(?:my\s+)?goals?$/i.test(input) ||
+      /^goals?$/i.test(input) ||
+      /^(?:review|summarize|summary)\s+(?:all\s+)?(?:my\s+)?(?:goal|goals|progress)$/i.test(input) ||
+      /^overview$/i.test(input) ||
+      /^progress\s*report$/i.test(input)) {
+    return { type: "review_all" };
+  }
+
+  if (/^(?:how\s+is|how(?:'s|\s+are)|what(?:'s|\s+is)\s+the\s+(?:status|progress)|show\s+(?:me\s+)?progress|progress\s+(?:on|for|of)|status\s+(?:of|on|for)|check\s+(?:on|progress)|how\s+am\s+I\s+doing)/i.test(input)) {
+    return { type: "progress", query: input };
+  }
+
+  if (/^(?:what\s+should\s+I\s+(?:work\s+on|do|focus\s+on)|what(?:'s|\s+is)\s+next|next\s+(?:action|step|task)|prioriti(?:es|ze))/i.test(input)) {
+    return { type: "work_on" };
+  }
+
+  if (/^(?:go\s+to|open|navigate\s+to)\s+/i.test(input)) {
+    const nav = extractNavTarget(input);
+    return { type: "navigate", page: nav.page, label: nav.label };
+  }
+
+  if (/^(?:what(?:'s|\s+is)\s+on\s+(?:my\s+)?(?:calendar|schedule)|upcoming\s+events|my\s+(?:schedule|calendar))/i.test(input)) {
+    return { type: "schedule_query", page: "/schedule", label: "Schedule" };
+  }
+
+  if (/^(?:help|what\s+can\s+(?:you\s+do|I\s+(?:say|do|type|ask))|commands)\s*\??$/i.test(input)) {
+    return { type: "help" };
+  }
+
+  return { type: "create_goal", input };
 }
 
 function extractGoalKeywords(input: string): string {
@@ -290,12 +333,12 @@ export function GoalPrompt() {
     setRecommendationsLoading(false);
   }, []);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = inputValue.trim();
     if (!trimmed) return;
 
-    const intent = detectIntent(trimmed);
+    const intent = await detectIntent(trimmed);
 
     switch (intent.type) {
       case "review_all":
@@ -304,25 +347,25 @@ export function GoalPrompt() {
         break;
       case "progress":
         setShowProgress(true);
-        fetchProgress(intent.query, false);
+        fetchProgress(intent.query || trimmed, false);
         break;
       case "work_on":
         setShowRecommendations(true);
         fetchRecommendations();
         break;
       case "navigate":
-        window.location.href = intent.page;
+        window.location.href = intent.page || "/";
         setInputValue("");
         break;
       case "schedule_query":
-        window.location.href = "/schedule";
+        window.location.href = intent.page || "/schedule";
         setInputValue("");
         break;
       case "help":
         setShowHelp(true);
         break;
       case "create_goal":
-        setParsed(parseGoalInput(intent.input));
+        setParsed(parseGoalInput(intent.input || trimmed));
         setShowModal(true);
         break;
     }
