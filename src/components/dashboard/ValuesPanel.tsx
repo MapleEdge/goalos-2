@@ -32,6 +32,8 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
   const [newLabel, setNewLabel] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newTags, setNewTags] = useState("");
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   async function refetch() {
     const res = await fetch("/api/values");
@@ -62,7 +64,6 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
 
   async function removeValue(id: string) {
     await fetch(`/api/values/${id}`, { method: "DELETE" });
-    // After delete, re-rank remaining values to keep sequential
     const res = await fetch("/api/values");
     const remaining: Value[] = await res.json();
     for (let i = 0; i < remaining.length; i++) {
@@ -78,51 +79,115 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
     onChanged?.();
   }
 
-  async function moveUp(index: number) {
-    if (!values || index <= 0) return;
-    const current = values[index];
-    const above = values[index - 1];
-    // Swap ranks
-    await Promise.all([
-      fetch(`/api/values/${current.id}`, {
+  async function reorder(fromIndex: number, toIndex: number) {
+    if (!values || fromIndex === toIndex) return;
+    const reordered = [...values];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    // Optimistic update
+    setValues(reordered);
+
+    // Persist new ranks
+    const updates = reordered.map((v, i) =>
+      fetch(`/api/values/${v.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rank: above.rank }),
-      }),
-      fetch(`/api/values/${above.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rank: current.rank }),
-      }),
-    ]);
+        body: JSON.stringify({ rank: i + 1 }),
+      })
+    );
+    await Promise.all(updates);
     refetch();
     onChanged?.();
   }
 
-  async function moveDown(index: number) {
-    if (!values || index >= values.length - 1) return;
-    const current = values[index];
-    const below = values[index + 1];
-    await Promise.all([
-      fetch(`/api/values/${current.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rank: below.rank }),
-      }),
-      fetch(`/api/values/${below.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rank: current.rank }),
-      }),
-    ]);
-    refetch();
-    onChanged?.();
+  function handleDragStart(index: number) {
+    setDragIndex(index);
+  }
+
+  function handleDragOver(e: React.DragEvent, index: number) {
+    e.preventDefault();
+    setDragOverIndex(index);
+  }
+
+  function handleDragLeave() {
+    setDragOverIndex(null);
+  }
+
+  function handleDrop(toIndex: number) {
+    if (dragIndex !== null && dragIndex !== toIndex) {
+      reorder(dragIndex, toIndex);
+    }
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }
+
+  function handleDragEnd() {
+    setDragIndex(null);
+    setDragOverIndex(null);
   }
 
   if (values === null) return null;
 
   const topValues = values.slice(0, 5);
   const extraValues = values.slice(5);
+
+  function renderRow(v: Value, index: number) {
+    return (
+      <div
+        key={v.id}
+        draggable
+        onDragStart={() => handleDragStart(index)}
+        onDragOver={(e) => handleDragOver(e, index)}
+        onDragLeave={handleDragLeave}
+        onDrop={() => handleDrop(index)}
+        onDragEnd={handleDragEnd}
+        className={`flex items-center gap-2 transition-opacity ${
+          dragIndex === index ? "opacity-40" : ""
+        } ${dragOverIndex === index && dragIndex !== index ? "relative" : ""}`}
+      >
+        {dragOverIndex === index && dragIndex !== null && dragIndex !== index && (
+          <div className="absolute -top-0.5 left-0 right-0 h-0.5 rounded bg-violet-500" />
+        )}
+        <span className="w-5 flex-shrink-0 text-right text-sm font-bold text-zinc-300">
+          {index + 1}
+        </span>
+        <div className="flex flex-1 items-center gap-1.5 rounded-lg bg-zinc-50 px-2 py-2 min-w-0">
+          <div className="flex-shrink-0 cursor-grab active:cursor-grabbing text-zinc-300 hover:text-zinc-400">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="5" cy="4" r="1.2" />
+              <circle cx="11" cy="4" r="1.2" />
+              <circle cx="5" cy="8" r="1.2" />
+              <circle cx="11" cy="8" r="1.2" />
+              <circle cx="5" cy="12" r="1.2" />
+              <circle cx="11" cy="12" r="1.2" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-sm font-medium text-zinc-800">{v.label}</span>
+            {v.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-0.5">
+                {v.tags.map((tag) => (
+                  <span key={tag} className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] text-violet-600">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => removeValue(v.id)}
+            className="flex-shrink-0 rounded p-0.5 text-zinc-400 hover:bg-red-100 hover:text-red-500"
+            title="Remove"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4">
@@ -177,18 +242,7 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
         </p>
       ) : (
         <div className="space-y-1.5">
-          {topValues.map((v, i) => (
-            <ValueRow
-              key={v.id}
-              value={v}
-              position={i + 1}
-              isFirst={i === 0}
-              isLast={i === values.length - 1}
-              onMoveUp={() => moveUp(i)}
-              onMoveDown={() => moveDown(i)}
-              onRemove={() => removeValue(v.id)}
-            />
-          ))}
+          {topValues.map((v, i) => renderRow(v, i))}
 
           {extraValues.length > 0 && !showMore && (
             <button
@@ -199,18 +253,7 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
             </button>
           )}
 
-          {showMore && extraValues.map((v, i) => (
-            <ValueRow
-              key={v.id}
-              value={v}
-              position={i + 6}
-              isFirst={false}
-              isLast={i + 5 === values.length - 1}
-              onMoveUp={() => moveUp(i + 5)}
-              onMoveDown={() => moveDown(i + 5)}
-              onRemove={() => removeValue(v.id)}
-            />
-          ))}
+          {showMore && extraValues.map((v, i) => renderRow(v, i + 5))}
 
           {showMore && (
             <button
@@ -222,77 +265,6 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function ValueRow({
-  value,
-  position,
-  isFirst,
-  isLast,
-  onMoveUp,
-  onMoveDown,
-  onRemove,
-}: {
-  value: Value;
-  position: number;
-  isFirst: boolean;
-  isLast: boolean;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onRemove: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-5 flex-shrink-0 text-right text-sm font-bold text-zinc-300">
-        {position}
-      </span>
-      <div className="flex flex-1 items-center gap-2 rounded-lg bg-zinc-50 px-3 py-2 min-w-0">
-        <div className="flex-1 min-w-0">
-          <span className="text-sm font-medium text-zinc-800">{value.label}</span>
-          {value.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-0.5">
-              {value.tags.map((tag) => (
-                <span key={tag} className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] text-violet-600">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          <button
-            onClick={onMoveUp}
-            disabled={isFirst}
-            className="rounded p-0.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 disabled:opacity-20 disabled:hover:bg-transparent"
-            title="Move up"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 10l4-4 4 4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
-            onClick={onMoveDown}
-            disabled={isLast}
-            className="rounded p-0.5 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-600 disabled:opacity-20 disabled:hover:bg-transparent"
-            title="Move down"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
-            onClick={onRemove}
-            className="rounded p-0.5 text-zinc-400 hover:bg-red-100 hover:text-red-500"
-            title="Remove"
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
