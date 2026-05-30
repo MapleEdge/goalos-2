@@ -195,6 +195,65 @@ model Value {
   @@map("values")
 }
 
+// ─── Calendar & Schedule ─────────────────────────────────────────
+
+enum CalendarProvider {
+  GOOGLE
+  MICROSOFT
+}
+
+model CalendarConnection {
+  id            String           @id @default(uuid())
+  provider      CalendarProvider
+  accountEmail  String
+  accessToken   String
+  refreshToken  String?
+  tokenExpiry   DateTime?
+  calendarId    String?          // specific calendar to sync (null = primary)
+  syncEnabled   Boolean          @default(true)
+  lastSyncAt    DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  scheduleEvents ScheduleEvent[]
+
+  @@unique([provider, accountEmail])
+  @@map("calendar_connections")
+}
+
+enum ScheduleEventSource {
+  GOALOS       // created in GoalOS
+  GOOGLE       // synced from Google Calendar
+  MICROSOFT    // synced from Microsoft Calendar
+}
+
+model ScheduleEvent {
+  id                   String              @id @default(uuid())
+  title                String
+  description          String?
+  startTime            DateTime
+  endTime              DateTime
+  allDay               Boolean             @default(false)
+  location             String?
+  source               ScheduleEventSource @default(GOALOS)
+  externalId           String?             // id in the external calendar
+  externalCalendarId   String?
+  goalId               String?             // linked GoalOS goal
+  actionId             String?             // linked GoalOS action
+  calendarConnectionId String?
+  color                String?             // hex color for display
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  calendarConnection   CalendarConnection? @relation(fields: [calendarConnectionId], references: [id], onDelete: SetNull)
+
+  @@index([startTime, endTime])
+  @@index([goalId])
+  @@index([actionId])
+  @@index([externalId])
+  @@map("schedule_events")
+}
+
 // ─── Event sourcing ──────────────────────────────────────────────
 
 model Event {

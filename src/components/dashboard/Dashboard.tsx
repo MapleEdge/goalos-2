@@ -6,6 +6,7 @@ import { RecommendationsPanel } from "./RecommendationsPanel";
 import { CreateGoalForm } from "./CreateGoalForm";
 import { ValuesPanel } from "./ValuesPanel";
 import { SuggestedGoals } from "./SuggestedGoals";
+import { TimeAllocation } from "./TimeAllocation";
 import { Modal } from "@/components/ui/Modal";
 import type { ReasoningOutput, ReadinessScore } from "@/lib/reasoning/types";
 
@@ -57,6 +58,7 @@ export function Dashboard() {
   const [prefillTitle, setPrefillTitle] = useState("");
   const [prefillDescription, setPrefillDescription] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("active");
+  const [timeAllocRefreshKey, setTimeAllocRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -193,6 +195,7 @@ export function Dashboard() {
           </div>
           {viewMode === "active" && (
             <div className="space-y-4">
+              <TimeAllocation refreshKey={timeAllocRefreshKey} />
               <ValuesPanel onChanged={() => setSuggestRefreshKey((k) => k + 1)} />
               <SuggestedGoals
                 refreshKey={suggestRefreshKey}
@@ -224,6 +227,7 @@ export function Dashboard() {
             setPrefillDescription("");
             setRefreshKey((k) => k + 1);
             setSuggestRefreshKey((k) => k + 1);
+            setTimeAllocRefreshKey((k) => k + 1);
           }}
           onCancel={() => {
             setShowCreateGoal(false);
