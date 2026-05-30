@@ -8,14 +8,17 @@ interface GraphNodeData {
   status?: string;
   subtitle?: string;
   color: string;
+  isSummary?: boolean;
   [key: string]: unknown;
 }
 
 export function GraphNode({ data }: NodeProps) {
   const nodeData = data as GraphNodeData;
+  const isSummary = nodeData.isSummary === true;
+
   return (
     <div
-      className="rounded-lg border-2 bg-white px-3 py-2 shadow-sm min-w-[120px] max-w-[200px]"
+      className={`rounded-lg border-2 bg-white px-3 py-2 shadow-sm min-w-[120px] max-w-[200px] ${isSummary ? "border-dashed opacity-70" : ""}`}
       style={{ borderColor: nodeData.color }}
     >
       <Handle type="target" position={Position.Left} className="!bg-zinc-400" />
@@ -28,7 +31,7 @@ export function GraphNode({ data }: NodeProps) {
           {nodeData.nodeType}
         </span>
       </div>
-      <p className="text-xs font-medium text-zinc-900 leading-tight truncate">
+      <p className={`text-xs font-medium leading-tight truncate ${isSummary ? "text-zinc-500 italic" : "text-zinc-900"}`}>
         {nodeData.label}
       </p>
       {nodeData.subtitle && (

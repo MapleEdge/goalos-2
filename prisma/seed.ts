@@ -86,6 +86,31 @@ async function main() {
     },
   });
 
+  // Create additional stakeholders for realistic network
+  const additionalStakeholders = [
+    { name: "Lisa Wang", organization: "Accel Partners", role: "Associate", relationshipStrength: 20, lastInteraction: new Date("2024-11-01"), notes: "Brief intro at networking event" },
+    { name: "James Rodriguez", organization: "CS Department", role: "PhD Student", relationshipStrength: 55, lastInteraction: new Date("2025-01-05"), notes: "Collaborator on side project" },
+    { name: "Emily Zhang", organization: "Google Research", role: "Research Scientist", relationshipStrength: 40, lastInteraction: new Date("2024-10-15"), notes: "Met at ICML poster session" },
+    { name: "Michael Torres", organization: "Stanford AI Lab", role: "Postdoc", relationshipStrength: 35, lastInteraction: new Date("2024-09-20"), notes: "Potential co-author" },
+    { name: "Anna Kowalski", organization: "YC", role: "Group Partner", relationshipStrength: 15, lastInteraction: new Date("2024-08-10"), notes: "Attended YC info session" },
+    { name: "David Lee", organization: "Andreessen Horowitz", role: "Partner", relationshipStrength: 10, lastInteraction: new Date("2024-07-22"), notes: "Cold email, no response yet" },
+    { name: "Rachel Green", organization: "MIT Media Lab", role: "Professor", relationshipStrength: 45, lastInteraction: new Date("2025-01-15"), notes: "Guest lecture attendee" },
+    { name: "Tom Nakamura", organization: "AngelList", role: "Angel Investor", relationshipStrength: 25, lastInteraction: new Date("2024-12-01"), notes: "Connected via Sarah Kim" },
+    { name: "Priya Sharma", organization: "Microsoft Research", role: "Principal Researcher", relationshipStrength: 50, lastInteraction: new Date("2025-01-08"), notes: "Co-authored workshop paper" },
+    { name: "Alex Chen", organization: "CS Department", role: "Adjunct Professor", relationshipStrength: 65, lastInteraction: new Date("2025-01-22"), notes: "TA for his class last semester" },
+    { name: "Jessica Park", organization: "Benchmark", role: "Principal", relationshipStrength: 5, lastInteraction: new Date("2024-06-15"), notes: "LinkedIn connection only" },
+    { name: "Robert Kim", organization: "IEEE", role: "Conference Chair", relationshipStrength: 30, lastInteraction: new Date("2024-11-20"), notes: "Submitted paper to his track" },
+    { name: "Maria Santos", organization: "OpenAI", role: "ML Engineer", relationshipStrength: 35, lastInteraction: new Date("2024-12-10"), notes: "Former classmate" },
+    { name: "Kevin O'Brien", organization: "CS Department", role: "Department Head", relationshipStrength: 20, lastInteraction: new Date("2024-10-01"), notes: "Brief meeting about TA program" },
+    { name: "Sophia Andersson", organization: "DeepMind", role: "Research Lead", relationshipStrength: 15, lastInteraction: new Date("2024-09-05"), notes: "Cited her work in thesis" },
+    { name: "Chris Johnson", organization: "Founders Fund", role: "Scout", relationshipStrength: 25, lastInteraction: new Date("2024-11-30"), notes: "Warm intro from Tom" },
+    { name: "Diana Wu", organization: "Stanford CS", role: "PhD Candidate", relationshipStrength: 70, lastInteraction: new Date("2025-01-18"), notes: "Close research collaborator" },
+  ];
+
+  for (const s of additionalStakeholders) {
+    await prisma.stakeholder.create({ data: s });
+  }
+
   // Create prerequisites for TA goal
   const taPrereq1 = await prisma.prerequisite.create({
     data: {

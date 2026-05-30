@@ -50,11 +50,17 @@ const typeColors: Record<string, string> = {
   STAKEHOLDER: "#ec4899",
 };
 
+const STAKEHOLDER_COLS = 4;
+const STAKEHOLDER_COL_W = 210;
+const STAKEHOLDER_ROW_H = 90;
+const STAKEHOLDER_COMPACT_THRESHOLD = 6;
+
 export function StateGraph() {
   const [goals, setGoals] = useState<GoalData[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderData[]>([]);
   const [relationships, setRelationships] = useState<RelationshipData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAllStakeholders, setShowAllStakeholders] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -181,20 +187,59 @@ export function StateGraph() {
       );
     }
 
-    let stakeholderY = 0;
-    for (const s of stakeholders) {
+    // Determine which stakeholders have graph relationships
+    const connectedStakeholderIds = new Set(
+      relationships
+        .filter((r) => r.fromType === "STAKEHOLDER" || r.toType === "STAKEHOLDER")
+        .flatMap((r) => [r.fromId, r.toId])
+    );
+    const connectedStakeholders = stakeholders.filter((s) =>
+      connectedStakeholderIds.has(s.id)
+    );
+    const unconnectedStakeholders = stakeholders.filter(
+      (s) => !connectedStakeholderIds.has(s.id)
+    );
+
+    const useCompact = stakeholders.length > STAKEHOLDER_COMPACT_THRESHOLD;
+    const visibleStakeholders =
+      useCompact && !showAllStakeholders
+        ? connectedStakeholders
+        : stakeholders;
+
+    // Grid layout for stakeholders
+    for (let i = 0; i < visibleStakeholders.length; i++) {
+      const col = i % STAKEHOLDER_COLS;
+      const row = Math.floor(i / STAKEHOLDER_COLS);
       nodes.push({
-        id: s.id,
+        id: visibleStakeholders[i].id,
         type: "graphNode",
-        position: { x: 900, y: stakeholderY },
+        position: {
+          x: 900 + col * STAKEHOLDER_COL_W,
+          y: row * STAKEHOLDER_ROW_H,
+        },
         data: {
-          label: s.name,
+          label: visibleStakeholders[i].name,
           nodeType: "STAKEHOLDER",
-          subtitle: s.organization,
+          subtitle: visibleStakeholders[i].organization,
           color: typeColors.STAKEHOLDER,
         },
       });
-      stakeholderY += 100;
+    }
+
+    // Summary node for hidden stakeholders
+    if (useCompact && !showAllStakeholders && unconnectedStakeholders.length > 0) {
+      const summaryRow = Math.ceil(connectedStakeholders.length / STAKEHOLDER_COLS);
+      nodes.push({
+        id: "__stakeholder_summary",
+        type: "graphNode",
+        position: { x: 900, y: summaryRow * STAKEHOLDER_ROW_H },
+        data: {
+          label: `+${unconnectedStakeholders.length} more stakeholder${unconnectedStakeholders.length !== 1 ? "s" : ""}`,
+          nodeType: "STAKEHOLDER",
+          color: typeColors.STAKEHOLDER,
+          isSummary: true,
+        },
+      });
     }
 
     for (const rel of relationships) {
@@ -213,7 +258,7 @@ export function StateGraph() {
     }
 
     return { initialNodes: nodes, initialEdges: edges };
-  }, [goals, stakeholders, relationships]);
+  }, [goals, stakeholders, relationships, showAllStakeholders]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edgesState, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -262,6 +307,17 @@ export function StateGraph() {
         <Background color="#e4e4e7" gap={20} />
         <Controls />
       </ReactFlow>
+
+      {stakeholders.length > STAKEHOLDER_COMPACT_THRESHOLD && (
+        <button
+          onClick={() => setShowAllStakeholders((v) => !v)}
+          className="absolute top-4 right-4 z-10 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm border border-zinc-200 hover:bg-zinc-50"
+        >
+          {showAllStakeholders
+            ? "Hide unlinked stakeholders"
+            : `Show all ${stakeholders.length} stakeholders`}
+        </button>
+      )}
 
       <div className="absolute bottom-4 left-4 flex gap-2 rounded-lg bg-white/90 p-2 shadow-sm backdrop-blur-sm">
         {Object.entries(typeColors).map(([type, color]) => (
