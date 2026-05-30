@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import OpenAI from "openai";
 
 interface ValueRow {
   id: string;
@@ -17,7 +18,115 @@ interface GoalSuggestion {
   priority: "HIGH" | "MEDIUM" | "LOW";
 }
 
-// Maps value tags to potential goal templates
+// --- Gemini integration via OpenAI-compatible endpoint ---
+
+function getGeminiClient(): OpenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  return new OpenAI({
+    apiKey,
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+  });
+}
+
+async function generateWithGemini(
+  values: ValueRow[],
+  existingGoals: { title: string; description: string | null; status: string; completedAt: Date | null }[]
+): Promise<GoalSuggestion[] | null> {
+  const client = getGeminiClient();
+  if (!client) return null;
+
+  const activeGoals = existingGoals.filter((g) => g.status === "ACTIVE");
+  const completedGoals = existingGoals.filter((g) => g.status === "COMPLETED");
+
+  const valuesContext = values
+    .map((v) => `- ${v.label} (rank #${v.rank}, tags: ${v.tags.join(", ")})${v.description ? `: ${v.description}` : ""}`)
+    .join("\n");
+
+  const activeContext = activeGoals.length > 0
+    ? activeGoals.map((g) => `- ${g.title}: ${g.description || ""}`).join("\n")
+    : "No active goals yet.";
+
+  const completedContext = completedGoals.length > 0
+    ? completedGoals.map((g) => `- ${g.title}: ${g.description || ""}`).join("\n")
+    : "No completed goals yet.";
+
+  const systemPrompt = `You are a strategic life coach. Given a user's personal values (ranked by importance), their completed goals, and their current active/in-progress goals, suggest 5-8 new goals they should consider pursuing.
+
+Rules:
+- Do NOT suggest goals that duplicate or closely overlap existing active goals.
+- Build on completed goals — suggest logical next steps, deeper challenges, or extensions of past achievements.
+- Reference completed goals in your reasoning when relevant (e.g., "Since you completed X, you're ready for Y").
+- Consider active goals to avoid overlap but also suggest goals that complement or synergize with them.
+- Each suggestion should clearly align with one or more of their values.
+- Prioritize underserved values (values with no active goals covering them).
+- Higher-ranked values deserve higher priority suggestions.
+- Be specific and actionable — avoid vague goals.
+- Assign priority: HIGH for rank 1-2 values, MEDIUM for rank 3-4, LOW for rank 5+.
+- Order the suggestions by priority: all HIGH first, then MEDIUM, then LOW.
+
+Respond with ONLY a valid JSON array of objects, no markdown, no explanation. Each object must have:
+{
+  "title": "short goal title",
+  "description": "one-sentence description of the goal",
+  "reasoning": "why this goal matters given their values and history",
+  "alignedValues": ["Value Label 1"],
+  "priority": "HIGH" | "MEDIUM" | "LOW"
+}`;
+
+  const userPrompt = `My values (ranked by importance):
+${valuesContext}
+
+My completed goals:
+${completedContext}
+
+My current active goals:
+${activeContext}
+
+Suggest new goals I should pursue, building on what I've already accomplished.`;
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.8,
+      max_tokens: 4000,
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) return null;
+
+    // Strip markdown code fences if present
+    const cleaned = content.replace(/```(?:json)?\s*/g, "").replace(/```\s*/g, "").trim();
+    const parsed = JSON.parse(cleaned) as GoalSuggestion[];
+
+    if (!Array.isArray(parsed)) return null;
+
+    // Validate each suggestion has the required fields
+    const valid = parsed.filter(
+      (s) =>
+        typeof s.title === "string" &&
+        typeof s.description === "string" &&
+        typeof s.reasoning === "string" &&
+        Array.isArray(s.alignedValues) &&
+        ["HIGH", "MEDIUM", "LOW"].includes(s.priority)
+    );
+
+    // Sort by priority (HIGH first, then MEDIUM, then LOW)
+    const priorityOrder = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+    valid.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
+
+    return valid.length > 0 ? valid.slice(0, 8) : null;
+  } catch {
+    return null;
+  }
+}
+
+// --- Template-based fallback ---
+
 const GOAL_TEMPLATES: Record<string, { title: string; description: string; tags: string[] }[]> = {
   money: [
     { title: "Build emergency fund", description: "Save 6 months of living expenses in a high-yield savings account", tags: ["money", "finance", "saving"] },
@@ -77,7 +186,7 @@ const GOAL_TEMPLATES: Record<string, { title: string; description: string; tags:
 };
 
 function computeGoalCoverage(
-  existingGoals: { title: string; status: string; prerequisites: { status: string; confidenceScore: number }[] }[],
+  existingGoals: { title: string; status: string }[],
   valueTags: string[]
 ): Map<string, number> {
   const coverage = new Map<string, number>();
@@ -88,11 +197,7 @@ function computeGoalCoverage(
     for (const goal of activeGoals) {
       const titleLower = goal.title.toLowerCase();
       if (titleLower.includes(tag) || tag.split(/\s+/).some((w) => titleLower.includes(w))) {
-        // Check progress on this goal
-        const totalPrereqs = goal.prerequisites.length;
-        const completedPrereqs = goal.prerequisites.filter((p) => p.status === "COMPLETED").length;
-        const progress = totalPrereqs > 0 ? completedPrereqs / totalPrereqs : 0;
-        tagCoverage = Math.max(tagCoverage, progress);
+        tagCoverage = 1;
       }
     }
     coverage.set(tag, tagCoverage);
@@ -101,22 +206,10 @@ function computeGoalCoverage(
   return coverage;
 }
 
-export async function GET() {
-  const [values, goals] = await Promise.all([
-    prisma.value.findMany({ orderBy: { rank: "asc" } }),
-    prisma.goal.findMany({
-      include: { prerequisites: true },
-    }),
-  ]);
-
-  if (values.length === 0) {
-    return NextResponse.json({
-      suggestions: [],
-      message: "Define your values first to get personalized goal suggestions.",
-    });
-  }
-
-  const typedValues = values as ValueRow[];
+function generateTemplateSuggestions(
+  typedValues: ValueRow[],
+  goals: { title: string; status: string }[]
+): GoalSuggestion[] {
   const existingGoalTitles = new Set(goals.map((g) => g.title.toLowerCase()));
   const allValueTags = typedValues.flatMap((v) => v.tags);
   const coverage = computeGoalCoverage(goals, allValueTags);
@@ -125,33 +218,26 @@ export async function GET() {
   const totalValues = typedValues.length;
 
   for (const value of typedValues) {
-    // Find candidate templates matching this value's tags
     const candidates: { title: string; description: string; tags: string[]; matchScore: number }[] = [];
 
     for (const tag of value.tags) {
       const templates = GOAL_TEMPLATES[tag] || [];
       for (const template of templates) {
-        // Skip if goal already exists
         if (existingGoalTitles.has(template.title.toLowerCase())) continue;
-        // Skip if already added from another tag
         if (candidates.some((c) => c.title === template.title)) continue;
 
-        // Score: higher for underserved value tags
         const tagCoverage = coverage.get(tag) ?? 0;
         const underservedBonus = 1 - tagCoverage;
-        // Lower rank = more important, so invert for scoring
         const importance = 1 - ((value.rank - 1) / Math.max(totalValues - 1, 1));
         const matchScore = underservedBonus * importance;
         candidates.push({ ...template, matchScore });
       }
     }
 
-    // Sort by match score and pick top 1-2 per value
     candidates.sort((a, b) => b.matchScore - a.matchScore);
     const topCandidates = candidates.slice(0, 2);
 
     for (const candidate of topCandidates) {
-      // Rank 1-2 = HIGH, 3-4 = MEDIUM, 5+ = LOW
       const priority: "HIGH" | "MEDIUM" | "LOW" =
         value.rank <= 2 ? "HIGH" : value.rank <= 4 ? "MEDIUM" : "LOW";
 
@@ -172,7 +258,6 @@ export async function GET() {
     }
   }
 
-  // Deduplicate and sort by priority
   const seen = new Set<string>();
   const unique = suggestions.filter((s) => {
     if (seen.has(s.title)) return false;
@@ -183,8 +268,39 @@ export async function GET() {
   const priorityOrder = { HIGH: 3, MEDIUM: 2, LOW: 1 };
   unique.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
 
+  return unique.slice(0, 8);
+}
+
+export async function GET() {
+  const [values, goals] = await Promise.all([
+    prisma.value.findMany({ orderBy: { rank: "asc" } }),
+    prisma.goal.findMany({
+      select: { title: true, description: true, status: true, completedAt: true },
+    }),
+  ]);
+
+  if (values.length === 0) {
+    return NextResponse.json({
+      suggestions: [],
+      message: "Define your values first to get personalized goal suggestions.",
+    });
+  }
+
+  const typedValues = values as ValueRow[];
+  const valuesSummary = typedValues.map((v) => `${v.label} (rank: ${v.rank})`).join(", ");
+
+  // Try Gemini first, fall back to templates
+  let suggestions = await generateWithGemini(typedValues, goals);
+  let source: "gemini" | "templates" = "gemini";
+
+  if (!suggestions || suggestions.length === 0) {
+    suggestions = generateTemplateSuggestions(typedValues, goals);
+    source = "templates";
+  }
+
   return NextResponse.json({
-    suggestions: unique.slice(0, 8),
-    valuesSummary: typedValues.map((v) => `${v.label} (rank: ${v.rank})`).join(", "),
+    suggestions,
+    valuesSummary,
+    source,
   });
 }
