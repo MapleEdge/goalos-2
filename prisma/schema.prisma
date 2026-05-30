@@ -41,6 +41,7 @@ model Stakeholder {
   relationshipStrength Int     @default(0) // 0-100
   lastInteraction    DateTime?
   notes              String?
+  capabilities       Json?    // Array of { type: "willingness"|"capability", description, condition? }
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

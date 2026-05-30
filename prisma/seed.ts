@@ -61,6 +61,11 @@ async function main() {
       relationshipStrength: 75,
       lastInteraction: new Date("2025-01-20"),
       notes: "Very supportive, met during office hours multiple times",
+      capabilities: [
+        { type: "willingness", description: "write recommendation letter", condition: "maintain A grade and attend office hours regularly" },
+        { type: "capability", description: "TA position referral", condition: "demonstrate teaching ability in study groups" },
+        { type: "willingness", description: "research mentorship", condition: "commit to weekly lab meetings" },
+      ],
     },
   });
 
@@ -72,6 +77,11 @@ async function main() {
       relationshipStrength: 30,
       lastInteraction: new Date("2024-12-15"),
       notes: "Met at YC Demo Day, expressed interest in AI tools",
+      capabilities: [
+        { type: "willingness", description: "pre-seed investment", condition: "working MVP with early traction metrics" },
+        { type: "capability", description: "warm introductions to other VCs", condition: "strong pitch deck and clear market thesis" },
+        { type: "willingness", description: "strategic advising for fundraising", condition: null },
+      ],
     },
   });
 
@@ -83,28 +93,69 @@ async function main() {
       relationshipStrength: 60,
       lastInteraction: new Date("2025-01-10"),
       notes: "Potential research advisor, strong publication record",
+      capabilities: [
+        { type: "capability", description: "co-author research paper", condition: "novel contribution to graph-based reasoning" },
+        { type: "willingness", description: "provide lab resources and compute", condition: "formal research collaboration agreement" },
+        { type: "capability", description: "conference submission guidance", condition: null },
+      ],
     },
   });
 
+  const dad = await prisma.stakeholder.create({
+    data: {
+      name: "Dad",
+      organization: null,
+      role: "Family",
+      relationshipStrength: 95,
+      lastInteraction: new Date("2025-05-28"),
+      notes: "Supportive of education goals, willing to help financially under conditions",
+      capabilities: [
+        { type: "willingness", description: "financial support for tuition", condition: "maintain 3.5 GPA" },
+        { type: "willingness", description: "cover living expenses", condition: "enrolled full-time" },
+        { type: "willingness", description: "fund conference travel", condition: "paper accepted at a top venue" },
+      ],
+    },
+  });
+
+  const mom = await prisma.stakeholder.create({
+    data: {
+      name: "Mom",
+      organization: null,
+      role: "Family",
+      relationshipStrength: 95,
+      lastInteraction: new Date("2025-05-29"),
+      notes: "Emotional support, well-connected in healthcare industry",
+      capabilities: [
+        { type: "willingness", description: "emotional support and guidance", condition: null },
+        { type: "capability", description: "introductions in healthcare industry", condition: "relevant to health-tech or biotech" },
+        { type: "willingness", description: "co-sign apartment lease", condition: "enrolled in university" },
+      ],
+    },
+  });
+
+  // Suppress unused variable warnings for standalone stakeholders
+  void dad;
+  void mom;
+
   // Create additional stakeholders for realistic network
   const additionalStakeholders = [
-    { name: "Lisa Wang", organization: "Accel Partners", role: "Associate", relationshipStrength: 20, lastInteraction: new Date("2024-11-01"), notes: "Brief intro at networking event" },
-    { name: "James Rodriguez", organization: "CS Department", role: "PhD Student", relationshipStrength: 55, lastInteraction: new Date("2025-01-05"), notes: "Collaborator on side project" },
-    { name: "Emily Zhang", organization: "Google Research", role: "Research Scientist", relationshipStrength: 40, lastInteraction: new Date("2024-10-15"), notes: "Met at ICML poster session" },
-    { name: "Michael Torres", organization: "Stanford AI Lab", role: "Postdoc", relationshipStrength: 35, lastInteraction: new Date("2024-09-20"), notes: "Potential co-author" },
-    { name: "Anna Kowalski", organization: "YC", role: "Group Partner", relationshipStrength: 15, lastInteraction: new Date("2024-08-10"), notes: "Attended YC info session" },
-    { name: "David Lee", organization: "Andreessen Horowitz", role: "Partner", relationshipStrength: 10, lastInteraction: new Date("2024-07-22"), notes: "Cold email, no response yet" },
-    { name: "Rachel Green", organization: "MIT Media Lab", role: "Professor", relationshipStrength: 45, lastInteraction: new Date("2025-01-15"), notes: "Guest lecture attendee" },
-    { name: "Tom Nakamura", organization: "AngelList", role: "Angel Investor", relationshipStrength: 25, lastInteraction: new Date("2024-12-01"), notes: "Connected via Sarah Kim" },
-    { name: "Priya Sharma", organization: "Microsoft Research", role: "Principal Researcher", relationshipStrength: 50, lastInteraction: new Date("2025-01-08"), notes: "Co-authored workshop paper" },
-    { name: "Alex Chen", organization: "CS Department", role: "Adjunct Professor", relationshipStrength: 65, lastInteraction: new Date("2025-01-22"), notes: "TA for his class last semester" },
+    { name: "Lisa Wang", organization: "Accel Partners", role: "Associate", relationshipStrength: 20, lastInteraction: new Date("2024-11-01"), notes: "Brief intro at networking event", capabilities: [{ type: "capability", description: "seed-stage deal flow introductions", condition: "strong product-market fit signal" }] },
+    { name: "James Rodriguez", organization: "CS Department", role: "PhD Student", relationshipStrength: 55, lastInteraction: new Date("2025-01-05"), notes: "Collaborator on side project", capabilities: [{ type: "capability", description: "peer tutoring and study group leadership", condition: null }, { type: "willingness", description: "co-author papers", condition: "shared research interest" }] },
+    { name: "Emily Zhang", organization: "Google Research", role: "Research Scientist", relationshipStrength: 40, lastInteraction: new Date("2024-10-15"), notes: "Met at ICML poster session", capabilities: [{ type: "capability", description: "industry research collaboration", condition: "publishable results" }] },
+    { name: "Michael Torres", organization: "Stanford AI Lab", role: "Postdoc", relationshipStrength: 35, lastInteraction: new Date("2024-09-20"), notes: "Potential co-author", capabilities: [{ type: "willingness", description: "co-author research paper", condition: "complementary expertise in NLP" }] },
+    { name: "Anna Kowalski", organization: "YC", role: "Group Partner", relationshipStrength: 15, lastInteraction: new Date("2024-08-10"), notes: "Attended YC info session", capabilities: [{ type: "capability", description: "accelerator application guidance", condition: "viable startup idea with technical founder" }] },
+    { name: "David Lee", organization: "Andreessen Horowitz", role: "Partner", relationshipStrength: 10, lastInteraction: new Date("2024-07-22"), notes: "Cold email, no response yet", capabilities: [{ type: "capability", description: "Series A+ fundraising", condition: "proven traction and revenue" }] },
+    { name: "Rachel Green", organization: "MIT Media Lab", role: "Professor", relationshipStrength: 45, lastInteraction: new Date("2025-01-15"), notes: "Guest lecture attendee", capabilities: [{ type: "willingness", description: "academic collaboration on HCI research", condition: "relevant to human-computer interaction" }] },
+    { name: "Tom Nakamura", organization: "AngelList", role: "Angel Investor", relationshipStrength: 25, lastInteraction: new Date("2024-12-01"), notes: "Connected via Sarah Kim", capabilities: [{ type: "willingness", description: "angel investment ($25-50K)", condition: "pre-seed stage with demo" }, { type: "capability", description: "introductions to angel network", condition: null }] },
+    { name: "Priya Sharma", organization: "Microsoft Research", role: "Principal Researcher", relationshipStrength: 50, lastInteraction: new Date("2025-01-08"), notes: "Co-authored workshop paper", capabilities: [{ type: "capability", description: "research mentorship and publication review", condition: null }, { type: "willingness", description: "provide industry dataset access", condition: "joint research agreement" }] },
+    { name: "Alex Chen", organization: "CS Department", role: "Adjunct Professor", relationshipStrength: 65, lastInteraction: new Date("2025-01-22"), notes: "TA for his class last semester", capabilities: [{ type: "willingness", description: "TA recommendation letter", condition: "demonstrated strong grading work" }, { type: "capability", description: "teaching methodology guidance", condition: null }] },
     { name: "Jessica Park", organization: "Benchmark", role: "Principal", relationshipStrength: 5, lastInteraction: new Date("2024-06-15"), notes: "LinkedIn connection only" },
-    { name: "Robert Kim", organization: "IEEE", role: "Conference Chair", relationshipStrength: 30, lastInteraction: new Date("2024-11-20"), notes: "Submitted paper to his track" },
-    { name: "Maria Santos", organization: "OpenAI", role: "ML Engineer", relationshipStrength: 35, lastInteraction: new Date("2024-12-10"), notes: "Former classmate" },
-    { name: "Kevin O'Brien", organization: "CS Department", role: "Department Head", relationshipStrength: 20, lastInteraction: new Date("2024-10-01"), notes: "Brief meeting about TA program" },
-    { name: "Sophia Andersson", organization: "DeepMind", role: "Research Lead", relationshipStrength: 15, lastInteraction: new Date("2024-09-05"), notes: "Cited her work in thesis" },
-    { name: "Chris Johnson", organization: "Founders Fund", role: "Scout", relationshipStrength: 25, lastInteraction: new Date("2024-11-30"), notes: "Warm intro from Tom" },
-    { name: "Diana Wu", organization: "Stanford CS", role: "PhD Candidate", relationshipStrength: 70, lastInteraction: new Date("2025-01-18"), notes: "Close research collaborator" },
+    { name: "Robert Kim", organization: "IEEE", role: "Conference Chair", relationshipStrength: 30, lastInteraction: new Date("2024-11-20"), notes: "Submitted paper to his track", capabilities: [{ type: "capability", description: "conference paper submission guidance", condition: null }] },
+    { name: "Maria Santos", organization: "OpenAI", role: "ML Engineer", relationshipStrength: 35, lastInteraction: new Date("2024-12-10"), notes: "Former classmate", capabilities: [{ type: "willingness", description: "technical mentorship on LLM fine-tuning", condition: null }] },
+    { name: "Kevin O'Brien", organization: "CS Department", role: "Department Head", relationshipStrength: 20, lastInteraction: new Date("2024-10-01"), notes: "Brief meeting about TA program", capabilities: [{ type: "capability", description: "TA position approval", condition: "faculty recommendation and GPA above 3.5" }, { type: "capability", description: "research funding allocation", condition: "approved research proposal" }] },
+    { name: "Sophia Andersson", organization: "DeepMind", role: "Research Lead", relationshipStrength: 15, lastInteraction: new Date("2024-09-05"), notes: "Cited her work in thesis", capabilities: [{ type: "capability", description: "industry research internship referral", condition: "strong ML publication record" }] },
+    { name: "Chris Johnson", organization: "Founders Fund", role: "Scout", relationshipStrength: 25, lastInteraction: new Date("2024-11-30"), notes: "Warm intro from Tom", capabilities: [{ type: "willingness", description: "scout-stage investment ($50-100K)", condition: "compelling demo and market size" }] },
+    { name: "Diana Wu", organization: "Stanford CS", role: "PhD Candidate", relationshipStrength: 70, lastInteraction: new Date("2025-01-18"), notes: "Close research collaborator", capabilities: [{ type: "willingness", description: "co-author and peer review papers", condition: null }, { type: "capability", description: "share GPU compute resources", condition: "reciprocal collaboration" }] },
   ];
 
   for (const s of additionalStakeholders) {

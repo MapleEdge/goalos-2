@@ -1,12 +1,27 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface Stakeholder {
   id: string;
   name: string;
   organization: string | null;
   role: string | null;
+}
+
+interface Capability {
+  type: "willingness" | "capability";
+  description: string;
+  condition: string | null;
+}
+
+interface SuggestedStakeholder {
+  stakeholderId: string;
+  name: string;
+  organization: string | null;
+  role: string | null;
+  matchingCapabilities: Capability[];
+  relevanceScore: number;
 }
 
 interface SelectedStakeholder {
@@ -59,6 +74,11 @@ export function CreateGoalForm({
   const [newLabel, setNewLabel] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Suggestions state
+  const [suggestions, setSuggestions] = useState<SuggestedStakeholder[]>([]);
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  const suggestionsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (showStakeholders && allStakeholders.length === 0) {
       fetch("/api/stakeholders")
@@ -66,6 +86,28 @@ export function CreateGoalForm({
         .then((data: Stakeholder[]) => setAllStakeholders(data));
     }
   }, [showStakeholders, allStakeholders.length]);
+
+  const fetchSuggestions = useCallback(() => {
+    const goalText = [title, description, successCriteria].join(" ").trim();
+    if (goalText.length < 5) {
+      setSuggestions([]);
+      return;
+    }
+    fetch("/api/stakeholders/suggestions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, description, successCriteria }),
+    })
+      .then((r) => r.json())
+      .then((data: SuggestedStakeholder[]) => setSuggestions(data))
+      .catch(() => setSuggestions([]));
+  }, [title, description, successCriteria]);
+
+  useEffect(() => {
+    if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
+    suggestionsTimerRef.current = setTimeout(fetchSuggestions, 500);
+    return () => { if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current); };
+  }, [fetchSuggestions]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -96,6 +138,19 @@ export function CreateGoalForm({
     ]);
     setSearchQuery("");
     setShowDropdown(false);
+  }
+
+  function acceptSuggestion(s: SuggestedStakeholder) {
+    const bestCap = s.matchingCapabilities[0];
+    setSelectedStakeholders((prev) => [
+      ...prev,
+      { stakeholderId: s.stakeholderId, name: s.name, organization: s.organization, label: bestCap?.description || "" },
+    ]);
+    if (!showStakeholders) setShowStakeholders(true);
+  }
+
+  function dismissSuggestion(id: string) {
+    setDismissedSuggestions((prev) => new Set(prev).add(id));
   }
 
   function removeSelected(id: string) {
@@ -197,6 +252,12 @@ export function CreateGoalForm({
 
   const totalLinked = selectedStakeholders.length + newStakeholders.length;
 
+  const visibleSuggestions = suggestions.filter(
+    (s) =>
+      !dismissedSuggestions.has(s.stakeholderId) &&
+      !selectedStakeholders.some((sel) => sel.stakeholderId === s.stakeholderId)
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
@@ -247,6 +308,68 @@ export function CreateGoalForm({
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
       </div>
+
+      {/* Suggested stakeholders */}
+      {visibleSuggestions.length > 0 && (
+        <div className="border-t border-zinc-100 pt-3">
+          <p className="mb-2 text-xs font-medium text-amber-700">
+            Suggested stakeholders based on this goal:
+          </p>
+          <div className="space-y-2">
+            {visibleSuggestions.map((s) => (
+              <div
+                key={s.stakeholderId}
+                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="h-6 w-6 flex-shrink-0 rounded-full bg-amber-100 text-center text-xs leading-6 text-amber-700">
+                    {s.name.charAt(0)}
+                  </span>
+                  <span className="text-sm font-medium text-zinc-800">{s.name}</span>
+                  {s.organization && (
+                    <span className="text-xs text-zinc-400">{s.organization}</span>
+                  )}
+                  <div className="ml-auto flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => acceptSuggestion(s)}
+                      className="rounded bg-amber-600 px-2 py-0.5 text-xs text-white hover:bg-amber-700"
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => dismissSuggestion(s.stakeholderId)}
+                      className="rounded px-2 py-0.5 text-xs text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-1.5 space-y-1 pl-8">
+                  {s.matchingCapabilities.map((cap, i) => (
+                    <div key={i} className="text-xs">
+                      <span className={`inline-block rounded px-1.5 py-0.5 font-medium ${
+                        cap.type === "willingness"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-blue-100 text-blue-700"
+                      }`}>
+                        {cap.type}
+                      </span>
+                      <span className="ml-1.5 text-zinc-700">{cap.description}</span>
+                      {cap.condition && (
+                        <span className="ml-1 text-zinc-500">
+                          — given <span className="font-medium text-zinc-700">{cap.condition}</span>
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Optional stakeholder linking */}
       <div className="border-t border-zinc-100 pt-3">

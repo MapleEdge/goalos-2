@@ -22,6 +22,7 @@ export async function POST(request: Request) {
         ? new Date(body.lastInteraction)
         : null,
       notes: body.notes,
+      capabilities: body.capabilities ?? undefined,
     },
   });
 
