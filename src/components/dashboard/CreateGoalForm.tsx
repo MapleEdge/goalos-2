@@ -5,11 +5,13 @@ import { useState } from "react";
 export function CreateGoalForm({
   onCreated,
   onCancel,
+  initialTitle = "",
 }: {
   onCreated: () => void;
   onCancel: () => void;
+  initialTitle?: string;
 }) {
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState("");
   const [targetDate, setTargetDate] = useState("");
   const [successCriteria, setSuccessCriteria] = useState("");
