@@ -20,6 +20,13 @@ interface AllocationData {
   allocations: AllocationEntry[];
 }
 
+const PERIOD_LABEL: Record<"day" | "week" | "month" | "all", string> = {
+  day: "today",
+  week: "this week",
+  month: "this month",
+  all: "yet",
+};
+
 export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
   const [data, setData] = useState<AllocationData | null>(null);
   const [period, setPeriod] = useState<"day" | "week" | "month" | "all">("week");
@@ -43,10 +50,31 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
     return () => { cancelled = true; };
   }, [period, refreshKey]);
 
+  const header = (
+    <div className="flex items-center justify-between mb-3">
+      <CardTitle>Time Allocation</CardTitle>
+      <div className="flex rounded-md border border-zinc-200 overflow-hidden">
+        {(["day", "week", "month", "all"] as const).map((p) => (
+          <button
+            key={p}
+            onClick={() => setPeriod(p)}
+            className={`px-2 py-0.5 text-[10px] font-medium capitalize ${
+              period === p
+                ? "bg-zinc-900 text-white"
+                : "text-zinc-500 hover:bg-zinc-50"
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <Card>
-        <CardTitle>Time Allocation</CardTitle>
+        {header}
         <div className="mt-3 flex items-center justify-center py-8">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
         </div>
@@ -57,14 +85,19 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
   if (!data || data.allocations.length === 0) {
     return (
       <Card>
-        <CardTitle>Time Allocation</CardTitle>
-        <p className="mt-3 text-xs text-zinc-500">
-          No scheduled events yet. Import actions or create events on the{" "}
-          <a href="/schedule" className="text-blue-600 underline">
-            Schedule
-          </a>{" "}
-          page.
-        </p>
+        {header}
+        <div className="mt-3 flex flex-col items-center justify-center py-6 text-center">
+          <p className="text-sm font-medium text-zinc-700">
+            No time allocated {PERIOD_LABEL[period]}
+          </p>
+          <p className="mt-1 text-xs text-zinc-500">
+            Schedule events on the{" "}
+            <a href="/schedule" className="text-blue-600 underline">
+              Schedule
+            </a>{" "}
+            page to see your time split by value.
+          </p>
+        </div>
       </Card>
     );
   }
@@ -74,24 +107,7 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
 
   return (
     <Card>
-      <div className="flex items-center justify-between mb-3">
-        <CardTitle>Time Allocation</CardTitle>
-        <div className="flex rounded-md border border-zinc-200 overflow-hidden">
-          {(["day", "week", "month", "all"] as const).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-2 py-0.5 text-[10px] font-medium capitalize ${
-                period === p
-                  ? "bg-zinc-900 text-white"
-                  : "text-zinc-500 hover:bg-zinc-50"
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      </div>
+      {header}
 
       {/* Donut chart */}
       <div className="flex items-center gap-4 mb-3">

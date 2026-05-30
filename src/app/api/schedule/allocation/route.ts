@@ -89,20 +89,26 @@ export async function GET(request: Request) {
     allocations.set(key, existing);
   }
 
-  // If no schedule events yet, estimate from actions
+  // Onboarding fallback: only when there are NO schedule events at all (not
+  // just none in the selected period), estimate from open actions. If events
+  // exist elsewhere but none in this period, leave allocations empty so the UI
+  // can show a truthful "no time allocated" state for that period.
   if (events.length === 0) {
-    const actions = await prisma.action.findMany({
-      where: { status: { in: ["TODO", "IN_PROGRESS"] } },
-      select: { goalId: true },
-    });
+    const totalEventCount = await prisma.scheduleEvent.count();
+    if (totalEventCount === 0) {
+      const actions = await prisma.action.findMany({
+        where: { status: { in: ["TODO", "IN_PROGRESS"] } },
+        select: { goalId: true },
+      });
 
-    for (const action of actions) {
-      const { key, label, rank } = bucketFor(action.goalId);
-      const existing = allocations.get(key) || { minutes: 0, count: 0, label, rank };
-      // Estimate 60 min per action
-      existing.minutes += 60;
-      existing.count += 1;
-      allocations.set(key, existing);
+      for (const action of actions) {
+        const { key, label, rank } = bucketFor(action.goalId);
+        const existing = allocations.get(key) || { minutes: 0, count: 0, label, rank };
+        // Estimate 60 min per action
+        existing.minutes += 60;
+        existing.count += 1;
+        allocations.set(key, existing);
+      }
     }
   }
 
