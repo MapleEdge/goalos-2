@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Modal } from "./Modal";
 import { CreateGoalForm } from "@/components/dashboard/CreateGoalForm";
 
@@ -9,6 +9,24 @@ interface ParsedGoal {
   description: string;
   targetDate: string;
   successCriteria: string;
+}
+
+interface GoalProgress {
+  id: string;
+  title: string;
+  status: string;
+  targetDate: string | null;
+  readiness: number;
+  prerequisites: { title: string; status: string; confidenceScore: number }[];
+  actions: { title: string; status: string; priority: string }[];
+  weeklyHours: number;
+  eventCount: number;
+}
+
+interface ProgressData {
+  goals: GoalProgress[];
+  query: string;
+  matchedGoalId: string | null;
 }
 
 const MONTH_MAP: Record<string, string> = {
@@ -101,17 +119,101 @@ function parseGoalInput(input: string): ParsedGoal {
   return result;
 }
 
+const PROGRESS_PATTERNS = [
+  /^(?:how\s+is|how(?:'s|\s+are)|what(?:'s|\s+is)\s+the\s+(?:status|progress)|show\s+(?:me\s+)?progress|progress\s+(?:on|for|of|report|update|check)|status\s+(?:of|on|for|update)|update\s+(?:on|me\s+on)|check\s+(?:on|progress)|how\s+am\s+I\s+doing|how\s+(?:are|is)\s+(?:my|the)\s+goal)/i,
+];
+
+function isProgressQuery(input: string): boolean {
+  return PROGRESS_PATTERNS.some((p) => p.test(input.trim()));
+}
+
+function extractGoalKeywords(input: string): string {
+  return input
+    .replace(/^(?:how\s+is|how(?:'s|\s+are)|what(?:'s|\s+is)\s+the\s+(?:status|progress)\s+(?:of|on|for)?|show\s+(?:me\s+)?progress\s+(?:on|for)?|progress\s+(?:on|for|of)?|status\s+(?:of|on|for)?|update\s+(?:on|me\s+on)?|check\s+(?:on|progress\s+(?:on|for)?)?|how\s+am\s+I\s+doing\s+(?:on|with)?|how\s+(?:are|is)\s+(?:my|the)\s+goal(?:s)?\s*)/i, "")
+    .replace(/[?!.]+$/, "")
+    .trim();
+}
+
 export function GoalPrompt() {
   const [inputValue, setInputValue] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [showProgress, setShowProgress] = useState(false);
+  const [progressData, setProgressData] = useState<ProgressData | null>(null);
+  const [progressLoading, setProgressLoading] = useState(false);
   const [parsed, setParsed] = useState<ParsedGoal>({ title: "", description: "", targetDate: "", successCriteria: "" });
+
+  const fetchProgress = useCallback(async (query: string) => {
+    setProgressLoading(true);
+    try {
+      const [goalsRes, allocRes] = await Promise.all([
+        fetch("/api/goals"),
+        fetch("/api/schedule/allocation?period=week"),
+      ]);
+      const goals = await goalsRes.json();
+      const alloc = await allocRes.json();
+
+      const allocMap = new Map<string, { minutes: number; count: number }>();
+      for (const a of alloc.allocations || []) {
+        if (a.goalId) allocMap.set(a.goalId, { minutes: a.totalMinutes, count: a.eventCount });
+      }
+
+      const keywords = extractGoalKeywords(query).toLowerCase();
+      const queryWords = keywords.split(/\s+/).filter((w) => w.length > 2);
+      let matchedGoalId: string | null = null;
+      let bestMatchScore = 0;
+
+      const goalProgress: GoalProgress[] = goals
+        .filter((g: { status: string }) => ["ACTIVE", "BLOCKED", "WAITING"].includes(g.status))
+        .map((g: { id: string; title: string; status: string; targetDate: string | null; prerequisites: { title: string; status: string; confidenceScore: number }[]; actions: { title: string; status: string; priority: string }[] }) => {
+          const prereqs = g.prerequisites || [];
+          const completed = prereqs.filter((p: { status: string }) => p.status === "COMPLETED").length;
+          const totalConf = prereqs.reduce((s: number, p: { confidenceScore: number }) => s + (p.confidenceScore || 0), 0);
+          const readiness = prereqs.length > 0
+            ? Math.round((completed / prereqs.length) * 60 + (totalConf / prereqs.length) * 0.4)
+            : 50;
+          const allocData = allocMap.get(g.id);
+
+          if (queryWords.length > 0) {
+            const titleLower = g.title.toLowerCase();
+            const matchCount = queryWords.filter((w) => titleLower.includes(w)).length;
+            if (matchCount > bestMatchScore) {
+              bestMatchScore = matchCount;
+              matchedGoalId = g.id;
+            }
+          }
+
+          return {
+            id: g.id,
+            title: g.title,
+            status: g.status,
+            targetDate: g.targetDate,
+            readiness,
+            prerequisites: prereqs,
+            actions: g.actions || [],
+            weeklyHours: allocData ? Math.round(allocData.minutes / 60 * 10) / 10 : 0,
+            eventCount: allocData ? allocData.count : 0,
+          };
+        });
+
+      setProgressData({ goals: goalProgress, query, matchedGoalId });
+    } catch {
+      setProgressData({ goals: [], query, matchedGoalId: null });
+    }
+    setProgressLoading(false);
+  }, []);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = inputValue.trim();
     if (!trimmed) return;
-    setParsed(parseGoalInput(trimmed));
-    setShowModal(true);
+
+    if (isProgressQuery(trimmed)) {
+      setShowProgress(true);
+      fetchProgress(trimmed);
+    } else {
+      setParsed(parseGoalInput(trimmed));
+      setShowModal(true);
+    }
   }
 
   function handleCreated() {
@@ -126,6 +228,12 @@ export function GoalPrompt() {
     setParsed({ title: "", description: "", targetDate: "", successCriteria: "" });
   }
 
+  function handleCloseProgress() {
+    setShowProgress(false);
+    setProgressData(null);
+    setInputValue("");
+  }
+
   return (
     <>
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
@@ -134,7 +242,7 @@ export function GoalPrompt() {
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Tell me your next goal..."
+            placeholder="Tell me your next goal or ask about progress..."
             className="w-[360px] rounded-full border border-zinc-300 bg-white/95 px-5 py-3 text-sm text-zinc-800 shadow-lg backdrop-blur-sm placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 transition-shadow hover:shadow-xl"
           />
           {inputValue.trim() && (
@@ -173,6 +281,216 @@ export function GoalPrompt() {
           onCancel={handleCancel}
         />
       </Modal>
+
+      <Modal
+        open={showProgress}
+        onClose={handleCloseProgress}
+        title="Progress Report"
+      >
+        <ProgressPanel
+          data={progressData}
+          loading={progressLoading}
+          onClose={handleCloseProgress}
+          onShowAll={() => {
+            if (progressData) {
+              setProgressData({ ...progressData, matchedGoalId: null });
+            }
+          }}
+        />
+      </Modal>
     </>
+  );
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  ACTIVE: "#10b981",
+  BLOCKED: "#ef4444",
+  WAITING: "#f59e0b",
+  COMPLETED: "#3b82f6",
+  ARCHIVED: "#6b7280",
+};
+
+function ProgressPanel({
+  data,
+  loading,
+  onClose,
+  onShowAll,
+}: {
+  data: ProgressData | null;
+  loading: boolean;
+  onClose: () => void;
+  onShowAll: () => void;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
+      </div>
+    );
+  }
+
+  if (!data || data.goals.length === 0) {
+    return (
+      <div className="py-8 text-center">
+        <p className="text-sm text-zinc-500">No active goals found.</p>
+        <button
+          onClick={onClose}
+          className="mt-4 rounded-md bg-zinc-900 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-700"
+        >
+          Close
+        </button>
+      </div>
+    );
+  }
+
+  const goalsToShow = data.matchedGoalId
+    ? data.goals.filter((g) => g.id === data.matchedGoalId)
+    : data.goals;
+  const isFiltered = !!data.matchedGoalId;
+
+  const totalWeeklyHours = data.goals.reduce((s, g) => s + g.weeklyHours, 0);
+  const avgReadiness = Math.round(
+    data.goals.reduce((s, g) => s + g.readiness, 0) / data.goals.length
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Summary bar */}
+      {!isFiltered && (
+        <div className="flex items-center gap-4 rounded-lg bg-zinc-50 p-3">
+          <div className="text-center">
+            <div className="text-lg font-bold text-zinc-900">{data.goals.length}</div>
+            <div className="text-[10px] text-zinc-500">active goals</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-bold text-zinc-900">{avgReadiness}%</div>
+            <div className="text-[10px] text-zinc-500">avg readiness</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-bold text-zinc-900">{totalWeeklyHours}h</div>
+            <div className="text-[10px] text-zinc-500">weekly committed</div>
+          </div>
+        </div>
+      )}
+
+      {isFiltered && data.goals.length > 1 && (
+        <p className="text-xs text-zinc-400">
+          Showing results for &ldquo;{extractGoalKeywords(data.query)}&rdquo;
+        </p>
+      )}
+
+      {/* Goal cards */}
+      {goalsToShow.map((goal) => (
+        <div key={goal.id} className="rounded-lg border border-zinc-200 p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: STATUS_COLORS[goal.status] || "#6b7280" }}
+              />
+              <span className="text-sm font-semibold text-zinc-900">{goal.title}</span>
+            </div>
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{
+              backgroundColor: `${STATUS_COLORS[goal.status] || "#6b7280"}20`,
+              color: STATUS_COLORS[goal.status] || "#6b7280",
+            }}>
+              {goal.status}
+            </span>
+          </div>
+
+          {/* Readiness + time */}
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="flex items-center justify-between text-xs mb-1">
+                <span className="text-zinc-500">Readiness</span>
+                <span className="font-medium text-zinc-900">{goal.readiness}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-zinc-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${goal.readiness}%`,
+                    backgroundColor: goal.readiness >= 70 ? "#10b981" : goal.readiness >= 40 ? "#f59e0b" : "#ef4444",
+                  }}
+                />
+              </div>
+            </div>
+            {goal.weeklyHours > 0 && (
+              <div className="text-center shrink-0">
+                <div className="text-sm font-bold text-zinc-900">{goal.weeklyHours}h</div>
+                <div className="text-[10px] text-zinc-500">/week</div>
+              </div>
+            )}
+          </div>
+
+          {goal.targetDate && (
+            <div className="text-xs text-zinc-500">
+              Target: {new Date(goal.targetDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              {" · "}
+              {(() => {
+                const days = Math.ceil((new Date(goal.targetDate).getTime() - Date.now()) / (86400000));
+                return days > 0 ? `${days} days remaining` : "overdue";
+              })()}
+            </div>
+          )}
+
+          {/* Prerequisites */}
+          {goal.prerequisites.length > 0 && (
+            <div>
+              <div className="text-xs font-medium text-zinc-700 mb-1">Prerequisites</div>
+              <div className="space-y-1">
+                {goal.prerequisites.map((p, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className={`shrink-0 ${
+                      p.status === "COMPLETED" ? "text-green-600" : p.status === "IN_PROGRESS" ? "text-amber-600" : "text-zinc-400"
+                    }`}>
+                      {p.status === "COMPLETED" ? "●" : p.status === "IN_PROGRESS" ? "◐" : "○"}
+                    </span>
+                    <span className="text-zinc-700 truncate flex-1">{p.title}</span>
+                    <span className="text-zinc-400 shrink-0">{p.confidenceScore}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Next actions */}
+          {goal.actions.length > 0 && (
+            <div>
+              <div className="text-xs font-medium text-zinc-700 mb-1">Next Actions</div>
+              <div className="space-y-1">
+                {goal.actions.filter((a) => a.status !== "DONE").slice(0, 3).map((a, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className="text-zinc-400">→</span>
+                    <span className="text-zinc-700 truncate flex-1">{a.title}</span>
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                      a.priority === "CRITICAL" ? "bg-red-100 text-red-700" :
+                      a.priority === "HIGH" ? "bg-amber-100 text-amber-700" :
+                      "bg-zinc-100 text-zinc-600"
+                    }`}>{a.priority}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {isFiltered && (
+        <button
+          onClick={onShowAll}
+          className="w-full text-center text-xs text-blue-600 hover:text-blue-800 py-1"
+        >
+          Show all {data.goals.length} goals
+        </button>
+      )}
+
+      <button
+        onClick={onClose}
+        className="w-full rounded-md bg-zinc-900 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-700"
+      >
+        Close
+      </button>
+    </div>
   );
 }

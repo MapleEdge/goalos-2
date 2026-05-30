@@ -15,12 +15,14 @@ interface AllocationEntry {
 interface AllocationData {
   period: string;
   totalMinutes: number;
+  daysInPeriod: number;
+  avgMinutesPerDay: number;
   allocations: AllocationEntry[];
 }
 
 export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
   const [data, setData] = useState<AllocationData | null>(null);
-  const [period, setPeriod] = useState<"week" | "month" | "all">("week");
+  const [period, setPeriod] = useState<"day" | "week" | "month" | "all">("week");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -68,13 +70,14 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
   }
 
   const totalHours = Math.round(data.totalMinutes / 60 * 10) / 10;
+  const avgPerDay = formatMinutes(data.avgMinutesPerDay || 0);
 
   return (
     <Card>
       <div className="flex items-center justify-between mb-3">
         <CardTitle>Time Allocation</CardTitle>
         <div className="flex rounded-md border border-zinc-200 overflow-hidden">
-          {(["week", "month", "all"] as const).map((p) => (
+          {(["day", "week", "month", "all"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
@@ -162,6 +165,7 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
 
       <div className="mt-2 flex justify-between text-[10px] text-zinc-400">
         <span>{data.allocations.length} goal{data.allocations.length !== 1 ? "s" : ""}</span>
+        <span>avg {avgPerDay}/day</span>
         <span>{data.allocations.reduce((s, a) => s + a.eventCount, 0)} events</span>
       </div>
     </Card>

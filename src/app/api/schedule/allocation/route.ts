@@ -17,18 +17,25 @@ const GOAL_COLORS = [
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const period = searchParams.get("period") || "week"; // week, month, all
+  const period = searchParams.get("period") || "week"; // day, week, month, all
 
   const now = new Date();
   let start: Date;
-  if (period === "month") {
+  let daysInPeriod: number;
+  if (period === "day") {
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    daysInPeriod = 1;
+  } else if (period === "month") {
     start = new Date(now.getFullYear(), now.getMonth(), 1);
+    daysInPeriod = Math.ceil((now.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) || 1;
   } else if (period === "all") {
     start = new Date(0);
+    daysInPeriod = 0; // computed after fetching events
   } else {
     start = new Date(now);
     start.setDate(start.getDate() - start.getDay());
     start.setHours(0, 0, 0, 0);
+    daysInPeriod = 7;
   }
 
   // Fetch all schedule events in range
@@ -108,9 +115,24 @@ export async function GET(request: Request) {
 
   result.sort((a, b) => b.totalMinutes - a.totalMinutes);
 
+  // For "all" period, compute days from earliest event to now
+  if (period === "all" && events.length > 0) {
+    const earliest = events.reduce((min, ev) => {
+      const t = new Date(ev.startTime).getTime();
+      return t < min ? t : min;
+    }, Infinity);
+    daysInPeriod = Math.ceil((now.getTime() - earliest) / (24 * 60 * 60 * 1000)) || 1;
+  } else if (period === "all") {
+    daysInPeriod = 1;
+  }
+
+  const avgMinutesPerDay = daysInPeriod > 0 ? Math.round(totalMinutes / daysInPeriod) : 0;
+
   return NextResponse.json({
     period,
     totalMinutes: Math.round(totalMinutes),
+    daysInPeriod,
+    avgMinutesPerDay,
     allocations: result,
   });
 }
