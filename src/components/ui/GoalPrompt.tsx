@@ -353,14 +353,22 @@ export function GoalPrompt() {
         setShowRecommendations(true);
         fetchRecommendations();
         break;
-      case "navigate":
-        window.location.href = intent.page || "/";
+      case "navigate": {
+        const target = intent.page || "/";
+        if (window.location.pathname !== target) {
+          window.location.href = target;
+        }
         setInputValue("");
         break;
-      case "schedule_query":
-        window.location.href = intent.page || "/schedule";
+      }
+      case "schedule_query": {
+        const schedTarget = intent.page || "/schedule";
+        if (window.location.pathname !== schedTarget) {
+          window.location.href = schedTarget;
+        }
         setInputValue("");
         break;
+      }
       case "help":
         setShowHelp(true);
         break;

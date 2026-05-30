@@ -51,12 +51,12 @@ const NAV_KEYWORDS: Record<string, string> = {
   home: "/",
 };
 
-function extractNavPage(input: string): string {
+function extractNavPage(input: string): string | null {
   const lower = input.toLowerCase();
   for (const [keyword, page] of Object.entries(NAV_KEYWORDS)) {
     if (lower.includes(keyword)) return page;
   }
-  return "/";
+  return null;
 }
 
 export async function POST(request: Request) {
@@ -89,7 +89,13 @@ export async function POST(request: Request) {
     const result: Record<string, unknown> = { intent, llm: true };
 
     if (intent === "navigate") {
-      result.page = extractNavPage(input);
+      const page = extractNavPage(input);
+      if (page === null) {
+        // LLM misclassified — input has no navigation keyword
+        result.intent = "create_goal";
+      } else {
+        result.page = page;
+      }
     }
 
     return NextResponse.json(result);
