@@ -57,8 +57,13 @@ const typeColors: Record<string, string> = {
 };
 
 const TYPE_ORDER = ["STAKEHOLDER", "GOAL", "PREREQUISITE", "ACTION", "EVIDENCE"];
-const COL_W = 300;
-const ROW_H = 100;
+const COL_W = 240;
+const ROW_H = 90;
+// Wrap each type group into a grid once it exceeds MAX_ROWS so large
+// same-type networks (e.g. many stakeholders) stay readable instead of
+// collapsing into one extremely tall column.
+const MAX_ROWS = 12;
+const TYPE_GAP = 140;
 
 function typeLabel(type: string) {
   return type.charAt(0) + type.slice(1).toLowerCase();
@@ -142,14 +147,19 @@ export function Relationships() {
     }
 
     const graphNodes: Node[] = [];
-    TYPE_ORDER.forEach((type, colIdx) => {
+    let xCursor = 0;
+    TYPE_ORDER.forEach((type) => {
       const ids = byType.get(type) ?? [];
-      ids.forEach((id, rowIdx) => {
+      if (ids.length === 0) return;
+      const colCount = Math.ceil(ids.length / MAX_ROWS);
+      ids.forEach((id, i) => {
+        const col = Math.floor(i / MAX_ROWS);
+        const row = i % MAX_ROWS;
         const meta = nodeMeta.get(id);
         graphNodes.push({
           id,
           type: "graphNode",
-          position: { x: colIdx * COL_W, y: rowIdx * ROW_H },
+          position: { x: xCursor + col * COL_W, y: row * ROW_H },
           data: {
             label: meta?.label ?? "Unknown",
             nodeType: type,
@@ -158,6 +168,7 @@ export function Relationships() {
           },
         });
       });
+      xCursor += colCount * COL_W + TYPE_GAP;
     });
 
     const graphEdges: Edge[] = relationships
