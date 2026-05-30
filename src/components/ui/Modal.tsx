@@ -96,7 +96,7 @@ function ModalInner({
           </svg>
         </button>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-5 overflow-y-auto" style={{ maxHeight: "calc(80vh - 56px)" }}>{children}</div>
     </div>
   );
 }
