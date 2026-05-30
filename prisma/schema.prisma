@@ -29,6 +29,9 @@ model Goal {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
+  valueId         String?
+  value           Value?       @relation(fields: [valueId], references: [id], onDelete: SetNull)
+
   prerequisites   Prerequisite[]
   actions         Action[]
   relationshipsFrom Relationship[] @relation("from")
@@ -191,6 +194,8 @@ model Value {
   tags        String[] // domain tags for matching, e.g. ["money", "career", "wealth"]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  goals       Goal[]
 
   @@map("values")
 }

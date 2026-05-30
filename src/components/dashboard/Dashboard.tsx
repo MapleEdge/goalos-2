@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GoalCard } from "./GoalCard";
+import { CollapsibleSection } from "./CollapsibleSection";
 import { RecommendationsPanel } from "./RecommendationsPanel";
 import { CreateGoalForm } from "./CreateGoalForm";
 import { ValuesPanel } from "./ValuesPanel";
@@ -18,6 +19,7 @@ interface GoalData {
   targetDate: string | null;
   updatedAt: string;
   completedAt: string | null;
+  value: { id: string; label: string; rank: number } | null;
   prerequisites: {
     id: string;
     title: string;
@@ -94,6 +96,27 @@ export function Dashboard() {
     (g) => g.status === "COMPLETED" || g.status === "ARCHIVED"
   );
   const displayedGoals = viewMode === "active" ? activeGoals : completedGoals;
+
+  const valueGroups = useMemo(() => {
+    const groups = new Map<
+      string,
+      { value: GoalData["value"]; goals: GoalData[] }
+    >();
+    for (const goal of displayedGoals) {
+      const key = goal.value?.id ?? "__none__";
+      const existing = groups.get(key);
+      if (existing) {
+        existing.goals.push(goal);
+      } else {
+        groups.set(key, { value: goal.value, goals: [goal] });
+      }
+    }
+    return Array.from(groups.values()).sort((a, b) => {
+      if (!a.value) return 1;
+      if (!b.value) return -1;
+      return a.value.rank - b.value.rank;
+    });
+  }, [displayedGoals]);
 
   if (loading) {
     return (
@@ -184,13 +207,22 @@ export function Dashboard() {
             <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">
               {viewMode === "active" ? "What should I work on right now?" : "Completed Goals"}
             </h2>
-            {displayedGoals.map((goal) => (
-              <GoalCard
-                key={goal.id}
-                goal={goal}
-                readiness={getReadiness(goal.id)}
-                onRefresh={refresh}
-              />
+            {valueGroups.map((group) => (
+              <CollapsibleSection
+                key={group.value?.id ?? "none"}
+                title={group.value?.label ?? "Other Goals"}
+                count={group.goals.length}
+                storageKey={`goalgroup:${viewMode}:${group.value?.id ?? "none"}`}
+              >
+                {group.goals.map((goal) => (
+                  <GoalCard
+                    key={goal.id}
+                    goal={goal}
+                    readiness={getReadiness(goal.id)}
+                    onRefresh={refresh}
+                  />
+                ))}
+              </CollapsibleSection>
             ))}
           </div>
           {viewMode === "active" && (

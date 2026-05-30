@@ -65,6 +65,8 @@ export function CreateGoalForm({
   const [description, setDescription] = useState(initialDescription);
   const [targetDate, setTargetDate] = useState(initialTargetDate);
   const [successCriteria, setSuccessCriteria] = useState(initialSuccessCriteria);
+  const [valueId, setValueId] = useState("");
+  const [values, setValues] = useState<{ id: string; label: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"details" | "time">("details");
 
@@ -91,6 +93,13 @@ export function CreateGoalForm({
   const [editingStakeholderId, setEditingStakeholderId] = useState<string | null>(null);
   const [editingCapabilities, setEditingCapabilities] = useState<Capability[]>([]);
   const [savingCapabilities, setSavingCapabilities] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/values")
+      .then((r) => r.json())
+      .then((data: { id: string; label: string }[]) => setValues(data))
+      .catch(() => setValues([]));
+  }, []);
 
   useEffect(() => {
     if (showStakeholders && allStakeholders.length === 0) {
@@ -255,6 +264,7 @@ export function CreateGoalForm({
         description: description.trim() || null,
         targetDate: targetDate || null,
         successCriteria: successCriteria.trim() || null,
+        valueId: valueId || null,
       }),
     });
     const goal = await goalRes.json();
@@ -392,6 +402,23 @@ export function CreateGoalForm({
           rows={3}
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-zinc-700 mb-1">
+          Aligned Value
+        </label>
+        <select
+          value={valueId}
+          onChange={(e) => setValueId(e.target.value)}
+          className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+        >
+          <option value="">No value</option>
+          {values.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.label}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <label className="block text-sm font-medium text-zinc-700 mb-1">

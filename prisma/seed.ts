@@ -32,13 +32,13 @@ async function main() {
     prisma.value.create({ data: { label: "Impact & Giving Back", rank: 6, description: "Making a positive difference in the world", tags: ["impact", "community"] } }),
     prisma.value.create({ data: { label: "Romantic Relationships", rank: 7, description: "Finding and nurturing a meaningful romantic partnership", tags: ["relationships", "romantic"] } }),
   ]);
-  void values;
 
   // ─── Completed Goals (10) ─────────────────────────────────────
 
   const completedGoals = await Promise.all([
     // Financial Security
     prisma.goal.create({ data: {
+      valueId: values[0].id,
       title: "Build $5K Emergency Fund",
       description: "Save $5,000 in a high-yield savings account as a financial safety net",
       successCriteria: "Balance of $5,000+ in HYSA",
@@ -48,6 +48,7 @@ async function main() {
     }}),
     // Career Growth
     prisma.goal.create({ data: {
+      valueId: values[1].id,
       title: "Complete AWS Cloud Practitioner Certification",
       description: "Pass the AWS Certified Cloud Practitioner exam to strengthen cloud skills",
       successCriteria: "AWS certification badge received",
@@ -57,6 +58,7 @@ async function main() {
     }}),
     // Career Growth
     prisma.goal.create({ data: {
+      valueId: values[1].id,
       title: "Deliver Conference Talk at LocalDevConf",
       description: "Submit and present a talk on graph-based reasoning at a local developer conference",
       successCriteria: "Talk delivered with positive audience feedback",
@@ -66,6 +68,7 @@ async function main() {
     }}),
     // Knowledge & Learning
     prisma.goal.create({ data: {
+      valueId: values[2].id,
       title: "Complete Machine Learning Coursera Specialization",
       description: "Finish all 5 courses in the Andrew Ng ML specialization",
       successCriteria: "All 5 course certificates earned",
@@ -75,6 +78,7 @@ async function main() {
     }}),
     // Knowledge & Learning
     prisma.goal.create({ data: {
+      valueId: values[2].id,
       title: "Read 12 Non-Fiction Books",
       description: "Read one non-fiction book per month covering tech, business, and psychology",
       successCriteria: "12 books completed with notes",
@@ -84,6 +88,7 @@ async function main() {
     }}),
     // Health & Fitness
     prisma.goal.create({ data: {
+      valueId: values[3].id,
       title: "Run a 10K Race",
       description: "Train for and complete a 10K race under 55 minutes",
       successCriteria: "10K completed in under 55 minutes",
@@ -93,6 +98,7 @@ async function main() {
     }}),
     // Health & Fitness
     prisma.goal.create({ data: {
+      valueId: values[3].id,
       title: "Establish Morning Meditation Habit",
       description: "Meditate for 10 minutes every morning for 90 consecutive days",
       successCriteria: "90-day streak completed",
@@ -102,6 +108,7 @@ async function main() {
     }}),
     // Family
     prisma.goal.create({ data: {
+      valueId: values[4].id,
       title: "Plan Family Reunion",
       description: "Organize a family reunion with 20+ relatives during summer",
       successCriteria: "Event held with 20+ attendees",
@@ -111,6 +118,7 @@ async function main() {
     }}),
     // Impact
     prisma.goal.create({ data: {
+      valueId: values[5].id,
       title: "Mentor 2 Junior Developers",
       description: "Provide weekly mentoring sessions to 2 junior developers for a semester",
       successCriteria: "Both mentees report skill improvement and complete their projects",
@@ -120,6 +128,7 @@ async function main() {
     }}),
     // Financial Security
     prisma.goal.create({ data: {
+      valueId: values[0].id,
       title: "Negotiate 15% Salary Increase",
       description: "Prepare and execute a salary negotiation for a 15% raise",
       successCriteria: "Written offer with 15%+ raise",
@@ -134,6 +143,7 @@ async function main() {
 
   // Financial Security (rank 1)
   const investGoal = await prisma.goal.create({ data: {
+    valueId: values[0].id,
     title: "Start Index Fund Portfolio",
     description: "Open a brokerage account and invest $500/month in diversified index funds",
     targetDate: new Date("2026-09-01"),
@@ -142,6 +152,7 @@ async function main() {
   }});
 
   const freelanceGoal = await prisma.goal.create({ data: {
+    valueId: values[0].id,
     title: "Launch Freelance Consulting Practice",
     description: "Land 3 paying freelance clients for AI/ML consulting on the side",
     targetDate: new Date("2026-08-01"),
@@ -150,6 +161,7 @@ async function main() {
   }});
 
   const budgetGoal = await prisma.goal.create({ data: {
+    valueId: values[0].id,
     title: "Reduce Monthly Expenses by 20%",
     description: "Audit and cut unnecessary spending to increase savings rate",
     targetDate: new Date("2026-07-01"),
@@ -159,6 +171,7 @@ async function main() {
 
   // Career Growth (rank 2)
   const taGoal = await prisma.goal.create({ data: {
+    valueId: values[1].id,
     title: "Obtain TA Position",
     description: "Secure a teaching assistant role in the Computer Science department for Fall semester",
     targetDate: new Date("2026-08-15"),
@@ -167,6 +180,7 @@ async function main() {
   }});
 
   const startupGoal = await prisma.goal.create({ data: {
+    valueId: values[1].id,
     title: "Raise Pre-Seed Round",
     description: "Close a $500K pre-seed round for the AI productivity startup",
     targetDate: new Date("2026-06-30"),
@@ -175,6 +189,7 @@ async function main() {
   }});
 
   const leadershipGoal = await prisma.goal.create({ data: {
+    valueId: values[1].id,
     title: "Lead Open Source Project to 500 Stars",
     description: "Grow the graph-reasoning OSS project to 500 GitHub stars with active contributors",
     targetDate: new Date("2026-12-01"),
@@ -184,6 +199,7 @@ async function main() {
 
   // Knowledge & Learning (rank 3)
   const researchGoal = await prisma.goal.create({ data: {
+    valueId: values[2].id,
     title: "Publish Research Paper",
     description: "Submit and publish a paper on graph-based reasoning systems at a top-tier conference",
     targetDate: new Date("2026-12-01"),
@@ -192,6 +208,7 @@ async function main() {
   }});
 
   const rustGoal = await prisma.goal.create({ data: {
+    valueId: values[2].id,
     title: "Learn Rust Programming",
     description: "Become proficient in Rust by completing the Rustlings exercises and building a CLI tool",
     targetDate: new Date("2026-10-01"),
@@ -200,6 +217,7 @@ async function main() {
   }});
 
   const philosophyGoal = await prisma.goal.create({ data: {
+    valueId: values[2].id,
     title: "Complete Philosophy Reading List",
     description: "Read and annotate 8 foundational philosophy texts covering ethics, epistemology, and logic",
     targetDate: new Date("2026-11-01"),
@@ -209,6 +227,7 @@ async function main() {
 
   // Health & Fitness (rank 4)
   const marathonGoal = await prisma.goal.create({ data: {
+    valueId: values[3].id,
     title: "Train for Half Marathon",
     description: "Complete a half marathon under 2 hours, building on the 10K race completion",
     targetDate: new Date("2026-11-15"),
@@ -217,6 +236,7 @@ async function main() {
   }});
 
   const nutritionGoal = await prisma.goal.create({ data: {
+    valueId: values[3].id,
     title: "Meal Prep Consistently for 3 Months",
     description: "Prepare healthy meals every Sunday for the week ahead for 12 consecutive weeks",
     targetDate: new Date("2026-09-01"),
@@ -225,6 +245,7 @@ async function main() {
   }});
 
   const sleepGoal = await prisma.goal.create({ data: {
+    valueId: values[3].id,
     title: "Fix Sleep Schedule",
     description: "Consistently sleep 7-8 hours with a 10:30pm bedtime and 6:30am wake time",
     targetDate: new Date("2026-08-01"),
@@ -234,6 +255,7 @@ async function main() {
 
   // Family (rank 5)
   const dadGoal = await prisma.goal.create({ data: {
+    valueId: values[4].id,
     title: "Weekly Video Calls with Parents",
     description: "Establish a consistent weekly video call with Mom and Dad every Sunday",
     targetDate: new Date("2026-09-01"),
@@ -242,6 +264,7 @@ async function main() {
   }});
 
   const siblingGoal = await prisma.goal.create({ data: {
+    valueId: values[4].id,
     title: "Plan Sibling Road Trip",
     description: "Organize and take a week-long road trip with siblings along the West Coast",
     targetDate: new Date("2026-08-15"),
@@ -250,6 +273,7 @@ async function main() {
   }});
 
   const familyFinanceGoal = await prisma.goal.create({ data: {
+    valueId: values[4].id,
     title: "Help Parents Set Up Retirement Planning",
     description: "Research and help parents understand retirement account options and create a plan",
     targetDate: new Date("2026-10-01"),
@@ -259,6 +283,7 @@ async function main() {
 
   // Impact & Giving Back (rank 6)
   const ossGoal = await prisma.goal.create({ data: {
+    valueId: values[5].id,
     title: "Contribute to 5 Open Source Projects",
     description: "Make meaningful contributions (PRs merged) to 5 different open source ML/AI projects",
     targetDate: new Date("2026-12-01"),
@@ -267,6 +292,7 @@ async function main() {
   }});
 
   const workshopGoal = await prisma.goal.create({ data: {
+    valueId: values[5].id,
     title: "Run Free Coding Workshop for Beginners",
     description: "Organize and teach a free 4-week intro to programming workshop at the local library",
     targetDate: new Date("2026-09-15"),
@@ -275,6 +301,7 @@ async function main() {
   }});
 
   const blogGoal = await prisma.goal.create({ data: {
+    valueId: values[5].id,
     title: "Write 10 Technical Blog Posts",
     description: "Publish 10 in-depth technical blog posts on ML, systems design, and career advice",
     targetDate: new Date("2026-12-31"),
@@ -284,6 +311,7 @@ async function main() {
 
   // Romantic Relationships (rank 7)
   const socialGoal = await prisma.goal.create({ data: {
+    valueId: values[6].id,
     title: "Expand Social Circle",
     description: "Join 2 new social groups or clubs to meet new people outside of work/school",
     targetDate: new Date("2026-08-01"),
@@ -292,6 +320,7 @@ async function main() {
   }});
 
   const boundariesGoal = await prisma.goal.create({ data: {
+    valueId: values[6].id,
     title: "Develop Healthy Relationship Boundaries",
     description: "Work through a relationship skills workbook and practice setting boundaries",
     targetDate: new Date("2026-09-01"),
@@ -300,6 +329,7 @@ async function main() {
   }});
 
   const dateGoal = await prisma.goal.create({ data: {
+    valueId: values[6].id,
     title: "Go on 12 First Dates",
     description: "Actively date by going on at least one first date per month",
     targetDate: new Date("2026-12-31"),

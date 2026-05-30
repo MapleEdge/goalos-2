@@ -2,18 +2,20 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 interface AllocationEntry {
-  goalId: string | null;
-  goalTitle: string;
+  valueId: string | null;
+  valueLabel: string;
   totalMinutes: number;
   eventCount: number;
   color: string;
   percentage: number;
 }
 
-const GOAL_COLORS = [
+const VALUE_COLORS = [
   "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
   "#ec4899", "#06b6d4", "#84cc16", "#f97316", "#6366f1",
 ];
+
+const UNLINKED_KEY = "__unlinked__";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -46,20 +48,39 @@ export async function GET(request: Request) {
     },
   });
 
-  // Also compute time from actions with due dates linked to goals
+  // Map every goal to the value it aligns with (any status, since events may
+  // reference completed goals too).
   const goals = await prisma.goal.findMany({
-    where: { status: { in: ["ACTIVE", "BLOCKED", "WAITING"] } },
-    select: { id: true, title: true },
+    select: {
+      id: true,
+      valueId: true,
+      value: { select: { id: true, label: true, rank: true } },
+    },
   });
 
-  const goalMap = new Map(goals.map((g) => [g.id, g.title]));
+  const goalToValue = new Map<
+    string,
+    { id: string; label: string; rank: number } | null
+  >(goals.map((g) => [g.id, g.value]));
 
-  // Aggregate by goalId
-  const allocations = new Map<string, { minutes: number; count: number }>();
+  // Aggregate by valueId (events whose goal has no value, or events with no
+  // goal at all, fall into the "Unlinked" bucket).
+  const allocations = new Map<
+    string,
+    { minutes: number; count: number; label: string; rank: number }
+  >();
+
+  function bucketFor(goalId: string | null) {
+    const value = goalId ? goalToValue.get(goalId) : null;
+    if (value) {
+      return { key: value.id, label: value.label, rank: value.rank };
+    }
+    return { key: UNLINKED_KEY, label: "Unlinked Events", rank: Number.MAX_SAFE_INTEGER };
+  }
 
   for (const ev of events) {
-    const key = ev.goalId || "__unlinked__";
-    const existing = allocations.get(key) || { minutes: 0, count: 0 };
+    const { key, label, rank } = bucketFor(ev.goalId);
+    const existing = allocations.get(key) || { minutes: 0, count: 0, label, rank };
     const durationMs =
       new Date(ev.endTime).getTime() - new Date(ev.startTime).getTime();
     const durationMin = Math.max(durationMs / 60000, 0);
@@ -68,22 +89,25 @@ export async function GET(request: Request) {
     allocations.set(key, existing);
   }
 
-  // If no schedule events yet, estimate from actions
+  // Onboarding fallback: only when there are NO schedule events at all (not
+  // just none in the selected period), estimate from open actions. If events
+  // exist elsewhere but none in this period, leave allocations empty so the UI
+  // can show a truthful "no time allocated" state for that period.
   if (events.length === 0) {
-    const actions = await prisma.action.findMany({
-      where: { status: { in: ["TODO", "IN_PROGRESS"] } },
-      include: { goal: { select: { id: true, title: true } } },
-    });
+    const totalEventCount = await prisma.scheduleEvent.count();
+    if (totalEventCount === 0) {
+      const actions = await prisma.action.findMany({
+        where: { status: { in: ["TODO", "IN_PROGRESS"] } },
+        select: { goalId: true },
+      });
 
-    for (const action of actions) {
-      const key = action.goalId;
-      const existing = allocations.get(key) || { minutes: 0, count: 0 };
-      // Estimate 60 min per action
-      existing.minutes += 60;
-      existing.count += 1;
-      allocations.set(key, existing);
-      if (!goalMap.has(key)) {
-        goalMap.set(key, action.goal.title);
+      for (const action of actions) {
+        const { key, label, rank } = bucketFor(action.goalId);
+        const existing = allocations.get(key) || { minutes: 0, count: 0, label, rank };
+        // Estimate 60 min per action
+        existing.minutes += 60;
+        existing.count += 1;
+        allocations.set(key, existing);
       }
     }
   }
@@ -93,27 +117,21 @@ export async function GET(request: Request) {
     0
   );
 
-  const result: AllocationEntry[] = [];
-  let colorIdx = 0;
+  // Order by value rank so the legend matches the values list (unlinked last).
+  const ordered = Array.from(allocations.entries()).sort(
+    ([, a], [, b]) => a.rank - b.rank
+  );
 
-  for (const [goalId, data] of allocations) {
-    const isUnlinked = goalId === "__unlinked__";
-    result.push({
-      goalId: isUnlinked ? null : goalId,
-      goalTitle: isUnlinked
-        ? "Unlinked Events"
-        : goalMap.get(goalId) || "Unknown Goal",
-      totalMinutes: Math.round(data.minutes),
-      eventCount: data.count,
-      color: GOAL_COLORS[colorIdx % GOAL_COLORS.length],
-      percentage: totalMinutes > 0
-        ? Math.round((data.minutes / totalMinutes) * 100)
-        : 0,
-    });
-    colorIdx++;
-  }
-
-  result.sort((a, b) => b.totalMinutes - a.totalMinutes);
+  const result: AllocationEntry[] = ordered.map(([key, data], idx) => ({
+    valueId: key === UNLINKED_KEY ? null : key,
+    valueLabel: data.label,
+    totalMinutes: Math.round(data.minutes),
+    eventCount: data.count,
+    color: VALUE_COLORS[idx % VALUE_COLORS.length],
+    percentage: totalMinutes > 0
+      ? Math.round((data.minutes / totalMinutes) * 100)
+      : 0,
+  }));
 
   // For "all" period, compute days from earliest event to now
   if (period === "all" && events.length > 0) {
