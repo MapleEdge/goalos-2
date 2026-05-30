@@ -35,15 +35,24 @@ export async function PATCH(
     return NextResponse.json({ error: "Goal not found" }, { status: 404 });
   }
 
+  const updateData: Record<string, unknown> = {
+    title: body.title,
+    description: body.description,
+    targetDate: body.targetDate ? new Date(body.targetDate) : undefined,
+    successCriteria: body.successCriteria,
+    status: body.status,
+  };
+
+  if (body.status === "COMPLETED" && existing.status !== "COMPLETED") {
+    updateData.completedAt = new Date();
+  }
+  if (body.status && body.status !== "COMPLETED" && existing.status === "COMPLETED") {
+    updateData.completedAt = null;
+  }
+
   const goal = await prisma.goal.update({
     where: { id },
-    data: {
-      title: body.title,
-      description: body.description,
-      targetDate: body.targetDate ? new Date(body.targetDate) : undefined,
-      successCriteria: body.successCriteria,
-      status: body.status,
-    },
+    data: updateData,
   });
 
   const changes: Record<string, unknown> = {};

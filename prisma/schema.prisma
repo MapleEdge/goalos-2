@@ -10,7 +10,10 @@ datasource db {
 
 enum GoalStatus {
   ACTIVE
+  BLOCKED
+  WAITING
   COMPLETED
+  ARCHIVED
   PAUSED
   ABANDONED
 }
@@ -22,6 +25,7 @@ model Goal {
   targetDate      DateTime?
   successCriteria String?
   status          GoalStatus   @default(ACTIVE)
+  completedAt     DateTime?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 

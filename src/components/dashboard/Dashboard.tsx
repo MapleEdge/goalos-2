@@ -15,6 +15,8 @@ interface GoalData {
   description: string | null;
   status: string;
   targetDate: string | null;
+  updatedAt: string;
+  completedAt: string | null;
   prerequisites: {
     id: string;
     title: string;
@@ -41,6 +43,8 @@ async function fetchReasoning(): Promise<
   return res.json();
 }
 
+type ViewMode = "active" | "completed";
+
 export function Dashboard() {
   const [goals, setGoals] = useState<GoalData[]>([]);
   const [reasoning, setReasoning] = useState<
@@ -52,6 +56,7 @@ export function Dashboard() {
   const [suggestRefreshKey, setSuggestRefreshKey] = useState(0);
   const [prefillTitle, setPrefillTitle] = useState("");
   const [prefillDescription, setPrefillDescription] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("active");
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +81,18 @@ export function Dashboard() {
     return reasoning?.readinessScores.find((r) => r.goalId === goalId);
   }
 
+  function refresh() {
+    setRefreshKey((k) => k + 1);
+  }
+
+  const activeGoals = goals.filter(
+    (g) => g.status !== "COMPLETED" && g.status !== "ARCHIVED"
+  );
+  const completedGoals = goals.filter(
+    (g) => g.status === "COMPLETED" || g.status === "ARCHIVED"
+  );
+  const displayedGoals = viewMode === "active" ? activeGoals : completedGoals;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -90,7 +107,10 @@ export function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-zinc-900">Dashboard</h1>
           <p className="text-sm text-zinc-500">
-            {goals.length} active goal{goals.length !== 1 ? "s" : ""} tracked
+            {activeGoals.length} active goal{activeGoals.length !== 1 ? "s" : ""}
+            {completedGoals.length > 0 && (
+              <> · {completedGoals.length} completed</>
+            )}
           </p>
         </div>
         <button
@@ -101,13 +121,49 @@ export function Dashboard() {
         </button>
       </div>
 
-      {goals.length === 0 ? (
+      {/* View toggle */}
+      <div className="mb-4 flex gap-1 rounded-lg bg-zinc-100 p-1 w-fit">
+        <button
+          onClick={() => setViewMode("active")}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            viewMode === "active"
+              ? "bg-white text-zinc-900 shadow-sm"
+              : "text-zinc-500 hover:text-zinc-700"
+          }`}
+        >
+          Active Goals
+          {activeGoals.length > 0 && (
+            <span className="ml-1.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+              {activeGoals.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setViewMode("completed")}
+          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            viewMode === "completed"
+              ? "bg-white text-zinc-900 shadow-sm"
+              : "text-zinc-500 hover:text-zinc-700"
+          }`}
+        >
+          Completed Goals
+          {completedGoals.length > 0 && (
+            <span className="ml-1.5 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+              {completedGoals.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {displayedGoals.length === 0 && viewMode === "active" ? (
         <div className="rounded-xl border-2 border-dashed border-zinc-200 p-12 text-center">
           <h2 className="text-lg font-semibold text-zinc-700 mb-2">
-            No goals yet
+            No active goals
           </h2>
           <p className="text-sm text-zinc-500 mb-4">
-            Define your first goal to start building your state graph.
+            {goals.length === 0
+              ? "Define your first goal to start building your state graph."
+              : "All goals are completed. Create a new goal to keep progressing."}
           </p>
           <button
             onClick={() => setShowCreateGoal(true)}
@@ -116,35 +172,42 @@ export function Dashboard() {
             Create Goal
           </button>
         </div>
+      ) : displayedGoals.length === 0 && viewMode === "completed" ? (
+        <div className="rounded-xl border-2 border-dashed border-zinc-200 p-12 text-center">
+          <p className="text-sm text-zinc-500">No completed goals yet.</p>
+        </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
             <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">
-              Goals
+              {viewMode === "active" ? "What should I work on right now?" : "Completed Goals"}
             </h2>
-            {goals.map((goal) => (
+            {displayedGoals.map((goal) => (
               <GoalCard
                 key={goal.id}
                 goal={goal}
                 readiness={getReadiness(goal.id)}
+                onRefresh={refresh}
               />
             ))}
           </div>
-          <div className="space-y-4">
-            <ValuesPanel onChanged={() => setSuggestRefreshKey((k) => k + 1)} />
-            <SuggestedGoals
-              refreshKey={suggestRefreshKey}
-              onCreateGoal={(title, description) => {
-                setPrefillTitle(title);
-                setPrefillDescription(description);
-                setShowCreateGoal(true);
-              }}
-            />
-            <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">
-              Recommendations
-            </h2>
-            {reasoning && <RecommendationsPanel reasoning={reasoning} />}
-          </div>
+          {viewMode === "active" && (
+            <div className="space-y-4">
+              <ValuesPanel onChanged={() => setSuggestRefreshKey((k) => k + 1)} />
+              <SuggestedGoals
+                refreshKey={suggestRefreshKey}
+                onCreateGoal={(title, description) => {
+                  setPrefillTitle(title);
+                  setPrefillDescription(description);
+                  setShowCreateGoal(true);
+                }}
+              />
+              <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">
+                Recommendations
+              </h2>
+              {reasoning && <RecommendationsPanel reasoning={reasoning} />}
+            </div>
+          )}
         </div>
       )}
 
