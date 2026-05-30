@@ -2,26 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { CalendarView } from "@/components/schedule/CalendarView";
+import type { ScheduleEvent } from "@/components/schedule/CalendarView";
 import { CalendarSettings } from "@/components/schedule/CalendarSettings";
 import { EventModal } from "@/components/schedule/EventModal";
-
-interface ScheduleEvent {
-  id: string;
-  title: string;
-  description?: string | null;
-  startTime: string;
-  endTime: string;
-  allDay: boolean;
-  location?: string | null;
-  source: "GOALOS" | "GOOGLE" | "MICROSOFT";
-  goalId?: string | null;
-  actionId?: string | null;
-  color?: string | null;
-  calendarConnection?: {
-    provider: string;
-    accountEmail: string;
-  } | null;
-}
 
 interface CalendarConnection {
   id: string;
@@ -35,26 +18,25 @@ export default function SchedulePage() {
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
   const [connections, setConnections] = useState<CalendarConnection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"week" | "month">("week");
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [showSettings, setShowSettings] = useState(false);
-  const [showEventModal, setShowEventModal] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<{
-    start: Date;
-    end: Date;
-  } | null>(null);
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [modalStart, setModalStart] = useState(() => new Date());
+  const [modalEnd, setModalEnd] = useState(() => {
+    const d = new Date();
+    d.setHours(d.getHours() + 1);
+    return d;
+  });
+  const [modalAllDay, setModalAllDay] = useState(false);
+  const [modalEvent, setModalEvent] = useState<ScheduleEvent | undefined>();
 
   const fetchEvents = useCallback(async () => {
-    const start = getViewStart(currentDate, view);
-    const end = getViewEnd(currentDate, view);
-    const params = new URLSearchParams({
-      start: start.toISOString(),
-      end: end.toISOString(),
-    });
-    const res = await fetch(`/api/schedule?${params}`);
+    const res = await fetch("/api/schedule");
     const data = await res.json();
     setEvents(data);
-  }, [currentDate, view]);
+  }, []);
 
   const fetchConnections = useCallback(async () => {
     const res = await fetch("/api/calendar/connections");
@@ -69,7 +51,9 @@ export default function SchedulePage() {
       if (!cancelled) setLoading(false);
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [fetchEvents, fetchConnections]);
 
   async function importGoalOSActions() {
@@ -77,9 +61,52 @@ export default function SchedulePage() {
     await fetchEvents();
   }
 
-  function handleSlotClick(start: Date, end: Date) {
-    setSelectedSlot({ start, end });
-    setShowEventModal(true);
+  function handleSlotSelect(start: Date, end: Date, allDay: boolean) {
+    setModalMode("create");
+    setModalStart(start);
+    setModalEnd(end);
+    setModalAllDay(allDay);
+    setModalEvent(undefined);
+    setModalOpen(true);
+  }
+
+  function handleEventClick(event: ScheduleEvent) {
+    setModalMode("edit");
+    setModalStart(new Date(event.startTime));
+    setModalEnd(new Date(event.endTime));
+    setModalAllDay(event.allDay);
+    setModalEvent(event);
+    setModalOpen(true);
+  }
+
+  async function handleEventDrop(
+    eventId: string,
+    start: Date,
+    end: Date,
+    allDay: boolean
+  ) {
+    await fetch(`/api/schedule/${eventId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+        allDay,
+      }),
+    });
+    await fetchEvents();
+  }
+
+  async function handleEventResize(eventId: string, start: Date, end: Date) {
+    await fetch(`/api/schedule/${eventId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+      }),
+    });
+    await fetchEvents();
   }
 
   async function handleCreateEvent(eventData: {
@@ -96,16 +123,41 @@ export default function SchedulePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(eventData),
     });
-    setShowEventModal(false);
-    setSelectedSlot(null);
+    setModalOpen(false);
     await fetchEvents();
   }
 
-  function navigateDate(direction: -1 | 1) {
-    const d = new Date(currentDate);
-    if (view === "week") d.setDate(d.getDate() + direction * 7);
-    else d.setMonth(d.getMonth() + direction);
-    setCurrentDate(d);
+  async function handleUpdateEvent(eventData: {
+    title: string;
+    description?: string;
+    startTime: string;
+    endTime: string;
+    allDay?: boolean;
+    location?: string;
+    color?: string;
+  }) {
+    if (!modalEvent) return;
+    await fetch(`/api/schedule/${modalEvent.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(eventData),
+    });
+    setModalOpen(false);
+    await fetchEvents();
+  }
+
+  async function handleDeleteEvent() {
+    if (!modalEvent) return;
+    await fetch(`/api/schedule/${modalEvent.id}`, {
+      method: "DELETE",
+    });
+    setModalOpen(false);
+    await fetchEvents();
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setModalEvent(undefined);
   }
 
   if (loading) {
@@ -155,11 +207,12 @@ export default function SchedulePage() {
           </button>
           <button
             onClick={() => {
-              setSelectedSlot({
-                start: new Date(),
-                end: new Date(Date.now() + 60 * 60 * 1000),
-              });
-              setShowEventModal(true);
+              setModalMode("create");
+              setModalStart(new Date());
+              setModalEnd(new Date(Date.now() + 60 * 60 * 1000));
+              setModalAllDay(false);
+              setModalEvent(undefined);
+              setModalOpen(true);
             }}
             className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
           >
@@ -180,121 +233,28 @@ export default function SchedulePage() {
         />
       )}
 
-      {/* Calendar Navigation */}
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setCurrentDate(new Date())}
-            className="rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-          >
-            Today
-          </button>
-          <button
-            onClick={() => navigateDate(-1)}
-            className="rounded-lg border border-zinc-200 p-1.5 text-zinc-700 hover:bg-zinc-50"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M10 4l-4 4 4 4" />
-            </svg>
-          </button>
-          <button
-            onClick={() => navigateDate(1)}
-            className="rounded-lg border border-zinc-200 p-1.5 text-zinc-700 hover:bg-zinc-50"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M6 4l4 4-4 4" />
-            </svg>
-          </button>
-          <h2 className="text-lg font-semibold text-zinc-900">
-            {formatDateRange(currentDate, view)}
-          </h2>
-        </div>
-        <div className="flex rounded-lg border border-zinc-200 overflow-hidden">
-          <button
-            onClick={() => setView("week")}
-            className={`px-3 py-1.5 text-sm font-medium ${
-              view === "week"
-                ? "bg-zinc-900 text-white"
-                : "text-zinc-600 hover:bg-zinc-50"
-            }`}
-          >
-            Week
-          </button>
-          <button
-            onClick={() => setView("month")}
-            className={`px-3 py-1.5 text-sm font-medium ${
-              view === "month"
-                ? "bg-zinc-900 text-white"
-                : "text-zinc-600 hover:bg-zinc-50"
-            }`}
-          >
-            Month
-          </button>
-        </div>
-      </div>
-
       {/* Calendar */}
       <CalendarView
         events={events}
-        view={view}
-        currentDate={currentDate}
-        onSlotClick={handleSlotClick}
+        onEventClick={handleEventClick}
+        onSlotSelect={handleSlotSelect}
+        onEventDrop={handleEventDrop}
+        onEventResize={handleEventResize}
       />
 
       {/* Event Modal */}
-      {showEventModal && selectedSlot && (
+      {modalOpen && (
         <EventModal
-          start={selectedSlot.start}
-          end={selectedSlot.end}
-          onSave={handleCreateEvent}
-          onClose={() => {
-            setShowEventModal(false);
-            setSelectedSlot(null);
-          }}
+          mode={modalMode}
+          start={modalStart}
+          end={modalEnd}
+          allDay={modalAllDay}
+          event={modalEvent}
+          onSave={modalMode === "edit" ? handleUpdateEvent : handleCreateEvent}
+          onDelete={modalMode === "edit" ? handleDeleteEvent : undefined}
+          onClose={closeModal}
         />
       )}
     </div>
   );
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────
-
-function getViewStart(date: Date, view: "week" | "month"): Date {
-  const d = new Date(date);
-  if (view === "week") {
-    d.setDate(d.getDate() - d.getDay());
-  } else {
-    d.setDate(1);
-    d.setDate(d.getDate() - d.getDay());
-  }
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function getViewEnd(date: Date, view: "week" | "month"): Date {
-  const d = new Date(date);
-  if (view === "week") {
-    d.setDate(d.getDate() - d.getDay() + 6);
-  } else {
-    d.setMonth(d.getMonth() + 1, 0);
-    d.setDate(d.getDate() + (6 - d.getDay()));
-  }
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
-
-function formatDateRange(date: Date, view: "week" | "month"): string {
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
-  if (view === "month") {
-    return `${months[date.getMonth()]} ${date.getFullYear()}`;
-  }
-  const start = getViewStart(date, "week");
-  const end = getViewEnd(date, "week");
-  if (start.getMonth() === end.getMonth()) {
-    return `${months[start.getMonth()]} ${start.getDate()} – ${end.getDate()}, ${start.getFullYear()}`;
-  }
-  return `${months[start.getMonth()]} ${start.getDate()} – ${months[end.getMonth()]} ${end.getDate()}, ${end.getFullYear()}`;
 }
