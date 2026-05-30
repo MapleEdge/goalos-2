@@ -1,6 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+
+interface Stakeholder {
+  id: string;
+  name: string;
+  organization: string | null;
+  role: string | null;
+}
+
+interface SelectedStakeholder {
+  stakeholderId: string;
+  name: string;
+  organization: string | null;
+  label: string;
+}
+
+interface NewStakeholder {
+  tempId: string;
+  name: string;
+  organization: string;
+  role: string;
+  label: string;
+}
 
 export function CreateGoalForm({
   onCreated,
@@ -23,12 +45,98 @@ export function CreateGoalForm({
   const [successCriteria, setSuccessCriteria] = useState(initialSuccessCriteria);
   const [loading, setLoading] = useState(false);
 
+  // Stakeholder linking state
+  const [showStakeholders, setShowStakeholders] = useState(false);
+  const [allStakeholders, setAllStakeholders] = useState<Stakeholder[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStakeholders, setSelectedStakeholders] = useState<SelectedStakeholder[]>([]);
+  const [newStakeholders, setNewStakeholders] = useState<NewStakeholder[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newOrg, setNewOrg] = useState("");
+  const [newRole, setNewRole] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showStakeholders && allStakeholders.length === 0) {
+      fetch("/api/stakeholders")
+        .then((r) => r.json())
+        .then((data: Stakeholder[]) => setAllStakeholders(data));
+    }
+  }, [showStakeholders, allStakeholders.length]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredStakeholders = allStakeholders.filter((s) => {
+    const alreadySelected = selectedStakeholders.some((sel) => sel.stakeholderId === s.id);
+    if (alreadySelected) return false;
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      s.name.toLowerCase().includes(q) ||
+      (s.organization && s.organization.toLowerCase().includes(q)) ||
+      (s.role && s.role.toLowerCase().includes(q))
+    );
+  });
+
+  function selectStakeholder(s: Stakeholder) {
+    setSelectedStakeholders((prev) => [
+      ...prev,
+      { stakeholderId: s.id, name: s.name, organization: s.organization, label: "" },
+    ]);
+    setSearchQuery("");
+    setShowDropdown(false);
+  }
+
+  function removeSelected(id: string) {
+    setSelectedStakeholders((prev) => prev.filter((s) => s.stakeholderId !== id));
+  }
+
+  function updateSelectedLabel(id: string, label: string) {
+    setSelectedStakeholders((prev) =>
+      prev.map((s) => (s.stakeholderId === id ? { ...s, label } : s))
+    );
+  }
+
+  function addNewStakeholder() {
+    if (!newName.trim()) return;
+    setNewStakeholders((prev) => [
+      ...prev,
+      {
+        tempId: `new-${Date.now()}`,
+        name: newName.trim(),
+        organization: newOrg.trim(),
+        role: newRole.trim(),
+        label: newLabel.trim(),
+      },
+    ]);
+    setNewName("");
+    setNewOrg("");
+    setNewRole("");
+    setNewLabel("");
+    setShowNewForm(false);
+  }
+
+  function removeNew(tempId: string) {
+    setNewStakeholders((prev) => prev.filter((s) => s.tempId !== tempId));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
     setLoading(true);
 
-    await fetch("/api/goals", {
+    const goalRes = await fetch("/api/goals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -38,10 +146,56 @@ export function CreateGoalForm({
         successCriteria: successCriteria.trim() || null,
       }),
     });
+    const goal = await goalRes.json();
+
+    // Link existing stakeholders
+    for (const sel of selectedStakeholders) {
+      await fetch("/api/relationships", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromType: "STAKEHOLDER",
+          fromId: sel.stakeholderId,
+          toType: "GOAL",
+          toId: goal.id,
+          label: sel.label || "linked to",
+        }),
+      });
+    }
+
+    // Create new stakeholders and link them
+    for (const ns of newStakeholders) {
+      const sRes = await fetch("/api/stakeholders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: ns.name,
+          organization: ns.organization || null,
+          role: ns.role || null,
+          relationshipStrength: 50,
+          lastInteraction: new Date().toISOString(),
+        }),
+      });
+      const stakeholder = await sRes.json();
+
+      await fetch("/api/relationships", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromType: "STAKEHOLDER",
+          fromId: stakeholder.id,
+          toType: "GOAL",
+          toId: goal.id,
+          label: ns.label || "linked to",
+        }),
+      });
+    }
 
     setLoading(false);
     onCreated();
   }
+
+  const totalLinked = selectedStakeholders.length + newStakeholders.length;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -93,6 +247,198 @@ export function CreateGoalForm({
           className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
         />
       </div>
+
+      {/* Optional stakeholder linking */}
+      <div className="border-t border-zinc-100 pt-3">
+        <button
+          type="button"
+          onClick={() => setShowStakeholders(!showStakeholders)}
+          className="flex items-center gap-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            className={`transition-transform ${showStakeholders ? "rotate-90" : ""}`}
+          >
+            <path d="M6 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Link Stakeholders
+          {totalLinked > 0 && (
+            <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-xs text-white">
+              {totalLinked}
+            </span>
+          )}
+          <span className="text-xs font-normal text-zinc-400">(optional)</span>
+        </button>
+
+        {showStakeholders && (
+          <div className="mt-3 space-y-3">
+            {/* Search existing stakeholders */}
+            <div className="relative" ref={dropdownRef}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => setShowDropdown(true)}
+                placeholder="Search existing stakeholders..."
+                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+              />
+              {showDropdown && filteredStakeholders.length > 0 && (
+                <div className="absolute z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-lg">
+                  {filteredStakeholders.slice(0, 8).map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => selectStakeholder(s)}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-zinc-50"
+                    >
+                      <span className="h-6 w-6 flex-shrink-0 rounded-full bg-pink-100 text-center text-xs leading-6 text-pink-600">
+                        {s.name.charAt(0)}
+                      </span>
+                      <span className="truncate font-medium text-zinc-800">{s.name}</span>
+                      {s.organization && (
+                        <span className="truncate text-xs text-zinc-400">{s.organization}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Selected stakeholders */}
+            {selectedStakeholders.map((sel) => (
+              <div
+                key={sel.stakeholderId}
+                className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2"
+              >
+                <span className="h-6 w-6 flex-shrink-0 rounded-full bg-pink-100 text-center text-xs leading-6 text-pink-600">
+                  {sel.name.charAt(0)}
+                </span>
+                <span className="text-sm font-medium text-zinc-800">{sel.name}</span>
+                {sel.organization && (
+                  <span className="text-xs text-zinc-400">{sel.organization}</span>
+                )}
+                <input
+                  type="text"
+                  value={sel.label}
+                  onChange={(e) => updateSelectedLabel(sel.stakeholderId, e.target.value)}
+                  placeholder="role (e.g., advisor, investor)"
+                  className="ml-auto w-40 rounded border border-zinc-200 px-2 py-1 text-xs focus:border-zinc-400 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeSelected(sel.stakeholderId)}
+                  className="text-zinc-400 hover:text-zinc-600"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 4l8 8M12 4l-8 8" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+
+            {/* New stakeholders */}
+            {newStakeholders.map((ns) => (
+              <div
+                key={ns.tempId}
+                className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2"
+              >
+                <span className="h-6 w-6 flex-shrink-0 rounded-full bg-green-100 text-center text-xs leading-6 text-green-600">
+                  +
+                </span>
+                <span className="text-sm font-medium text-zinc-800">{ns.name}</span>
+                {ns.organization && (
+                  <span className="text-xs text-zinc-400">{ns.organization}</span>
+                )}
+                {ns.label && (
+                  <span className="text-xs text-zinc-500 italic">{ns.label}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removeNew(ns.tempId)}
+                  className="ml-auto text-zinc-400 hover:text-zinc-600"
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 4l8 8M12 4l-8 8" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+
+            {/* Add new stakeholder inline form */}
+            {showNewForm ? (
+              <div className="space-y-2 rounded-lg border border-dashed border-zinc-300 p-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Name *"
+                    className="rounded border border-zinc-300 px-2 py-1.5 text-sm focus:border-zinc-500 focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={newOrg}
+                    onChange={(e) => setNewOrg(e.target.value)}
+                    placeholder="Organization"
+                    className="rounded border border-zinc-300 px-2 py-1.5 text-sm focus:border-zinc-500 focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={newRole}
+                    onChange={(e) => setNewRole(e.target.value)}
+                    placeholder="Role"
+                    className="rounded border border-zinc-300 px-2 py-1.5 text-sm focus:border-zinc-500 focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    placeholder="Relationship (e.g., mentor)"
+                    className="rounded border border-zinc-300 px-2 py-1.5 text-sm focus:border-zinc-500 focus:outline-none"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewForm(false)}
+                    className="rounded px-3 py-1 text-xs text-zinc-500 hover:bg-zinc-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={addNewStakeholder}
+                    disabled={!newName.trim()}
+                    className="rounded bg-zinc-800 px-3 py-1 text-xs text-white hover:bg-zinc-700 disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowNewForm(true)}
+                className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-700"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M8 3v10M3 8h10" strokeLinecap="round" />
+                </svg>
+                Add new stakeholder
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="flex justify-end gap-2 pt-2">
         <button
           type="button"
