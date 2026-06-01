@@ -31,29 +31,34 @@ export async function GET(request: Request) {
 
   const now = new Date()
   let start: Date
+  let end: Date
   let daysInPeriod: number
   if (period === 'day') {
     start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    end = new Date(start.getTime() + 24 * 60 * 60 * 1000)
     daysInPeriod = 1
   } else if (period === 'month') {
     start = new Date(now.getFullYear(), now.getMonth(), 1)
+    end = new Date(now.getFullYear(), now.getMonth() + 1, 1)
     daysInPeriod =
       Math.ceil((now.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) || 1
   } else if (period === 'all') {
     start = new Date(0)
+    end = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000)
     daysInPeriod = 0 // computed after fetching events
   } else {
+    // week: Sunday to Saturday
     start = new Date(now)
     start.setDate(start.getDate() - start.getDay())
     start.setHours(0, 0, 0, 0)
+    end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000)
     daysInPeriod = 7
   }
 
-  // Fetch all schedule events in range
+  // Fetch schedule events within the period
   const events = await prisma.scheduleEvent.findMany({
     where: {
-      startTime: { gte: start },
-      endTime: { lte: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000) },
+      startTime: { gte: start, lt: end },
     },
   })
 
