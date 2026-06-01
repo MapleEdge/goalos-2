@@ -158,8 +158,7 @@ export async function GET(request: Request) {
     periodTotalMinutes = totalMinutes
   }
 
-  const denominator =
-    period === 'all' ? totalMinutes : Math.max(periodTotalMinutes, totalMinutes)
+  const denominator = period === 'all' ? totalMinutes : periodTotalMinutes
 
   // Order by value rank so the legend matches the values list (unlinked last).
   const ordered = Array.from(allocations.entries()).sort(
