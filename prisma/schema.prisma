@@ -247,6 +247,8 @@ model ScheduleEvent {
   actionId             String?             // linked GoalOS action
   calendarConnectionId String?
   color                String?             // hex color for display
+  recurrence           String?             // none | daily | weekly | monthly | yearly
+  recurrenceGroupId    String?             // shared id linking recurring instances
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
@@ -256,6 +258,7 @@ model ScheduleEvent {
   @@index([goalId])
   @@index([actionId])
   @@index([externalId])
+  @@index([recurrenceGroupId])
   @@map("schedule_events")
 }
 

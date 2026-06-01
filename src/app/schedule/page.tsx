@@ -117,6 +117,7 @@ export default function SchedulePage() {
     allDay?: boolean
     location?: string
     color?: string
+    recurrence?: string
   }) {
     await fetch('/api/schedule', {
       method: 'POST',
