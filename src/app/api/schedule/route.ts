@@ -44,64 +44,72 @@ function advanceDate(date: Date, recurrence: string): Date {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json()
-  const recurrence: string | null = body.recurrence || null
-  const count =
-    recurrence && recurrence !== 'none'
-      ? (RECURRENCE_COUNTS[recurrence] ?? 1)
-      : 1
-  const groupId = count > 1 ? randomUUID() : null
+  try {
+    const body = await request.json()
+    const recurrence: string | null = body.recurrence || null
+    const count =
+      recurrence && recurrence !== 'none'
+        ? (RECURRENCE_COUNTS[recurrence] ?? 1)
+        : 1
+    const groupId = count > 1 ? randomUUID() : null
 
-  const baseStart = new Date(body.startTime)
-  const baseEnd = new Date(body.endTime)
+    const baseStart = new Date(body.startTime)
+    const baseEnd = new Date(body.endTime)
 
-  const records: Array<{
-    title: string
-    description: string | null
-    startTime: Date
-    endTime: Date
-    allDay: boolean
-    location: string | null
-    source: 'GOALOS'
-    goalId: string | null
-    actionId: string | null
-    color: string | null
-    recurrence: string | null
-    recurrenceGroupId: string | null
-  }> = []
+    const records: Array<{
+      title: string
+      description: string | null
+      startTime: Date
+      endTime: Date
+      allDay: boolean
+      location: string | null
+      source: 'GOALOS'
+      goalId: string | null
+      actionId: string | null
+      color: string | null
+      recurrence: string | null
+      recurrenceGroupId: string | null
+    }> = []
 
-  let curStart = baseStart
-  let curEnd = baseEnd
-  for (let i = 0; i < count; i++) {
-    records.push({
-      title: body.title,
-      description: body.description || null,
-      startTime: new Date(curStart),
-      endTime: new Date(curEnd),
-      allDay: body.allDay || false,
-      location: body.location || null,
-      source: 'GOALOS',
-      goalId: body.goalId || null,
-      actionId: body.actionId || null,
-      color: body.color || null,
-      recurrence,
-      recurrenceGroupId: groupId,
-    })
-    if (i < count - 1) {
-      curStart = advanceDate(curStart, recurrence!)
-      curEnd = advanceDate(curEnd, recurrence!)
+    let curStart = baseStart
+    let curEnd = baseEnd
+    for (let i = 0; i < count; i++) {
+      records.push({
+        title: body.title,
+        description: body.description || null,
+        startTime: new Date(curStart),
+        endTime: new Date(curEnd),
+        allDay: body.allDay || false,
+        location: body.location || null,
+        source: 'GOALOS',
+        goalId: body.goalId || null,
+        actionId: body.actionId || null,
+        color: body.color || null,
+        recurrence,
+        recurrenceGroupId: groupId,
+      })
+      if (i < count - 1) {
+        curStart = advanceDate(curStart, recurrence!)
+        curEnd = advanceDate(curEnd, recurrence!)
+      }
     }
-  }
 
-  if (records.length === 1) {
-    const event = await prisma.scheduleEvent.create({ data: records[0]! })
-    return NextResponse.json(event, { status: 201 })
-  }
+    if (records.length === 1) {
+      const event = await prisma.scheduleEvent.create({ data: records[0]! })
+      return NextResponse.json(event, { status: 201 })
+    }
 
-  await prisma.scheduleEvent.createMany({ data: records })
-  const created = await prisma.scheduleEvent.findMany({
-    where: { recurrenceGroupId: groupId },
-    orderBy: { startTime: 'asc' },
-  })
-  return NextResponse.json(created, { status: 201 })
+    await prisma.scheduleEvent.createMany({ data: records })
+    const created = await prisma.scheduleEvent.findMany({
+      where: { recurrenceGroupId: groupId },
+      orderBy: { startTime: 'asc' },
+    })
+    return NextResponse.json(created, { status: 201 })
+  } catch (error) {
+    console.error('POST /api/schedule error:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : String(error) },
+      { status: 500 },
+    )
+  }
 }
