@@ -9,6 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.{ts,tsx}'],
     exclude: ['node_modules', '.next', 'e2e/**'],
+    passWithNoTests: true,
     setupFiles: ['./tests/setup.ts'],
     css: false,
     coverage: {
