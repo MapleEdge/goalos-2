@@ -1,19 +1,19 @@
-"use client";
+'use client'
 
-import { useState } from "react";
+import { useState } from 'react'
 
 interface CalendarConnection {
-  id: string;
-  provider: "GOOGLE" | "MICROSOFT";
-  accountEmail: string;
-  syncEnabled: boolean;
-  lastSyncAt: string | null;
+  id: string
+  provider: 'GOOGLE' | 'MICROSOFT'
+  accountEmail: string
+  syncEnabled: boolean
+  lastSyncAt: string | null
 }
 
 interface CalendarSettingsProps {
-  connections: CalendarConnection[];
-  onRefresh: () => void;
-  onClose: () => void;
+  connections: CalendarConnection[]
+  onRefresh: () => void
+  onClose: () => void
 }
 
 export function CalendarSettings({
@@ -21,51 +21,57 @@ export function CalendarSettings({
   onRefresh,
   onClose,
 }: CalendarSettingsProps) {
-  const [connecting, setConnecting] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState<string | null>(null)
 
-  async function connectCalendar(provider: "google" | "microsoft") {
-    setConnecting(provider);
+  async function connectCalendar(provider: 'google' | 'microsoft') {
+    setConnecting(provider)
     try {
-      const res = await fetch(`/api/calendar/auth?provider=${provider}`);
-      const data = await res.json();
+      const res = await fetch(`/api/calendar/auth?provider=${provider}`)
+      const data = await res.json()
       if (data.authUrl) {
-        window.location.href = data.authUrl;
+        window.location.href = data.authUrl
       } else {
-        alert(data.error || "Failed to get auth URL. Check that OAuth credentials are configured.");
-        setConnecting(null);
+        alert(
+          data.error ||
+            'Failed to get auth URL. Check that OAuth credentials are configured.'
+        )
+        setConnecting(null)
       }
     } catch {
-      alert("Failed to initiate connection. Ensure GOOGLE_CLIENT_ID/SECRET or MICROSOFT_CLIENT_ID/SECRET environment variables are set.");
-      setConnecting(null);
+      alert(
+        'Failed to initiate connection. Ensure GOOGLE_CLIENT_ID/SECRET or MICROSOFT_CLIENT_ID/SECRET environment variables are set.'
+      )
+      setConnecting(null)
     }
   }
 
   async function syncCalendar(connectionId: string) {
-    setSyncing(connectionId);
+    setSyncing(connectionId)
     try {
-      const res = await fetch("/api/calendar/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/calendar/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ connectionId }),
-      });
-      const data = await res.json();
+      })
+      const data = await res.json()
       if (data.error) {
-        alert(`Sync failed: ${data.error}`);
+        alert(`Sync failed: ${data.error}`)
       }
     } catch {
-      alert("Sync request failed");
+      alert('Sync request failed')
     }
-    setSyncing(null);
-    onRefresh();
+    setSyncing(null)
+    onRefresh()
   }
 
   async function disconnectCalendar(connectionId: string) {
-    if (!confirm("Disconnect this calendar? Synced events will be removed.")) return;
+    if (!confirm('Disconnect this calendar? Synced events will be removed.'))
+      return
     await fetch(`/api/calendar/connections?id=${connectionId}`, {
-      method: "DELETE",
-    });
-    onRefresh();
+      method: 'DELETE',
+    })
+    onRefresh()
   }
 
   return (
@@ -78,7 +84,14 @@ export function CalendarSettings({
           onClick={onClose}
           className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M4 4l8 8M12 4l-8 8" />
           </svg>
         </button>
@@ -95,21 +108,24 @@ export function CalendarSettings({
               <div className="flex items-center gap-2">
                 <span
                   className={`inline-flex h-6 w-6 items-center justify-center rounded text-xs font-bold text-white ${
-                    conn.provider === "GOOGLE" ? "bg-red-500" : "bg-blue-500"
+                    conn.provider === 'GOOGLE' ? 'bg-red-500' : 'bg-blue-500'
                   }`}
                 >
-                  {conn.provider === "GOOGLE" ? "G" : "M"}
+                  {conn.provider === 'GOOGLE' ? 'G' : 'M'}
                 </span>
                 <div>
                   <div className="text-sm font-medium text-zinc-900">
                     {conn.accountEmail}
                   </div>
                   <div className="text-xs text-zinc-500">
-                    {conn.provider === "GOOGLE"
-                      ? "Google Calendar"
-                      : "Microsoft Outlook"}
+                    {conn.provider === 'GOOGLE'
+                      ? 'Google Calendar'
+                      : 'Microsoft Outlook'}
                     {conn.lastSyncAt && (
-                      <> &middot; Last synced {formatRelative(conn.lastSyncAt)}</>
+                      <>
+                        {' '}
+                        &middot; Last synced {formatRelative(conn.lastSyncAt)}
+                      </>
                     )}
                   </div>
                 </div>
@@ -120,7 +136,7 @@ export function CalendarSettings({
                   disabled={syncing === conn.id}
                   className="rounded-lg border border-zinc-200 px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:opacity-50"
                 >
-                  {syncing === conn.id ? "Syncing..." : "Sync Now"}
+                  {syncing === conn.id ? 'Syncing...' : 'Sync Now'}
                 </button>
                 <button
                   onClick={() => disconnectCalendar(conn.id)}
@@ -137,8 +153,8 @@ export function CalendarSettings({
       {/* Connect buttons */}
       <div className="flex gap-2">
         <button
-          onClick={() => connectCalendar("google")}
-          disabled={connecting === "google"}
+          onClick={() => connectCalendar('google')}
+          disabled={connecting === 'google'}
           className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
         >
           <svg width="16" height="16" viewBox="0 0 16 16">
@@ -148,15 +164,23 @@ export function CalendarSettings({
               stroke="#4285f4"
               strokeWidth="1.5"
             />
-            <text x="4.5" y="11.5" fontSize="9" fontWeight="bold" fill="#4285f4">
+            <text
+              x="4.5"
+              y="11.5"
+              fontSize="9"
+              fontWeight="bold"
+              fill="#4285f4"
+            >
               G
             </text>
           </svg>
-          {connecting === "google" ? "Connecting..." : "Connect Google Calendar"}
+          {connecting === 'google'
+            ? 'Connecting...'
+            : 'Connect Google Calendar'}
         </button>
         <button
-          onClick={() => connectCalendar("microsoft")}
-          disabled={connecting === "microsoft"}
+          onClick={() => connectCalendar('microsoft')}
+          disabled={connecting === 'microsoft'}
           className="flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
         >
           <svg width="16" height="16" viewBox="0 0 16 16">
@@ -165,9 +189,9 @@ export function CalendarSettings({
             <rect x="1" y="9" width="6" height="6" fill="#00a4ef" />
             <rect x="9" y="9" width="6" height="6" fill="#ffb900" />
           </svg>
-          {connecting === "microsoft"
-            ? "Connecting..."
-            : "Connect Microsoft Outlook"}
+          {connecting === 'microsoft'
+            ? 'Connecting...'
+            : 'Connect Microsoft Outlook'}
         </button>
       </div>
 
@@ -176,18 +200,18 @@ export function CalendarSettings({
         or MICROSOFT_CLIENT_ID / MICROSOFT_CLIENT_SECRET in your environment.
       </p>
     </div>
-  );
+  )
 }
 
 function formatRelative(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
+  const d = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return 'just now'
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr}h ago`
+  const diffDay = Math.floor(diffHr / 24)
+  return `${diffDay}d ago`
 }

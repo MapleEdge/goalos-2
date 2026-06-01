@@ -1,11 +1,11 @@
-"use client";
+'use client'
 
 export function Card({
   children,
-  className = "",
+  className = '',
 }: {
-  children: React.ReactNode;
-  className?: string;
+  children: React.ReactNode
+  className?: string
 }) {
   return (
     <div
@@ -13,19 +13,19 @@ export function Card({
     >
       {children}
     </div>
-  );
+  )
 }
 
 export function CardTitle({
   children,
-  className = "",
+  className = '',
 }: {
-  children: React.ReactNode;
-  className?: string;
+  children: React.ReactNode
+  className?: string
 }) {
   return (
     <h3 className={`text-sm font-semibold text-zinc-900 ${className}`}>
       {children}
     </h3>
-  );
+  )
 }

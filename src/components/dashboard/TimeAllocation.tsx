@@ -1,67 +1,69 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import { Card, CardTitle } from "@/components/ui/Card";
+import { useEffect, useState } from 'react'
+import { Card, CardTitle } from '@/components/ui/Card'
 
 interface AllocationEntry {
-  valueId: string | null;
-  valueLabel: string;
-  totalMinutes: number;
-  eventCount: number;
-  color: string;
-  percentage: number;
+  valueId: string | null
+  valueLabel: string
+  totalMinutes: number
+  eventCount: number
+  color: string
+  percentage: number
 }
 
 interface AllocationData {
-  period: string;
-  totalMinutes: number;
-  daysInPeriod: number;
-  avgMinutesPerDay: number;
-  allocations: AllocationEntry[];
+  period: string
+  totalMinutes: number
+  daysInPeriod: number
+  avgMinutesPerDay: number
+  allocations: AllocationEntry[]
 }
 
-const PERIOD_LABEL: Record<"day" | "week" | "month" | "all", string> = {
-  day: "today",
-  week: "this week",
-  month: "this month",
-  all: "yet",
-};
+const PERIOD_LABEL: Record<'day' | 'week' | 'month' | 'all', string> = {
+  day: 'today',
+  week: 'this week',
+  month: 'this month',
+  all: 'yet',
+}
 
 export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
-  const [data, setData] = useState<AllocationData | null>(null);
-  const [period, setPeriod] = useState<"day" | "week" | "month" | "all">("week");
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<AllocationData | null>(null)
+  const [period, setPeriod] = useState<'day' | 'week' | 'month' | 'all'>('week')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false
     async function load() {
       try {
-        const res = await fetch(`/api/schedule/allocation?period=${period}`);
-        const d = await res.json();
+        const res = await fetch(`/api/schedule/allocation?period=${period}`)
+        const d = await res.json()
         if (!cancelled) {
-          setData(d);
-          setLoading(false);
+          setData(d)
+          setLoading(false)
         }
       } catch {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoading(false)
       }
     }
-    load();
-    return () => { cancelled = true; };
-  }, [period, refreshKey]);
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [period])
 
   const header = (
     <div className="flex items-center justify-between mb-3">
       <CardTitle>Time Allocation</CardTitle>
       <div className="flex rounded-md border border-zinc-200 overflow-hidden">
-        {(["day", "week", "month", "all"] as const).map((p) => (
+        {(['day', 'week', 'month', 'all'] as const).map((p) => (
           <button
             key={p}
             onClick={() => setPeriod(p)}
             className={`px-2 py-0.5 text-[10px] font-medium capitalize ${
               period === p
-                ? "bg-zinc-900 text-white"
-                : "text-zinc-500 hover:bg-zinc-50"
+                ? 'bg-zinc-900 text-white'
+                : 'text-zinc-500 hover:bg-zinc-50'
             }`}
           >
             {p}
@@ -69,7 +71,7 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
         ))}
       </div>
     </div>
-  );
+  )
 
   if (loading) {
     return (
@@ -79,7 +81,7 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
         </div>
       </Card>
-    );
+    )
   }
 
   if (!data || data.allocations.length === 0) {
@@ -91,19 +93,19 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
             No time allocated {PERIOD_LABEL[period]}
           </p>
           <p className="mt-1 text-xs text-zinc-500">
-            Schedule events on the{" "}
+            Schedule events on the{' '}
             <a href="/schedule" className="text-blue-600 underline">
               Schedule
-            </a>{" "}
+            </a>{' '}
             page to see your time split by value.
           </p>
         </div>
       </Card>
-    );
+    )
   }
 
-  const totalHours = Math.round(data.totalMinutes / 60 * 10) / 10;
-  const avgPerDay = formatMinutes(data.avgMinutesPerDay || 0);
+  const totalHours = Math.round((data.totalMinutes / 60) * 10) / 10
+  const avgPerDay = formatMinutes(data.avgMinutesPerDay || 0)
 
   return (
     <Card>
@@ -113,28 +115,30 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
       <div className="flex items-center gap-4 mb-3">
         <div className="relative h-24 w-24 shrink-0">
           <svg viewBox="0 0 36 36" className="h-24 w-24 -rotate-90">
-            {data.allocations.reduce(
-              (acc, entry) => {
-                const dashArray = (entry.percentage / 100) * 100;
-                const element = (
-                  <circle
-                    key={entry.valueId || "unlinked"}
-                    cx="18"
-                    cy="18"
-                    r="15.9155"
-                    fill="none"
-                    stroke={entry.color}
-                    strokeWidth="3.5"
-                    strokeDasharray={`${dashArray} ${100 - dashArray}`}
-                    strokeDashoffset={`${-acc.offset}`}
-                  />
-                );
-                acc.elements.push(element);
-                acc.offset += dashArray;
-                return acc;
-              },
-              { elements: [] as React.ReactNode[], offset: 0 }
-            ).elements}
+            {
+              data.allocations.reduce(
+                (acc, entry) => {
+                  const dashArray = (entry.percentage / 100) * 100
+                  const element = (
+                    <circle
+                      key={entry.valueId || 'unlinked'}
+                      cx="18"
+                      cy="18"
+                      r="15.9155"
+                      fill="none"
+                      stroke={entry.color}
+                      strokeWidth="3.5"
+                      strokeDasharray={`${dashArray} ${100 - dashArray}`}
+                      strokeDashoffset={`${-acc.offset}`}
+                    />
+                  )
+                  acc.elements.push(element)
+                  acc.offset += dashArray
+                  return acc
+                },
+                { elements: [] as React.ReactNode[], offset: 0 }
+              ).elements
+            }
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-sm font-bold text-zinc-900">
@@ -147,7 +151,10 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
         {/* Legend */}
         <div className="space-y-1.5 min-w-0 flex-1">
           {data.allocations.map((entry) => (
-            <div key={entry.valueId || "unlinked"} className="flex items-center gap-2">
+            <div
+              key={entry.valueId || 'unlinked'}
+              className="flex items-center gap-2"
+            >
               <div
                 className="h-2.5 w-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: entry.color }}
@@ -167,12 +174,12 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
       <div className="h-3 rounded-full overflow-hidden bg-zinc-100 flex">
         {data.allocations.map((entry) => (
           <div
-            key={entry.valueId || "unlinked"}
+            key={entry.valueId || 'unlinked'}
             className="h-full transition-all"
             style={{
               width: `${entry.percentage}%`,
               backgroundColor: entry.color,
-              minWidth: entry.percentage > 0 ? "4px" : "0",
+              minWidth: entry.percentage > 0 ? '4px' : '0',
             }}
             title={`${entry.valueLabel}: ${formatMinutes(entry.totalMinutes)} (${entry.percentage}%)`}
           />
@@ -180,17 +187,22 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
       </div>
 
       <div className="mt-2 flex justify-between text-[10px] text-zinc-400">
-        <span>{data.allocations.length} value{data.allocations.length !== 1 ? "s" : ""}</span>
+        <span>
+          {data.allocations.length} value
+          {data.allocations.length !== 1 ? 's' : ''}
+        </span>
         <span>avg {avgPerDay}/day</span>
-        <span>{data.allocations.reduce((s, a) => s + a.eventCount, 0)} events</span>
+        <span>
+          {data.allocations.reduce((s, a) => s + a.eventCount, 0)} events
+        </span>
       </div>
     </Card>
-  );
+  )
 }
 
 function formatMinutes(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  if (minutes < 60) return `${minutes}m`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}h ${m}m` : `${h}h`
 }

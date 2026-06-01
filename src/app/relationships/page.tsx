@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import { Relationships } from "@/components/relationships/Relationships";
+import { Relationships } from '@/components/relationships/Relationships'
 
 export default function RelationshipsPage() {
-  return <Relationships />;
+  return <Relationships />
 }

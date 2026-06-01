@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { recordEvent } from "@/lib/events/store";
+import { NextResponse } from 'next/server'
+import { recordEvent } from '@/lib/events/store'
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   const goals = await prisma.goal.findMany({
@@ -9,28 +9,28 @@ export async function GET() {
       actions: true,
       value: { select: { id: true, label: true, rank: true } },
     },
-    orderBy: { createdAt: "desc" },
-  });
-  return NextResponse.json(goals);
+    orderBy: { createdAt: 'desc' },
+  })
+  return NextResponse.json(goals)
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  const body = await request.json()
   const goal = await prisma.goal.create({
     data: {
       title: body.title,
       description: body.description,
       targetDate: body.targetDate ? new Date(body.targetDate) : null,
       successCriteria: body.successCriteria,
-      status: body.status || "ACTIVE",
+      status: body.status || 'ACTIVE',
       valueId: body.valueId || null,
     },
-  });
+  })
 
-  await recordEvent("GOAL", goal.id, "CREATED", {
+  await recordEvent('GOAL', goal.id, 'CREATED', {
     title: goal.title,
     status: goal.status,
-  });
+  })
 
-  return NextResponse.json(goal, { status: 201 });
+  return NextResponse.json(goal, { status: 201 })
 }

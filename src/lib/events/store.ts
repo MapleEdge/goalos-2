@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/prisma";
-import { NodeType, Prisma } from "@prisma/client";
+import type { NodeType, Prisma } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
-export type EventPayload = Prisma.InputJsonObject;
+export type EventPayload = Prisma.InputJsonObject
 
 export async function recordEvent(
   entityType: NodeType,
@@ -16,27 +16,27 @@ export async function recordEvent(
       eventType,
       payload,
     },
-  });
+  })
 }
 
 export async function getEntityEvents(entityType: NodeType, entityId: string) {
   return prisma.event.findMany({
     where: { entityType, entityId },
-    orderBy: { occurredAt: "asc" },
-  });
+    orderBy: { occurredAt: 'asc' },
+  })
 }
 
 export async function getRecentEvents(limit = 50) {
   return prisma.event.findMany({
-    orderBy: { occurredAt: "desc" },
+    orderBy: { occurredAt: 'desc' },
     take: limit,
-  });
+  })
 }
 
 export async function getEventTimeline(since?: Date) {
   return prisma.event.findMany({
     where: since ? { occurredAt: { gte: since } } : undefined,
-    orderBy: { occurredAt: "desc" },
+    orderBy: { occurredAt: 'desc' },
     take: 200,
-  });
+  })
 }

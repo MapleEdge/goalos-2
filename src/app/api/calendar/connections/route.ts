@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   const connections = await prisma.calendarConnection.findMany({
@@ -12,23 +12,23 @@ export async function GET() {
       calendarId: true,
       createdAt: true,
     },
-    orderBy: { createdAt: "desc" },
-  });
-  return NextResponse.json(connections);
+    orderBy: { createdAt: 'desc' },
+  })
+  return NextResponse.json(connections)
 }
 
 export async function DELETE(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
   if (!id) {
-    return NextResponse.json({ error: "Missing id" }, { status: 400 });
+    return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   }
 
   // Delete synced events from this connection
   await prisma.scheduleEvent.deleteMany({
     where: { calendarConnectionId: id },
-  });
+  })
 
-  await prisma.calendarConnection.delete({ where: { id } });
-  return NextResponse.json({ success: true });
+  await prisma.calendarConnection.delete({ where: { id } })
+  return NextResponse.json({ success: true })
 }

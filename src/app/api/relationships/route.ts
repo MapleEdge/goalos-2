@@ -1,46 +1,46 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { NodeType } from "@prisma/client";
-import { recordEvent } from "@/lib/events/store";
+import type { NodeType } from '@prisma/client'
+import { NextResponse } from 'next/server'
+import { recordEvent } from '@/lib/events/store'
+import { prisma } from '@/lib/prisma'
 
 function getForeignKeyFields(
   type: NodeType,
-  direction: "from" | "to",
+  direction: 'from' | 'to',
   id: string
 ): Record<string, string> {
-  const suffix = direction === "from" ? "FromId" : "ToId";
+  const suffix = direction === 'from' ? 'FromId' : 'ToId'
   switch (type) {
-    case "GOAL":
-      return { [`goal${suffix}`]: id };
-    case "STAKEHOLDER":
-      return { [`stakeholder${suffix}`]: id };
-    case "PREREQUISITE":
-      return { [`prereq${suffix}`]: id };
-    case "EVIDENCE":
-      return { [`evidence${suffix}`]: id };
-    case "ACTION":
-      return { [`action${suffix}`]: id };
+    case 'GOAL':
+      return { [`goal${suffix}`]: id }
+    case 'STAKEHOLDER':
+      return { [`stakeholder${suffix}`]: id }
+    case 'PREREQUISITE':
+      return { [`prereq${suffix}`]: id }
+    case 'EVIDENCE':
+      return { [`evidence${suffix}`]: id }
+    case 'ACTION':
+      return { [`action${suffix}`]: id }
     default:
-      return {};
+      return {}
   }
 }
 
 export async function GET() {
   const relationships = await prisma.relationship.findMany({
-    orderBy: { createdAt: "desc" },
-  });
-  return NextResponse.json(relationships);
+    orderBy: { createdAt: 'desc' },
+  })
+  return NextResponse.json(relationships)
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  const body = await request.json()
 
   const fromFK = getForeignKeyFields(
     body.fromType as NodeType,
-    "from",
+    'from',
     body.fromId
-  );
-  const toFK = getForeignKeyFields(body.toType as NodeType, "to", body.toId);
+  )
+  const toFK = getForeignKeyFields(body.toType as NodeType, 'to', body.toId)
 
   const relationship = await prisma.relationship.create({
     data: {
@@ -53,13 +53,18 @@ export async function POST(request: Request) {
       ...fromFK,
       ...toFK,
     },
-  });
+  })
 
-  await recordEvent(body.fromType as NodeType, body.fromId, "RELATIONSHIP_ADDED", {
-    toType: body.toType,
-    toId: body.toId,
-    label: body.label,
-  });
+  await recordEvent(
+    body.fromType as NodeType,
+    body.fromId,
+    'RELATIONSHIP_ADDED',
+    {
+      toType: body.toType,
+      toId: body.toId,
+      label: body.label,
+    }
+  )
 
-  return NextResponse.json(relationship, { status: 201 });
+  return NextResponse.json(relationship, { status: 201 })
 }

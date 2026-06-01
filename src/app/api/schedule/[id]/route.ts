@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const body = await request.json();
+  const { id } = await params
+  const body = await request.json()
 
-  const existing = await prisma.scheduleEvent.findUnique({ where: { id } });
+  const existing = await prisma.scheduleEvent.findUnique({ where: { id } })
   if (!existing) {
-    return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    return NextResponse.json({ error: 'Event not found' }, { status: 404 })
   }
 
   const updated = await prisma.scheduleEvent.update({
@@ -30,23 +30,23 @@ export async function PATCH(
       }),
       ...(body.color !== undefined && { color: body.color || null }),
     },
-  });
+  })
 
-  return NextResponse.json(updated);
+  return NextResponse.json(updated)
 }
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const { id } = await params
 
-  const existing = await prisma.scheduleEvent.findUnique({ where: { id } });
+  const existing = await prisma.scheduleEvent.findUnique({ where: { id } })
   if (!existing) {
-    return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    return NextResponse.json({ error: 'Event not found' }, { status: 404 })
   }
 
-  await prisma.scheduleEvent.delete({ where: { id } });
+  await prisma.scheduleEvent.delete({ where: { id } })
 
-  return NextResponse.json({ deleted: true });
+  return NextResponse.json({ deleted: true })
 }

@@ -1,16 +1,19 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { isAIAvailable } from "@/lib/reasoning/ai";
-import { computeRelationshipHealth } from "@/lib/reasoning/relationships";
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { isAIAvailable } from '@/lib/reasoning/ai'
+import { computeRelationshipHealth } from '@/lib/reasoning/relationships'
 
 export async function GET() {
   const [stakeholders, goals, relationships] = await Promise.all([
-    prisma.stakeholder.findMany({ orderBy: { createdAt: "desc" } }),
-    prisma.goal.findMany({ where: { status: "ACTIVE" }, select: { id: true, title: true, status: true } }),
+    prisma.stakeholder.findMany({ orderBy: { createdAt: 'desc' } }),
+    prisma.goal.findMany({
+      where: { status: 'ACTIVE' },
+      select: { id: true, title: true, status: true },
+    }),
     prisma.relationship.findMany({
       select: { fromType: true, fromId: true, toType: true, toId: true },
     }),
-  ]);
+  ])
 
   const health = computeRelationshipHealth(
     stakeholders.map((s) => ({
@@ -24,11 +27,11 @@ export async function GET() {
     })),
     goals,
     relationships
-  );
+  )
 
   return NextResponse.json({
     health,
     generatedAt: new Date().toISOString(),
     aiAvailable: isAIAvailable(),
-  });
+  })
 }

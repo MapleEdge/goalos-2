@@ -1,47 +1,46 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
 // Import GoalOS actions with due dates as schedule events
 export async function POST() {
   const actions = await prisma.action.findMany({
     where: {
       dueDate: { not: null },
-      status: { in: ["TODO", "IN_PROGRESS"] },
+      status: { in: ['TODO', 'IN_PROGRESS'] },
     },
     include: { goal: { select: { title: true } } },
-  });
+  })
 
-  let imported = 0;
+  let imported = 0
   for (const action of actions) {
-    if (!action.dueDate) continue;
+    if (!action.dueDate) continue
 
     const existing = await prisma.scheduleEvent.findFirst({
-      where: { actionId: action.id, source: "GOALOS" },
-    });
+      where: { actionId: action.id, source: 'GOALOS' },
+    })
 
     if (!existing) {
-      const startTime = new Date(action.dueDate);
-      startTime.setHours(9, 0, 0, 0);
-      const endTime = new Date(action.dueDate);
-      endTime.setHours(10, 0, 0, 0);
+      const startTime = new Date(action.dueDate)
+      startTime.setHours(9, 0, 0, 0)
+      const endTime = new Date(action.dueDate)
+      endTime.setHours(10, 0, 0, 0)
 
       await prisma.scheduleEvent.create({
         data: {
           title: action.title,
-          description: action.goal
-            ? `Goal: ${action.goal.title}`
-            : undefined,
+          description: action.goal ? `Goal: ${action.goal.title}` : undefined,
           startTime,
           endTime,
-          source: "GOALOS",
+          source: 'GOALOS',
           actionId: action.id,
           goalId: action.goalId,
-          color: action.priority === "HIGH" || action.priority === "CRITICAL"
-            ? "#ef4444"
-            : "#3b82f6",
+          color:
+            action.priority === 'HIGH' || action.priority === 'CRITICAL'
+              ? '#ef4444'
+              : '#3b82f6',
         },
-      });
-      imported++;
+      })
+      imported++
     }
   }
 
@@ -49,16 +48,16 @@ export async function POST() {
   const goals = await prisma.goal.findMany({
     where: {
       targetDate: { not: null },
-      status: { in: ["ACTIVE", "BLOCKED", "WAITING"] },
+      status: { in: ['ACTIVE', 'BLOCKED', 'WAITING'] },
     },
-  });
+  })
 
   for (const goal of goals) {
-    if (!goal.targetDate) continue;
+    if (!goal.targetDate) continue
 
     const existing = await prisma.scheduleEvent.findFirst({
-      where: { goalId: goal.id, actionId: null, source: "GOALOS" },
-    });
+      where: { goalId: goal.id, actionId: null, source: 'GOALOS' },
+    })
 
     if (!existing) {
       await prisma.scheduleEvent.create({
@@ -68,14 +67,14 @@ export async function POST() {
           startTime: goal.targetDate,
           endTime: goal.targetDate,
           allDay: true,
-          source: "GOALOS",
+          source: 'GOALOS',
           goalId: goal.id,
-          color: "#f59e0b",
+          color: '#f59e0b',
         },
-      });
-      imported++;
+      })
+      imported++
     }
   }
 
-  return NextResponse.json({ imported });
+  return NextResponse.json({ imported })
 }

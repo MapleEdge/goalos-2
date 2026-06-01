@@ -1,180 +1,216 @@
-"use client";
+'use client'
 
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from 'react'
 
 interface ExistingEvent {
-  id: string;
-  title: string;
-  startTime: string;
-  endTime: string;
-  allDay: boolean;
+  id: string
+  title: string
+  startTime: string
+  endTime: string
+  allDay: boolean
 }
 
 interface TimeBlock {
-  day: number; // 0=Sun..6=Sat
-  hour: number; // 0-23
-  selected: boolean;
+  day: number // 0=Sun..6=Sat
+  hour: number // 0-23
+  selected: boolean
 }
 
 interface Props {
-  goalTitle: string;
-  targetDate: string;
-  onConfirm: (weeklyHours: number, blocks: TimeBlock[]) => void;
-  onBack: () => void;
+  goalTitle: string
+  targetDate: string
+  onConfirm: (weeklyHours: number, blocks: TimeBlock[]) => void
+  onBack: () => void
 }
 
-const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const WORK_HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const WORK_HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]
 
 function getWeeksUntil(dateStr: string): number {
-  if (!dateStr) return 12;
-  const target = new Date(dateStr);
-  const now = new Date();
-  const diffMs = target.getTime() - now.getTime();
-  return Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
+  if (!dateStr) return 12
+  const target = new Date(dateStr)
+  const now = new Date()
+  const diffMs = target.getTime() - now.getTime()
+  return Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)))
 }
 
 function suggestWeeklyHours(title: string, targetDate: string): number {
-  const weeks = getWeeksUntil(targetDate);
-  const lower = title.toLowerCase();
+  const weeks = getWeeksUntil(targetDate)
+  const lower = title.toLowerCase()
 
   // Estimate total effort based on keywords
-  let totalHours = 40;
-  if (lower.includes("research") || lower.includes("paper") || lower.includes("publish")) {
-    totalHours = 120;
-  } else if (lower.includes("raise") || lower.includes("fund") || lower.includes("startup")) {
-    totalHours = 200;
-  } else if (lower.includes("learn") || lower.includes("course") || lower.includes("degree") || lower.includes("university")) {
-    totalHours = 160;
-  } else if (lower.includes("build") || lower.includes("develop") || lower.includes("launch")) {
-    totalHours = 150;
-  } else if (lower.includes("network") || lower.includes("relationship")) {
-    totalHours = 60;
-  } else if (lower.includes("fitness") || lower.includes("exercise") || lower.includes("health")) {
-    totalHours = 80;
+  let totalHours = 40
+  if (
+    lower.includes('research') ||
+    lower.includes('paper') ||
+    lower.includes('publish')
+  ) {
+    totalHours = 120
+  } else if (
+    lower.includes('raise') ||
+    lower.includes('fund') ||
+    lower.includes('startup')
+  ) {
+    totalHours = 200
+  } else if (
+    lower.includes('learn') ||
+    lower.includes('course') ||
+    lower.includes('degree') ||
+    lower.includes('university')
+  ) {
+    totalHours = 160
+  } else if (
+    lower.includes('build') ||
+    lower.includes('develop') ||
+    lower.includes('launch')
+  ) {
+    totalHours = 150
+  } else if (lower.includes('network') || lower.includes('relationship')) {
+    totalHours = 60
+  } else if (
+    lower.includes('fitness') ||
+    lower.includes('exercise') ||
+    lower.includes('health')
+  ) {
+    totalHours = 80
   }
 
-  const perWeek = Math.ceil(totalHours / weeks);
-  return Math.min(Math.max(perWeek, 1), 20);
+  const perWeek = Math.ceil(totalHours / weeks)
+  return Math.min(Math.max(perWeek, 1), 20)
 }
 
 function getWeekStart(): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - d.getDay());
-  d.setHours(0, 0, 0, 0);
-  return d;
+  const d = new Date()
+  d.setDate(d.getDate() - d.getDay())
+  d.setHours(0, 0, 0, 0)
+  return d
 }
 
-export function TimeCommitmentStep({ goalTitle, targetDate, onConfirm, onBack }: Props) {
-  const defaultHours = suggestWeeklyHours(goalTitle, targetDate);
-  const [weeklyHours, setWeeklyHours] = useState(defaultHours);
-  const [blocks, setBlocks] = useState<TimeBlock[]>([]);
-  const [existingEvents, setExistingEvents] = useState<ExistingEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const weeks = getWeeksUntil(targetDate);
+export function TimeCommitmentStep({
+  goalTitle,
+  targetDate,
+  onConfirm,
+  onBack,
+}: Props) {
+  const defaultHours = suggestWeeklyHours(goalTitle, targetDate)
+  const [weeklyHours, setWeeklyHours] = useState(defaultHours)
+  const [blocks, setBlocks] = useState<TimeBlock[]>([])
+  const [existingEvents, setExistingEvents] = useState<ExistingEvent[]>([])
+  const [loading, setLoading] = useState(true)
+  const weeks = getWeeksUntil(targetDate)
 
   const autoSuggestBlocks = useCallback(
     (hours: number, events: ExistingEvent[]): TimeBlock[] => {
-      const occupied = new Set<string>();
+      const occupied = new Set<string>()
       for (const ev of events) {
-        const s = new Date(ev.startTime);
-        const e = new Date(ev.endTime);
-        const day = s.getDay();
+        const s = new Date(ev.startTime)
+        const e = new Date(ev.endTime)
+        const day = s.getDay()
         for (let h = s.getHours(); h < e.getHours(); h++) {
-          occupied.add(`${day}-${h}`);
+          occupied.add(`${day}-${h}`)
         }
       }
 
       const preferenceOrder = [
-        ...[1, 2, 3, 4, 5].flatMap((d) => [14, 15, 16, 17].map((h) => ({ day: d, hour: h }))),
-        ...[1, 2, 3, 4, 5].flatMap((d) => [9, 10, 11, 12, 13].map((h) => ({ day: d, hour: h }))),
-        ...[1, 2, 3, 4, 5].flatMap((d) => [18, 19, 20, 21].map((h) => ({ day: d, hour: h }))),
+        ...[1, 2, 3, 4, 5].flatMap((d) =>
+          [14, 15, 16, 17].map((h) => ({ day: d, hour: h }))
+        ),
+        ...[1, 2, 3, 4, 5].flatMap((d) =>
+          [9, 10, 11, 12, 13].map((h) => ({ day: d, hour: h }))
+        ),
+        ...[1, 2, 3, 4, 5].flatMap((d) =>
+          [18, 19, 20, 21].map((h) => ({ day: d, hour: h }))
+        ),
         ...[6, 0].flatMap((d) =>
           [10, 11, 12, 13, 14, 15, 16, 17].map((h) => ({ day: d, hour: h }))
         ),
-      ];
+      ]
 
-      const result: TimeBlock[] = [];
-      let remaining = hours;
+      const result: TimeBlock[] = []
+      let remaining = hours
       for (const slot of preferenceOrder) {
-        if (remaining <= 0) break;
+        if (remaining <= 0) break
         if (!occupied.has(`${slot.day}-${slot.hour}`)) {
-          result.push({ day: slot.day, hour: slot.hour, selected: true });
-          remaining--;
+          result.push({ day: slot.day, hour: slot.hour, selected: true })
+          remaining--
         }
       }
-      return result;
+      return result
     },
     []
-  );
+  )
 
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false
     async function load() {
-      const start = getWeekStart();
-      const end = new Date(start);
-      end.setDate(end.getDate() + 7);
+      const start = getWeekStart()
+      const end = new Date(start)
+      end.setDate(end.getDate() + 7)
       try {
         const res = await fetch(
           `/api/schedule?start=${start.toISOString()}&end=${end.toISOString()}`
-        );
-        const data = await res.json();
+        )
+        const data = await res.json()
         if (!cancelled) {
-          setExistingEvents(data);
-          setBlocks(autoSuggestBlocks(weeklyHours, data));
-          setLoading(false);
+          setExistingEvents(data)
+          setBlocks(autoSuggestBlocks(weeklyHours, data))
+          setLoading(false)
         }
       } catch {
         if (!cancelled) {
-          setExistingEvents([]);
-          setBlocks(autoSuggestBlocks(weeklyHours, []));
-          setLoading(false);
+          setExistingEvents([])
+          setBlocks(autoSuggestBlocks(weeklyHours, []))
+          setLoading(false)
         }
       }
     }
-    load();
-    return () => { cancelled = true; };
-  }, [autoSuggestBlocks, weeklyHours]);
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [autoSuggestBlocks, weeklyHours])
 
   function handleHoursChange(newHours: number) {
-    setWeeklyHours(newHours);
-    setBlocks(autoSuggestBlocks(newHours, existingEvents));
+    setWeeklyHours(newHours)
+    setBlocks(autoSuggestBlocks(newHours, existingEvents))
   }
 
   function toggleBlock(day: number, hour: number) {
     setBlocks((prev) => {
-      const existing = prev.find((b) => b.day === day && b.hour === hour);
+      const existing = prev.find((b) => b.day === day && b.hour === hour)
       if (existing) {
-        return prev.filter((b) => !(b.day === day && b.hour === hour));
+        return prev.filter((b) => !(b.day === day && b.hour === hour))
       }
-      return [...prev, { day, hour, selected: true }];
-    });
+      return [...prev, { day, hour, selected: true }]
+    })
   }
 
   function isOccupied(day: number, hour: number): boolean {
     for (const ev of existingEvents) {
-      const s = new Date(ev.startTime);
-      const e = new Date(ev.endTime);
+      const s = new Date(ev.startTime)
+      const e = new Date(ev.endTime)
       if (s.getDay() === day && hour >= s.getHours() && hour < e.getHours()) {
-        return true;
+        return true
       }
     }
-    return false;
+    return false
   }
 
   function getEventAt(day: number, hour: number): ExistingEvent | null {
-    return existingEvents.find((ev) => {
-      const s = new Date(ev.startTime);
-      const e = new Date(ev.endTime);
-      return s.getDay() === day && hour >= s.getHours() && hour < e.getHours();
-    }) ?? null;
+    return (
+      existingEvents.find((ev) => {
+        const s = new Date(ev.startTime)
+        const e = new Date(ev.endTime)
+        return s.getDay() === day && hour >= s.getHours() && hour < e.getHours()
+      }) ?? null
+    )
   }
 
   function isSelected(day: number, hour: number): boolean {
-    return blocks.some((b) => b.day === day && b.hour === hour && b.selected);
+    return blocks.some((b) => b.day === day && b.hour === hour && b.selected)
   }
 
-  const selectedCount = blocks.filter((b) => b.selected).length;
+  const selectedCount = blocks.filter((b) => b.selected).length
 
   if (loading) {
     return (
@@ -182,17 +218,16 @@ export function TimeCommitmentStep({ goalTitle, targetDate, onConfirm, onBack }:
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700" />
         <p className="mt-3 text-sm text-zinc-500">Loading your schedule...</p>
       </div>
-    );
+    )
   }
 
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-zinc-800">
-          Time Commitment
-        </h3>
+        <h3 className="text-sm font-semibold text-zinc-800">Time Commitment</h3>
         <p className="text-xs text-zinc-500 mt-0.5">
-          How many hours per week will you dedicate to &ldquo;{goalTitle}&rdquo;?
+          How many hours per week will you dedicate to &ldquo;{goalTitle}
+          &rdquo;?
         </p>
       </div>
 
@@ -221,9 +256,8 @@ export function TimeCommitmentStep({ goalTitle, targetDate, onConfirm, onBack }:
         </div>
         {targetDate && (
           <p className="mt-2 text-xs text-zinc-500">
-            {weeks} week{weeks !== 1 ? "s" : ""} until target date
-            {" · "}
-            ~{weeklyHours * weeks}h total estimated
+            {weeks} week{weeks !== 1 ? 's' : ''} until target date
+            {' · '}~{weeklyHours * weeks}h total estimated
           </p>
         )}
       </div>
@@ -231,7 +265,8 @@ export function TimeCommitmentStep({ goalTitle, targetDate, onConfirm, onBack }:
       {/* Mini weekly calendar */}
       <div>
         <p className="text-xs font-medium text-zinc-600 mb-2">
-          Select time blocks ({selectedCount}h selected of {weeklyHours}h target)
+          Select time blocks ({selectedCount}h selected of {weeklyHours}h
+          target)
         </p>
         <div className="rounded-lg border border-zinc-200 overflow-hidden">
           {/* Day headers */}
@@ -242,8 +277,8 @@ export function TimeCommitmentStep({ goalTitle, targetDate, onConfirm, onBack }:
                 key={d}
                 className={`py-1.5 text-center text-[10px] font-medium ${
                   i === new Date().getDay()
-                    ? "text-blue-600 bg-blue-50"
-                    : "text-zinc-500"
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-zinc-500'
                 }`}
               >
                 {d}
@@ -260,17 +295,17 @@ export function TimeCommitmentStep({ goalTitle, targetDate, onConfirm, onBack }:
               >
                 <div className="py-1 px-1 text-[9px] text-zinc-400 text-right pr-2 leading-6">
                   {hour === 0
-                    ? "12a"
+                    ? '12a'
                     : hour < 12
-                    ? `${hour}a`
-                    : hour === 12
-                    ? "12p"
-                    : `${hour - 12}p`}
+                      ? `${hour}a`
+                      : hour === 12
+                        ? '12p'
+                        : `${hour - 12}p`}
                 </div>
                 {DAY_LABELS.map((_, day) => {
-                  const occ = isOccupied(day, hour);
-                  const sel = isSelected(day, hour);
-                  const ev = occ ? getEventAt(day, hour) : null;
+                  const occ = isOccupied(day, hour)
+                  const sel = isSelected(day, hour)
+                  const ev = occ ? getEventAt(day, hour) : null
                   return (
                     <button
                       key={`${day}-${hour}`}
@@ -279,22 +314,26 @@ export function TimeCommitmentStep({ goalTitle, targetDate, onConfirm, onBack }:
                       onClick={() => toggleBlock(day, hour)}
                       className={`h-6 border-l border-zinc-100 text-[8px] truncate px-0.5 transition-colors ${
                         occ
-                          ? "bg-red-100 text-red-600 cursor-not-allowed"
+                          ? 'bg-red-100 text-red-600 cursor-not-allowed'
                           : sel
-                          ? "bg-emerald-500 text-white"
-                          : "hover:bg-emerald-50"
+                            ? 'bg-emerald-500 text-white'
+                            : 'hover:bg-emerald-50'
                       }`}
                       title={
                         occ && ev
                           ? `Busy: ${ev.title}`
                           : sel
-                          ? "Click to remove"
-                          : "Click to add"
+                            ? 'Click to remove'
+                            : 'Click to add'
                       }
                     >
-                      {occ && ev ? ev.title.slice(0, 8) : sel ? goalTitle.slice(0, 6) : ""}
+                      {occ && ev
+                        ? ev.title.slice(0, 8)
+                        : sel
+                          ? goalTitle.slice(0, 6)
+                          : ''}
                     </button>
-                  );
+                  )
                 })}
               </div>
             ))}
@@ -319,8 +358,8 @@ export function TimeCommitmentStep({ goalTitle, targetDate, onConfirm, onBack }:
       {selectedCount !== weeklyHours && (
         <p className="text-xs text-amber-600">
           {selectedCount < weeklyHours
-            ? `Select ${weeklyHours - selectedCount} more hour${weeklyHours - selectedCount !== 1 ? "s" : ""} to match your target`
-            : `${selectedCount - weeklyHours} hour${selectedCount - weeklyHours !== 1 ? "s" : ""} over target — that's fine if intentional`}
+            ? `Select ${weeklyHours - selectedCount} more hour${weeklyHours - selectedCount !== 1 ? 's' : ''} to match your target`
+            : `${selectedCount - weeklyHours} hour${selectedCount - weeklyHours !== 1 ? 's' : ''} over target — that's fine if intentional`}
         </p>
       )}
 
@@ -350,5 +389,5 @@ export function TimeCommitmentStep({ goalTitle, targetDate, onConfirm, onBack }:
         </div>
       </div>
     </div>
-  );
+  )
 }
