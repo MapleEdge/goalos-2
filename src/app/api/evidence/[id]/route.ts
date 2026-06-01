@@ -1,28 +1,28 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { recordEvent } from "@/lib/events/store";
+import { NextResponse } from 'next/server'
+import { recordEvent } from '@/lib/events/store'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
+  const { id } = await params
   const evidence = await prisma.evidence.findUnique({
     where: { id },
     include: { prerequisite: true, stakeholder: true },
-  });
+  })
   if (!evidence) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
-  return NextResponse.json(evidence);
+  return NextResponse.json(evidence)
 }
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const body = await request.json();
+  const { id } = await params
+  const body = await request.json()
   const evidence = await prisma.evidence.update({
     where: { id },
     data: {
@@ -33,21 +33,21 @@ export async function PATCH(
       prerequisiteId: body.prerequisiteId,
       stakeholderId: body.stakeholderId,
     },
-  });
+  })
 
-  await recordEvent("EVIDENCE", id, "UPDATED", {
+  await recordEvent('EVIDENCE', id, 'UPDATED', {
     updatedFields: Object.keys(body),
-  });
+  })
 
-  return NextResponse.json(evidence);
+  return NextResponse.json(evidence)
 }
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  await recordEvent("EVIDENCE", id, "DELETED", {});
-  await prisma.evidence.delete({ where: { id } });
-  return NextResponse.json({ success: true });
+  const { id } = await params
+  await recordEvent('EVIDENCE', id, 'DELETED', {})
+  await prisma.evidence.delete({ where: { id } })
+  return NextResponse.json({ success: true })
 }

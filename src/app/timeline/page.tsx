@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import { Timeline } from "@/components/timeline/Timeline";
+import { Timeline } from '@/components/timeline/Timeline'
 
 export default function TimelinePage() {
-  return <Timeline />;
+  return <Timeline />
 }

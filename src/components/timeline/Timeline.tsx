@@ -1,117 +1,122 @@
-"use client";
+'use client'
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from 'react'
 
 interface TimelineEvent {
-  id: string;
-  entityType: string;
-  entityId: string;
-  eventType: string;
-  payload: Record<string, unknown>;
-  occurredAt: string;
+  id: string
+  entityType: string
+  entityId: string
+  eventType: string
+  payload: Record<string, unknown>
+  occurredAt: string
 }
 
 const typeIcons: Record<string, string> = {
-  GOAL: "G",
-  STAKEHOLDER: "S",
-  PREREQUISITE: "P",
-  EVIDENCE: "E",
-  ACTION: "A",
-};
+  GOAL: 'G',
+  STAKEHOLDER: 'S',
+  PREREQUISITE: 'P',
+  EVIDENCE: 'E',
+  ACTION: 'A',
+}
 
 const typeColors: Record<string, string> = {
-  GOAL: "bg-emerald-500",
-  STAKEHOLDER: "bg-pink-500",
-  PREREQUISITE: "bg-amber-500",
-  EVIDENCE: "bg-blue-500",
-  ACTION: "bg-violet-500",
-};
+  GOAL: 'bg-emerald-500',
+  STAKEHOLDER: 'bg-pink-500',
+  PREREQUISITE: 'bg-amber-500',
+  EVIDENCE: 'bg-blue-500',
+  ACTION: 'bg-violet-500',
+}
 
 const eventTypeLabels: Record<string, string> = {
-  CREATED: "Created",
-  UPDATED: "Updated",
-  DELETED: "Deleted",
-  STATUS_CHANGED: "Status changed",
-  RELATIONSHIP_ADDED: "Relationship added",
-};
+  CREATED: 'Created',
+  UPDATED: 'Updated',
+  DELETED: 'Deleted',
+  STATUS_CHANGED: 'Status changed',
+  RELATIONSHIP_ADDED: 'Relationship added',
+}
 
 function formatPayload(payload: Record<string, unknown>): string {
-  const parts: string[] = [];
+  const parts: string[] = []
   for (const [key, value] of Object.entries(payload)) {
-    if (value === null || value === undefined) continue;
-    if (key === "updatedFields" && Array.isArray(value)) {
-      parts.push(`Fields: ${value.join(", ")}`);
-    } else if (typeof value === "object" && value !== null && "from" in value && "to" in value) {
-      const change = value as { from: string; to: string };
-      parts.push(`${key}: ${change.from} → ${change.to}`);
-    } else if (typeof value === "string" || typeof value === "number") {
-      parts.push(`${key}: ${value}`);
+    if (value === null || value === undefined) continue
+    if (key === 'updatedFields' && Array.isArray(value)) {
+      parts.push(`Fields: ${value.join(', ')}`)
+    } else if (
+      typeof value === 'object' &&
+      value !== null &&
+      'from' in value &&
+      'to' in value
+    ) {
+      const change = value as { from: string; to: string }
+      parts.push(`${key}: ${change.from} → ${change.to}`)
+    } else if (typeof value === 'string' || typeof value === 'number') {
+      parts.push(`${key}: ${value}`)
     }
   }
-  return parts.join(" · ");
+  return parts.join(' · ')
 }
 
 interface DateGroupedEvent {
-  event: TimelineEvent;
-  date: string;
-  time: string;
-  showDate: boolean;
+  event: TimelineEvent
+  date: string
+  time: string
+  showDate: boolean
 }
 
 export function Timeline() {
-  const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [events, setEvents] = useState<TimelineEvent[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false
     async function load() {
-      const res = await fetch("/api/events?limit=100");
-      const data = await res.json();
+      const res = await fetch('/api/events?limit=100')
+      const data = await res.json()
       if (!cancelled) {
-        setEvents(data);
-        setLoading(false);
+        setEvents(data)
+        setLoading(false)
       }
     }
-    load();
+    load()
     return () => {
-      cancelled = true;
-    };
-  }, []);
+      cancelled = true
+    }
+  }, [])
 
   const groupedEvents = useMemo((): DateGroupedEvent[] => {
-    const result: DateGroupedEvent[] = [];
+    const result: DateGroupedEvent[] = []
     for (let i = 0; i < events.length; i++) {
-      const event = events[i];
-      const date = new Date(event.occurredAt).toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      });
-      const time = new Date(event.occurredAt).toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      const prevDate =
-        i > 0
-          ? new Date(events[i - 1].occurredAt).toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })
-          : "";
-      result.push({ event, date, time, showDate: date !== prevDate });
+      const event = events[i]!
+      const date = new Date(event.occurredAt).toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+      const time = new Date(event.occurredAt).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+      const prev = events[i - 1]
+      const prevDate = prev
+        ? new Date(prev.occurredAt).toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+          })
+        : ''
+      result.push({ event, date, time, showDate: date !== prevDate })
     }
-    return result;
-  }, [events]);
+    return result
+  }, [events])
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-200 border-t-zinc-800" />
       </div>
-    );
+    )
   }
 
   if (events.length === 0) {
@@ -125,7 +130,7 @@ export function Timeline() {
           evidence, and actions.
         </p>
       </div>
-    );
+    )
   }
 
   return (
@@ -147,10 +152,10 @@ export function Timeline() {
             <div className="relative flex items-start gap-3 pb-4">
               <div
                 className={`relative z-10 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-white text-xs font-bold ${
-                  typeColors[event.entityType] || "bg-zinc-400"
+                  typeColors[event.entityType] || 'bg-zinc-400'
                 }`}
               >
-                {typeIcons[event.entityType] || "?"}
+                {typeIcons[event.entityType] || '?'}
               </div>
               <div className="min-w-0 flex-1 rounded-lg border border-zinc-100 bg-white p-3 shadow-sm">
                 <div className="flex items-center gap-2 mb-1">
@@ -177,5 +182,5 @@ export function Timeline() {
         ))}
       </div>
     </div>
-  );
+  )
 }

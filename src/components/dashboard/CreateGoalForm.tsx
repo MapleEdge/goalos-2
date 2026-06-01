@@ -1,231 +1,262 @@
-"use client";
+'use client'
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { TimeCommitmentStep } from "./TimeCommitmentStep";
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { TimeCommitmentStep } from './TimeCommitmentStep'
 
 interface TimeBlock {
-  day: number;
-  hour: number;
-  selected: boolean;
+  day: number
+  hour: number
+  selected: boolean
 }
 
 interface Stakeholder {
-  id: string;
-  name: string;
-  organization: string | null;
-  role: string | null;
+  id: string
+  name: string
+  organization: string | null
+  role: string | null
 }
 
 interface Capability {
-  type: "willingness" | "capability";
-  description: string;
-  condition: string | null;
+  type: 'willingness' | 'capability'
+  description: string
+  condition: string | null
 }
 
 interface SuggestedStakeholder {
-  stakeholderId: string;
-  name: string;
-  organization: string | null;
-  role: string | null;
-  matchingCapabilities: Capability[];
-  relevanceScore: number;
+  stakeholderId: string
+  name: string
+  organization: string | null
+  role: string | null
+  matchingCapabilities: Capability[]
+  relevanceScore: number
 }
 
 interface SelectedStakeholder {
-  stakeholderId: string;
-  name: string;
-  organization: string | null;
-  label: string;
+  stakeholderId: string
+  name: string
+  organization: string | null
+  label: string
 }
 
 interface NewStakeholder {
-  tempId: string;
-  name: string;
-  organization: string;
-  role: string;
-  label: string;
+  tempId: string
+  name: string
+  organization: string
+  role: string
+  label: string
 }
 
 export function CreateGoalForm({
   onCreated,
   onCancel,
-  initialTitle = "",
-  initialDescription = "",
-  initialTargetDate = "",
-  initialSuccessCriteria = "",
+  initialTitle = '',
+  initialDescription = '',
+  initialTargetDate = '',
+  initialSuccessCriteria = '',
 }: {
-  onCreated: () => void;
-  onCancel: () => void;
-  initialTitle?: string;
-  initialDescription?: string;
-  initialTargetDate?: string;
-  initialSuccessCriteria?: string;
+  onCreated: () => void
+  onCancel: () => void
+  initialTitle?: string
+  initialDescription?: string
+  initialTargetDate?: string
+  initialSuccessCriteria?: string
 }) {
-  const [title, setTitle] = useState(initialTitle);
-  const [description, setDescription] = useState(initialDescription);
-  const [targetDate, setTargetDate] = useState(initialTargetDate);
-  const [successCriteria, setSuccessCriteria] = useState(initialSuccessCriteria);
-  const [valueId, setValueId] = useState("");
-  const [values, setValues] = useState<{ id: string; label: string }[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<"details" | "time">("details");
+  const [title, setTitle] = useState(initialTitle)
+  const [description, setDescription] = useState(initialDescription)
+  const [targetDate, setTargetDate] = useState(initialTargetDate)
+  const [successCriteria, setSuccessCriteria] = useState(initialSuccessCriteria)
+  const [valueId, setValueId] = useState('')
+  const [values, setValues] = useState<{ id: string; label: string }[]>([])
+  const [loading, setLoading] = useState(false)
+  const [step, setStep] = useState<'details' | 'time'>('details')
 
   // Stakeholder linking state
-  const [showStakeholders, setShowStakeholders] = useState(false);
-  const [allStakeholders, setAllStakeholders] = useState<Stakeholder[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStakeholders, setSelectedStakeholders] = useState<SelectedStakeholder[]>([]);
-  const [newStakeholders, setNewStakeholders] = useState<NewStakeholder[]>([]);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [showNewForm, setShowNewForm] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newOrg, setNewOrg] = useState("");
-  const [newRole, setNewRole] = useState("");
-  const [newLabel, setNewLabel] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showStakeholders, setShowStakeholders] = useState(false)
+  const [allStakeholders, setAllStakeholders] = useState<Stakeholder[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedStakeholders, setSelectedStakeholders] = useState<
+    SelectedStakeholder[]
+  >([])
+  const [newStakeholders, setNewStakeholders] = useState<NewStakeholder[]>([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [showNewForm, setShowNewForm] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newOrg, setNewOrg] = useState('')
+  const [newRole, setNewRole] = useState('')
+  const [newLabel, setNewLabel] = useState('')
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Suggestions state
-  const [suggestions, setSuggestions] = useState<SuggestedStakeholder[]>([]);
-  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
-  const suggestionsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [suggestions, setSuggestions] = useState<SuggestedStakeholder[]>([])
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(
+    new Set()
+  )
+  const suggestionsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Capability editing state
-  const [editingStakeholderId, setEditingStakeholderId] = useState<string | null>(null);
-  const [editingCapabilities, setEditingCapabilities] = useState<Capability[]>([]);
-  const [savingCapabilities, setSavingCapabilities] = useState(false);
+  const [editingStakeholderId, setEditingStakeholderId] = useState<
+    string | null
+  >(null)
+  const [editingCapabilities, setEditingCapabilities] = useState<Capability[]>(
+    []
+  )
+  const [savingCapabilities, setSavingCapabilities] = useState(false)
 
   useEffect(() => {
-    fetch("/api/values")
+    fetch('/api/values')
       .then((r) => r.json())
       .then((data: { id: string; label: string }[]) => setValues(data))
-      .catch(() => setValues([]));
-  }, []);
+      .catch(() => setValues([]))
+  }, [])
 
   useEffect(() => {
     if (showStakeholders && allStakeholders.length === 0) {
-      fetch("/api/stakeholders")
+      fetch('/api/stakeholders')
         .then((r) => r.json())
-        .then((data: Stakeholder[]) => setAllStakeholders(data));
+        .then((data: Stakeholder[]) => setAllStakeholders(data))
     }
-  }, [showStakeholders, allStakeholders.length]);
+  }, [showStakeholders, allStakeholders.length])
 
   const fetchSuggestions = useCallback(() => {
-    const goalText = [title, description, successCriteria].join(" ").trim();
+    const goalText = [title, description, successCriteria].join(' ').trim()
     if (goalText.length < 5) {
-      setSuggestions([]);
-      return;
+      setSuggestions([])
+      return
     }
-    fetch("/api/stakeholders/suggestions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    fetch('/api/stakeholders/suggestions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, description, successCriteria }),
     })
       .then((r) => r.json())
       .then((data: SuggestedStakeholder[]) => setSuggestions(data))
-      .catch(() => setSuggestions([]));
-  }, [title, description, successCriteria]);
+      .catch(() => setSuggestions([]))
+  }, [title, description, successCriteria])
 
   useEffect(() => {
-    if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current);
-    suggestionsTimerRef.current = setTimeout(fetchSuggestions, 500);
-    return () => { if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current); };
-  }, [fetchSuggestions]);
+    if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current)
+    suggestionsTimerRef.current = setTimeout(fetchSuggestions, 500)
+    return () => {
+      if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current)
+    }
+  }, [fetchSuggestions])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowDropdown(false)
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const filteredStakeholders = allStakeholders.filter((s) => {
-    const alreadySelected = selectedStakeholders.some((sel) => sel.stakeholderId === s.id);
-    if (alreadySelected) return false;
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
+    const alreadySelected = selectedStakeholders.some(
+      (sel) => sel.stakeholderId === s.id
+    )
+    if (alreadySelected) return false
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
     return (
       s.name.toLowerCase().includes(q) ||
-      (s.organization && s.organization.toLowerCase().includes(q)) ||
-      (s.role && s.role.toLowerCase().includes(q))
-    );
-  });
+      s.organization?.toLowerCase().includes(q) ||
+      s.role?.toLowerCase().includes(q)
+    )
+  })
 
   function selectStakeholder(s: Stakeholder) {
     setSelectedStakeholders((prev) => [
       ...prev,
-      { stakeholderId: s.id, name: s.name, organization: s.organization, label: "" },
-    ]);
-    setSearchQuery("");
-    setShowDropdown(false);
+      {
+        stakeholderId: s.id,
+        name: s.name,
+        organization: s.organization,
+        label: '',
+      },
+    ])
+    setSearchQuery('')
+    setShowDropdown(false)
   }
 
   function acceptSuggestion(s: SuggestedStakeholder) {
-    const bestCap = s.matchingCapabilities[0];
+    const bestCap = s.matchingCapabilities[0]
     setSelectedStakeholders((prev) => [
       ...prev,
-      { stakeholderId: s.stakeholderId, name: s.name, organization: s.organization, label: bestCap?.description || "" },
-    ]);
-    if (!showStakeholders) setShowStakeholders(true);
+      {
+        stakeholderId: s.stakeholderId,
+        name: s.name,
+        organization: s.organization,
+        label: bestCap?.description || '',
+      },
+    ])
+    if (!showStakeholders) setShowStakeholders(true)
   }
 
   function dismissSuggestion(id: string) {
-    setDismissedSuggestions((prev) => new Set(prev).add(id));
+    setDismissedSuggestions((prev) => new Set(prev).add(id))
   }
 
   async function startEditing(stakeholderId: string) {
-    const res = await fetch(`/api/stakeholders/${stakeholderId}`);
-    const data = await res.json();
-    const caps = (data.capabilities as Capability[] | null) || [];
-    setEditingCapabilities(caps);
-    setEditingStakeholderId(stakeholderId);
+    const res = await fetch(`/api/stakeholders/${stakeholderId}`)
+    const data = await res.json()
+    const caps = (data.capabilities as Capability[] | null) || []
+    setEditingCapabilities(caps)
+    setEditingStakeholderId(stakeholderId)
   }
 
-  function updateCapability(index: number, field: keyof Capability, value: string) {
+  function updateCapability(
+    index: number,
+    field: keyof Capability,
+    value: string
+  ) {
     setEditingCapabilities((prev) =>
       prev.map((c, i) => (i === index ? { ...c, [field]: value || null } : c))
-    );
+    )
   }
 
   function deleteCapability(index: number) {
-    setEditingCapabilities((prev) => prev.filter((_, i) => i !== index));
+    setEditingCapabilities((prev) => prev.filter((_, i) => i !== index))
   }
 
   function addCapability() {
     setEditingCapabilities((prev) => [
       ...prev,
-      { type: "willingness", description: "", condition: null },
-    ]);
+      { type: 'willingness', description: '', condition: null },
+    ])
   }
 
   async function saveCapabilities(stakeholderId: string) {
-    setSavingCapabilities(true);
-    const valid = editingCapabilities.filter((c) => c.description.trim());
+    setSavingCapabilities(true)
+    const valid = editingCapabilities.filter((c) => c.description.trim())
     await fetch(`/api/stakeholders/${stakeholderId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ capabilities: valid }),
-    });
-    setSavingCapabilities(false);
-    setEditingStakeholderId(null);
+    })
+    setSavingCapabilities(false)
+    setEditingStakeholderId(null)
     // Re-trigger suggestions to reflect updated capabilities
-    fetchSuggestions();
+    fetchSuggestions()
   }
 
   function removeSelected(id: string) {
-    setSelectedStakeholders((prev) => prev.filter((s) => s.stakeholderId !== id));
+    setSelectedStakeholders((prev) =>
+      prev.filter((s) => s.stakeholderId !== id)
+    )
   }
 
   function updateSelectedLabel(id: string, label: string) {
     setSelectedStakeholders((prev) =>
       prev.map((s) => (s.stakeholderId === id ? { ...s, label } : s))
-    );
+    )
   }
 
   function addNewStakeholder() {
-    if (!newName.trim()) return;
+    if (!newName.trim()) return
     setNewStakeholders((prev) => [
       ...prev,
       {
@@ -235,30 +266,33 @@ export function CreateGoalForm({
         role: newRole.trim(),
         label: newLabel.trim(),
       },
-    ]);
-    setNewName("");
-    setNewOrg("");
-    setNewRole("");
-    setNewLabel("");
-    setShowNewForm(false);
+    ])
+    setNewName('')
+    setNewOrg('')
+    setNewRole('')
+    setNewLabel('')
+    setShowNewForm(false)
   }
 
   function removeNew(tempId: string) {
-    setNewStakeholders((prev) => prev.filter((s) => s.tempId !== tempId));
+    setNewStakeholders((prev) => prev.filter((s) => s.tempId !== tempId))
   }
 
   function handleNextStep(e: React.FormEvent) {
-    e.preventDefault();
-    if (!title.trim()) return;
-    setStep("time");
+    e.preventDefault()
+    if (!title.trim()) return
+    setStep('time')
   }
 
-  async function createGoalWithTimeBlocks(weeklyHours: number, blocks: TimeBlock[]) {
-    setLoading(true);
+  async function createGoalWithTimeBlocks(
+    weeklyHours: number,
+    blocks: TimeBlock[]
+  ) {
+    setLoading(true)
 
-    const goalRes = await fetch("/api/goals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const goalRes = await fetch('/api/goals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: title.trim(),
         description: description.trim() || null,
@@ -266,29 +300,29 @@ export function CreateGoalForm({
         successCriteria: successCriteria.trim() || null,
         valueId: valueId || null,
       }),
-    });
-    const goal = await goalRes.json();
+    })
+    const goal = await goalRes.json()
 
     // Link existing stakeholders
     for (const sel of selectedStakeholders) {
-      await fetch("/api/relationships", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await fetch('/api/relationships', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fromType: "STAKEHOLDER",
+          fromType: 'STAKEHOLDER',
           fromId: sel.stakeholderId,
-          toType: "GOAL",
+          toType: 'GOAL',
           toId: goal.id,
-          label: sel.label || "linked to",
+          label: sel.label || 'linked to',
         }),
-      });
+      })
     }
 
     // Create new stakeholders and link them
     for (const ns of newStakeholders) {
-      const sRes = await fetch("/api/stakeholders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const sRes = await fetch('/api/stakeholders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: ns.name,
           organization: ns.organization || null,
@@ -296,72 +330,72 @@ export function CreateGoalForm({
           relationshipStrength: 50,
           lastInteraction: new Date().toISOString(),
         }),
-      });
-      const stakeholder = await sRes.json();
+      })
+      const stakeholder = await sRes.json()
 
-      await fetch("/api/relationships", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await fetch('/api/relationships', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fromType: "STAKEHOLDER",
+          fromType: 'STAKEHOLDER',
           fromId: stakeholder.id,
-          toType: "GOAL",
+          toType: 'GOAL',
           toId: goal.id,
-          label: ns.label || "linked to",
+          label: ns.label || 'linked to',
         }),
-      });
+      })
     }
 
     // Create schedule events for confirmed time blocks
     if (blocks.length > 0) {
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      weekStart.setHours(0, 0, 0, 0);
+      const weekStart = new Date()
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+      weekStart.setHours(0, 0, 0, 0)
 
       for (const block of blocks) {
-        if (!block.selected) continue;
-        const blockStart = new Date(weekStart);
-        blockStart.setDate(blockStart.getDate() + block.day);
-        blockStart.setHours(block.hour, 0, 0, 0);
-        const blockEnd = new Date(blockStart);
-        blockEnd.setHours(block.hour + 1, 0, 0, 0);
+        if (!block.selected) continue
+        const blockStart = new Date(weekStart)
+        blockStart.setDate(blockStart.getDate() + block.day)
+        blockStart.setHours(block.hour, 0, 0, 0)
+        const blockEnd = new Date(blockStart)
+        blockEnd.setHours(block.hour + 1, 0, 0, 0)
 
-        await fetch("/api/schedule", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        await fetch('/api/schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: `Work on: ${title.trim()}`,
             description: `Weekly time block for goal: ${title.trim()}\nCommitment: ${weeklyHours}h/week`,
             startTime: blockStart.toISOString(),
             endTime: blockEnd.toISOString(),
             goalId: goal.id,
-            color: "#10b981",
+            color: '#10b981',
           }),
-        });
+        })
       }
     }
 
-    setLoading(false);
-    onCreated();
+    setLoading(false)
+    onCreated()
   }
 
-  const totalLinked = selectedStakeholders.length + newStakeholders.length;
+  const totalLinked = selectedStakeholders.length + newStakeholders.length
 
   const visibleSuggestions = suggestions.filter(
     (s) =>
       !dismissedSuggestions.has(s.stakeholderId) &&
       !selectedStakeholders.some((sel) => sel.stakeholderId === s.stakeholderId)
-  );
+  )
 
-  if (step === "time") {
+  if (step === 'time') {
     return (
       <TimeCommitmentStep
         goalTitle={title}
         targetDate={targetDate}
         onConfirm={createGoalWithTimeBlocks}
-        onBack={() => setStep("details")}
+        onBack={() => setStep('details')}
       />
-    );
+    )
   }
 
   return (
@@ -369,12 +403,16 @@ export function CreateGoalForm({
       {/* Step indicator */}
       <div className="flex items-center gap-2 text-xs text-zinc-400">
         <span className="flex items-center gap-1">
-          <span className="h-5 w-5 rounded-full bg-zinc-900 text-white text-[10px] flex items-center justify-center font-medium">1</span>
+          <span className="h-5 w-5 rounded-full bg-zinc-900 text-white text-[10px] flex items-center justify-center font-medium">
+            1
+          </span>
           Details
         </span>
         <span className="h-px w-4 bg-zinc-300" />
         <span className="flex items-center gap-1">
-          <span className="h-5 w-5 rounded-full bg-zinc-200 text-zinc-500 text-[10px] flex items-center justify-center font-medium">2</span>
+          <span className="h-5 w-5 rounded-full bg-zinc-200 text-zinc-500 text-[10px] flex items-center justify-center font-medium">
+            2
+          </span>
           Time
         </span>
       </div>
@@ -460,9 +498,13 @@ export function CreateGoalForm({
                   <span className="h-6 w-6 flex-shrink-0 rounded-full bg-amber-100 text-center text-xs leading-6 text-amber-700">
                     {s.name.charAt(0)}
                   </span>
-                  <span className="text-sm font-medium text-zinc-800">{s.name}</span>
+                  <span className="text-sm font-medium text-zinc-800">
+                    {s.name}
+                  </span>
                   {s.organization && (
-                    <span className="text-xs text-zinc-400">{s.organization}</span>
+                    <span className="text-xs text-zinc-400">
+                      {s.organization}
+                    </span>
                   )}
                   <div className="ml-auto flex gap-1">
                     <button
@@ -491,13 +533,20 @@ export function CreateGoalForm({
 
                 {editingStakeholderId === s.stakeholderId ? (
                   <div className="mt-2 space-y-2 rounded-lg border border-zinc-300 bg-white p-3">
-                    <p className="text-xs font-medium text-zinc-700">Edit Capabilities</p>
+                    <p className="text-xs font-medium text-zinc-700">
+                      Edit Capabilities
+                    </p>
                     {editingCapabilities.map((cap, i) => (
-                      <div key={i} className="rounded-lg border border-zinc-200 bg-zinc-50 p-2 space-y-1.5">
+                      <div
+                        key={i}
+                        className="rounded-lg border border-zinc-200 bg-zinc-50 p-2 space-y-1.5"
+                      >
                         <div className="flex items-center gap-1.5">
                           <select
                             value={cap.type}
-                            onChange={(e) => updateCapability(i, "type", e.target.value)}
+                            onChange={(e) =>
+                              updateCapability(i, 'type', e.target.value)
+                            }
                             className="rounded border border-zinc-300 px-1.5 py-1 text-xs focus:border-zinc-500 focus:outline-none"
                           >
                             <option value="willingness">willingness</option>
@@ -509,7 +558,14 @@ export function CreateGoalForm({
                             className="ml-auto rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
                             title="Delete"
                           >
-                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
                               <path d="M4 4l8 8M12 4l-8 8" />
                             </svg>
                           </button>
@@ -517,14 +573,18 @@ export function CreateGoalForm({
                         <input
                           type="text"
                           value={cap.description}
-                          onChange={(e) => updateCapability(i, "description", e.target.value)}
+                          onChange={(e) =>
+                            updateCapability(i, 'description', e.target.value)
+                          }
                           placeholder="Description"
                           className="w-full rounded border border-zinc-300 px-2 py-1 text-xs focus:border-zinc-500 focus:outline-none"
                         />
                         <input
                           type="text"
-                          value={cap.condition || ""}
-                          onChange={(e) => updateCapability(i, "condition", e.target.value)}
+                          value={cap.condition || ''}
+                          onChange={(e) =>
+                            updateCapability(i, 'condition', e.target.value)
+                          }
                           placeholder="Condition (optional)"
                           className="w-full rounded border border-zinc-300 px-2 py-1 text-xs focus:border-zinc-500 focus:outline-none"
                         />
@@ -535,7 +595,14 @@ export function CreateGoalForm({
                       onClick={addCapability}
                       className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-700"
                     >
-                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
                         <path d="M8 3v10M3 8h10" strokeLinecap="round" />
                       </svg>
                       Add capability
@@ -554,7 +621,7 @@ export function CreateGoalForm({
                         disabled={savingCapabilities}
                         className="rounded bg-zinc-800 px-2.5 py-1 text-xs text-white hover:bg-zinc-700 disabled:opacity-50"
                       >
-                        {savingCapabilities ? "Saving..." : "Save"}
+                        {savingCapabilities ? 'Saving...' : 'Save'}
                       </button>
                     </div>
                   </div>
@@ -562,17 +629,24 @@ export function CreateGoalForm({
                   <div className="mt-1.5 space-y-1 pl-8">
                     {s.matchingCapabilities.map((cap, i) => (
                       <div key={i} className="text-xs">
-                        <span className={`inline-block rounded px-1.5 py-0.5 font-medium ${
-                          cap.type === "willingness"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-blue-100 text-blue-700"
-                        }`}>
+                        <span
+                          className={`inline-block rounded px-1.5 py-0.5 font-medium ${
+                            cap.type === 'willingness'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}
+                        >
                           {cap.type}
                         </span>
-                        <span className="ml-1.5 text-zinc-700">{cap.description}</span>
+                        <span className="ml-1.5 text-zinc-700">
+                          {cap.description}
+                        </span>
                         {cap.condition && (
                           <span className="ml-1 text-zinc-500">
-                            — given <span className="font-medium text-zinc-700">{cap.condition}</span>
+                            — given{' '}
+                            <span className="font-medium text-zinc-700">
+                              {cap.condition}
+                            </span>
                           </span>
                         )}
                       </div>
@@ -599,9 +673,13 @@ export function CreateGoalForm({
             fill="none"
             stroke="currentColor"
             strokeWidth="1.5"
-            className={`transition-transform ${showStakeholders ? "rotate-90" : ""}`}
+            className={`transition-transform ${showStakeholders ? 'rotate-90' : ''}`}
           >
-            <path d="M6 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M6 4l4 4-4 4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
           Link Stakeholders
           {totalLinked > 0 && (
@@ -620,8 +698,8 @@ export function CreateGoalForm({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setShowDropdown(true);
+                  setSearchQuery(e.target.value)
+                  setShowDropdown(true)
                 }}
                 onFocus={() => setShowDropdown(true)}
                 placeholder="Search existing stakeholders..."
@@ -639,9 +717,13 @@ export function CreateGoalForm({
                       <span className="h-6 w-6 flex-shrink-0 rounded-full bg-pink-100 text-center text-xs leading-6 text-pink-600">
                         {s.name.charAt(0)}
                       </span>
-                      <span className="truncate font-medium text-zinc-800">{s.name}</span>
+                      <span className="truncate font-medium text-zinc-800">
+                        {s.name}
+                      </span>
                       {s.organization && (
-                        <span className="truncate text-xs text-zinc-400">{s.organization}</span>
+                        <span className="truncate text-xs text-zinc-400">
+                          {s.organization}
+                        </span>
                       )}
                     </button>
                   ))}
@@ -658,14 +740,20 @@ export function CreateGoalForm({
                 <span className="h-6 w-6 flex-shrink-0 rounded-full bg-pink-100 text-center text-xs leading-6 text-pink-600">
                   {sel.name.charAt(0)}
                 </span>
-                <span className="text-sm font-medium text-zinc-800">{sel.name}</span>
+                <span className="text-sm font-medium text-zinc-800">
+                  {sel.name}
+                </span>
                 {sel.organization && (
-                  <span className="text-xs text-zinc-400">{sel.organization}</span>
+                  <span className="text-xs text-zinc-400">
+                    {sel.organization}
+                  </span>
                 )}
                 <input
                   type="text"
                   value={sel.label}
-                  onChange={(e) => updateSelectedLabel(sel.stakeholderId, e.target.value)}
+                  onChange={(e) =>
+                    updateSelectedLabel(sel.stakeholderId, e.target.value)
+                  }
                   placeholder="role (e.g., advisor, investor)"
                   className="ml-auto w-40 rounded border border-zinc-200 px-2 py-1 text-xs focus:border-zinc-400 focus:outline-none"
                 />
@@ -674,7 +762,14 @@ export function CreateGoalForm({
                   onClick={() => removeSelected(sel.stakeholderId)}
                   className="text-zinc-400 hover:text-zinc-600"
                 >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <path d="M4 4l8 8M12 4l-8 8" />
                   </svg>
                 </button>
@@ -690,19 +785,32 @@ export function CreateGoalForm({
                 <span className="h-6 w-6 flex-shrink-0 rounded-full bg-green-100 text-center text-xs leading-6 text-green-600">
                   +
                 </span>
-                <span className="text-sm font-medium text-zinc-800">{ns.name}</span>
+                <span className="text-sm font-medium text-zinc-800">
+                  {ns.name}
+                </span>
                 {ns.organization && (
-                  <span className="text-xs text-zinc-400">{ns.organization}</span>
+                  <span className="text-xs text-zinc-400">
+                    {ns.organization}
+                  </span>
                 )}
                 {ns.label && (
-                  <span className="text-xs text-zinc-500 italic">{ns.label}</span>
+                  <span className="text-xs text-zinc-500 italic">
+                    {ns.label}
+                  </span>
                 )}
                 <button
                   type="button"
                   onClick={() => removeNew(ns.tempId)}
                   className="ml-auto text-zinc-400 hover:text-zinc-600"
                 >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <path d="M4 4l8 8M12 4l-8 8" />
                   </svg>
                 </button>
@@ -766,7 +874,14 @@ export function CreateGoalForm({
                 onClick={() => setShowNewForm(true)}
                 className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-700"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M8 3v10M3 8h10" strokeLinecap="round" />
                 </svg>
                 Add new stakeholder
@@ -793,5 +908,5 @@ export function CreateGoalForm({
         </button>
       </div>
     </form>
-  );
+  )
 }

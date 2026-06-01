@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import { StateGraph } from "@/components/graph/StateGraph";
+import { StateGraph } from '@/components/graph/StateGraph'
 
 export default function GraphPage() {
-  return <StateGraph />;
+  return <StateGraph />
 }

@@ -1,136 +1,140 @@
-"use client";
+'use client'
 
-import { useState, useRef } from "react";
+import { useRef, useState } from 'react'
 
 interface Value {
-  id: string;
-  label: string;
-  rank: number;
-  description: string | null;
-  tags: string[];
+  id: string
+  label: string
+  rank: number
+  description: string | null
+  tags: string[]
 }
 
 function useValues() {
-  const [values, setValues] = useState<Value[] | null>(null);
-  const fetchedRef = useRef<boolean | null>(null);
+  const [values, setValues] = useState<Value[] | null>(null)
+  const fetchedRef = useRef<boolean | null>(null)
 
   if (fetchedRef.current === null) {
-    fetchedRef.current = true;
-    fetch("/api/values")
+    fetchedRef.current = true
+    fetch('/api/values')
       .then((r) => r.json())
       .then((data: Value[]) => setValues(data))
-      .catch(() => setValues([]));
+      .catch(() => setValues([]))
   }
 
-  return { values, setValues };
+  return { values, setValues }
 }
 
 export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
-  const { values, setValues } = useValues();
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [showMore, setShowMore] = useState(false);
-  const [newLabel, setNewLabel] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [newTags, setNewTags] = useState("");
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const { values, setValues } = useValues()
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [showMore, setShowMore] = useState(false)
+  const [newLabel, setNewLabel] = useState('')
+  const [newDescription, setNewDescription] = useState('')
+  const [newTags, setNewTags] = useState('')
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   async function refetch() {
-    const res = await fetch("/api/values");
-    const data: Value[] = await res.json();
-    setValues(data);
+    const res = await fetch('/api/values')
+    const data: Value[] = await res.json()
+    setValues(data)
   }
 
   async function addValue() {
-    if (!newLabel.trim() || !values) return;
-    const nextRank = values.length + 1;
-    await fetch("/api/values", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    if (!newLabel.trim() || !values) return
+    const nextRank = values.length + 1
+    await fetch('/api/values', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         label: newLabel.trim(),
         rank: nextRank,
         description: newDescription.trim() || null,
-        tags: newTags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean),
+        tags: newTags
+          .split(',')
+          .map((t) => t.trim().toLowerCase())
+          .filter(Boolean),
       }),
-    });
-    setNewLabel("");
-    setNewDescription("");
-    setNewTags("");
-    setShowAddForm(false);
-    refetch();
-    onChanged?.();
+    })
+    setNewLabel('')
+    setNewDescription('')
+    setNewTags('')
+    setShowAddForm(false)
+    refetch()
+    onChanged?.()
   }
 
   async function removeValue(id: string) {
-    await fetch(`/api/values/${id}`, { method: "DELETE" });
-    const res = await fetch("/api/values");
-    const remaining: Value[] = await res.json();
+    await fetch(`/api/values/${id}`, { method: 'DELETE' })
+    const res = await fetch('/api/values')
+    const remaining: Value[] = await res.json()
     for (let i = 0; i < remaining.length; i++) {
-      if (remaining[i].rank !== i + 1) {
-        await fetch(`/api/values/${remaining[i].id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
+      const item = remaining[i]!
+      if (item.rank !== i + 1) {
+        await fetch(`/api/values/${item.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ rank: i + 1 }),
-        });
+        })
       }
     }
-    refetch();
-    onChanged?.();
+    refetch()
+    onChanged?.()
   }
 
   async function reorder(fromIndex: number, toIndex: number) {
-    if (!values || fromIndex === toIndex) return;
-    const reordered = [...values];
-    const [moved] = reordered.splice(fromIndex, 1);
-    reordered.splice(toIndex, 0, moved);
+    if (!values || fromIndex === toIndex) return
+    const reordered = [...values]
+    const [moved] = reordered.splice(fromIndex, 1) as [Value]
+    reordered.splice(toIndex, 0, moved)
 
     // Optimistic update
-    setValues(reordered);
+    setValues(reordered)
 
     // Persist new ranks
     const updates = reordered.map((v, i) =>
       fetch(`/api/values/${v.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rank: i + 1 }),
       })
-    );
-    await Promise.all(updates);
-    refetch();
-    onChanged?.();
+    )
+    await Promise.all(updates)
+    refetch()
+    onChanged?.()
   }
 
   function handleDragStart(index: number) {
-    setDragIndex(index);
+    setDragIndex(index)
   }
 
   function handleDragOver(e: React.DragEvent, index: number) {
-    e.preventDefault();
-    setDragOverIndex(index);
+    e.preventDefault()
+    setDragOverIndex(index)
   }
 
   function handleDragLeave() {
-    setDragOverIndex(null);
+    setDragOverIndex(null)
   }
 
   function handleDrop(toIndex: number) {
     if (dragIndex !== null && dragIndex !== toIndex) {
-      reorder(dragIndex, toIndex);
+      reorder(dragIndex, toIndex)
     }
-    setDragIndex(null);
-    setDragOverIndex(null);
+    setDragIndex(null)
+    setDragOverIndex(null)
   }
 
   function handleDragEnd() {
-    setDragIndex(null);
-    setDragOverIndex(null);
+    setDragIndex(null)
+    setDragOverIndex(null)
   }
 
-  if (values === null) return null;
+  if (values === null) return null
 
-  const topValues = values.slice(0, 5);
-  const extraValues = values.slice(5);
+  const topValues = values.slice(0, 5)
+  const extraValues = values.slice(5)
 
   function renderRow(v: Value, index: number) {
     return (
@@ -143,12 +147,14 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
         onDrop={() => handleDrop(index)}
         onDragEnd={handleDragEnd}
         className={`flex items-center gap-2 transition-opacity ${
-          dragIndex === index ? "opacity-40" : ""
-        } ${dragOverIndex === index && dragIndex !== index ? "relative" : ""}`}
+          dragIndex === index ? 'opacity-40' : ''
+        } ${dragOverIndex === index && dragIndex !== index ? 'relative' : ''}`}
       >
-        {dragOverIndex === index && dragIndex !== null && dragIndex !== index && (
-          <div className="absolute -top-0.5 left-0 right-0 h-0.5 rounded bg-violet-500" />
-        )}
+        {dragOverIndex === index &&
+          dragIndex !== null &&
+          dragIndex !== index && (
+            <div className="absolute -top-0.5 left-0 right-0 h-0.5 rounded bg-violet-500" />
+          )}
         <span className="w-5 flex-shrink-0 text-right text-sm font-bold text-zinc-300">
           {index + 1}
         </span>
@@ -168,7 +174,10 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
             {v.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-0.5">
                 {v.tags.map((tag) => (
-                  <span key={tag} className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] text-violet-600">
+                  <span
+                    key={tag}
+                    className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] text-violet-600"
+                  >
                     {tag}
                   </span>
                 ))}
@@ -180,13 +189,20 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
             className="flex-shrink-0 rounded p-0.5 text-zinc-400 hover:bg-red-100 hover:text-red-500"
             title="Remove"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M4 4l8 8M12 4l-8 8" />
             </svg>
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -199,7 +215,7 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
           onClick={() => setShowAddForm(!showAddForm)}
           className="text-xs text-zinc-500 hover:text-zinc-700"
         >
-          {showAddForm ? "Cancel" : "+ Add Value"}
+          {showAddForm ? 'Cancel' : '+ Add Value'}
         </button>
       </div>
 
@@ -238,7 +254,8 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
 
       {values.length === 0 ? (
         <p className="text-xs text-zinc-400 py-2">
-          No values defined yet. Add values to get personalized goal suggestions.
+          No values defined yet. Add values to get personalized goal
+          suggestions.
         </p>
       ) : (
         <div className="space-y-1.5">
@@ -249,7 +266,8 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
               onClick={() => setShowMore(true)}
               className="mt-1 w-full rounded-lg border border-dashed border-zinc-200 py-1.5 text-xs text-zinc-400 hover:border-zinc-300 hover:text-zinc-600"
             >
-              +{extraValues.length} more value{extraValues.length !== 1 ? "s" : ""}
+              +{extraValues.length} more value
+              {extraValues.length !== 1 ? 's' : ''}
             </button>
           )}
 
@@ -266,5 +284,5 @@ export function ValuesPanel({ onChanged }: { onChanged?: () => void }) {
         </div>
       )}
     </div>
-  );
+  )
 }

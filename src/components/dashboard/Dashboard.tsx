@@ -1,129 +1,130 @@
-"use client";
+'use client'
 
-import { useEffect, useMemo, useState } from "react";
-import { GoalCard } from "./GoalCard";
-import { CollapsibleSection } from "./CollapsibleSection";
-import { RecommendationsPanel } from "./RecommendationsPanel";
-import { CreateGoalForm } from "./CreateGoalForm";
-import { ValuesPanel } from "./ValuesPanel";
-import { SuggestedGoals } from "./SuggestedGoals";
-import { TimeAllocation } from "./TimeAllocation";
-import { Modal } from "@/components/ui/Modal";
-import type { ReasoningOutput, ReadinessScore } from "@/lib/reasoning/types";
+import { useEffect, useMemo, useState } from 'react'
+import { Modal } from '@/components/ui/Modal'
+import type { ReadinessScore, ReasoningOutput } from '@/lib/reasoning/types'
+import { CollapsibleSection } from './CollapsibleSection'
+import { CreateGoalForm } from './CreateGoalForm'
+import { GoalCard } from './GoalCard'
+import { RecommendationsPanel } from './RecommendationsPanel'
+import { SuggestedGoals } from './SuggestedGoals'
+import { TimeAllocation } from './TimeAllocation'
+import { ValuesPanel } from './ValuesPanel'
 
 interface GoalData {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  targetDate: string | null;
-  updatedAt: string;
-  completedAt: string | null;
-  value: { id: string; label: string; rank: number } | null;
+  id: string
+  title: string
+  description: string | null
+  status: string
+  targetDate: string | null
+  updatedAt: string
+  completedAt: string | null
+  value: { id: string; label: string; rank: number } | null
   prerequisites: {
-    id: string;
-    title: string;
-    status: string;
-    confidenceScore: number;
-  }[];
+    id: string
+    title: string
+    status: string
+    confidenceScore: number
+  }[]
   actions: {
-    id: string;
-    title: string;
-    status: string;
-    priority: string;
-  }[];
+    id: string
+    title: string
+    status: string
+    priority: string
+  }[]
 }
 
 async function fetchGoals(): Promise<GoalData[]> {
-  const res = await fetch("/api/goals");
-  return res.json();
+  const res = await fetch('/api/goals')
+  return res.json()
 }
 
 async function fetchReasoning(): Promise<
   ReasoningOutput & { aiInsight?: string | null }
 > {
-  const res = await fetch("/api/reasoning");
-  return res.json();
+  const res = await fetch('/api/reasoning')
+  return res.json()
 }
 
-type ViewMode = "active" | "completed";
+type ViewMode = 'active' | 'completed'
 
 export function Dashboard() {
-  const [goals, setGoals] = useState<GoalData[]>([]);
+  const [goals, setGoals] = useState<GoalData[]>([])
   const [reasoning, setReasoning] = useState<
     (ReasoningOutput & { aiInsight?: string | null }) | null
-  >(null);
-  const [loading, setLoading] = useState(true);
-  const [showCreateGoal, setShowCreateGoal] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [suggestRefreshKey, setSuggestRefreshKey] = useState(0);
-  const [prefillTitle, setPrefillTitle] = useState("");
-  const [prefillDescription, setPrefillDescription] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("active");
-  const [timeAllocRefreshKey, setTimeAllocRefreshKey] = useState(0);
+  >(null)
+  const [loading, setLoading] = useState(true)
+  const [showCreateGoal, setShowCreateGoal] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [suggestRefreshKey, setSuggestRefreshKey] = useState(0)
+  const [prefillTitle, setPrefillTitle] = useState('')
+  const [prefillDescription, setPrefillDescription] = useState('')
+  const [viewMode, setViewMode] = useState<ViewMode>('active')
+  const [timeAllocRefreshKey, setTimeAllocRefreshKey] = useState(0)
 
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false
     async function load() {
       const [goalsData, reasoningData] = await Promise.all([
         fetchGoals(),
         fetchReasoning(),
-      ]);
+      ])
       if (!cancelled) {
-        setGoals(goalsData);
-        setReasoning(reasoningData);
-        setLoading(false);
+        setGoals(goalsData)
+        setReasoning(reasoningData)
+        setLoading(false)
       }
     }
-    load();
+    load()
     return () => {
-      cancelled = true;
-    };
-  }, [refreshKey]);
+      cancelled = true
+    }
+    // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional trigger to re-fetch data
+  }, [refreshKey])
 
   function getReadiness(goalId: string): ReadinessScore | undefined {
-    return reasoning?.readinessScores.find((r) => r.goalId === goalId);
+    return reasoning?.readinessScores.find((r) => r.goalId === goalId)
   }
 
   function refresh() {
-    setRefreshKey((k) => k + 1);
+    setRefreshKey((k) => k + 1)
   }
 
   const activeGoals = goals.filter(
-    (g) => g.status !== "COMPLETED" && g.status !== "ARCHIVED"
-  );
+    (g) => g.status !== 'COMPLETED' && g.status !== 'ARCHIVED'
+  )
   const completedGoals = goals.filter(
-    (g) => g.status === "COMPLETED" || g.status === "ARCHIVED"
-  );
-  const displayedGoals = viewMode === "active" ? activeGoals : completedGoals;
+    (g) => g.status === 'COMPLETED' || g.status === 'ARCHIVED'
+  )
+  const displayedGoals = viewMode === 'active' ? activeGoals : completedGoals
 
   const valueGroups = useMemo(() => {
     const groups = new Map<
       string,
-      { value: GoalData["value"]; goals: GoalData[] }
-    >();
+      { value: GoalData['value']; goals: GoalData[] }
+    >()
     for (const goal of displayedGoals) {
-      const key = goal.value?.id ?? "__none__";
-      const existing = groups.get(key);
+      const key = goal.value?.id ?? '__none__'
+      const existing = groups.get(key)
       if (existing) {
-        existing.goals.push(goal);
+        existing.goals.push(goal)
       } else {
-        groups.set(key, { value: goal.value, goals: [goal] });
+        groups.set(key, { value: goal.value, goals: [goal] })
       }
     }
     return Array.from(groups.values()).sort((a, b) => {
-      if (!a.value) return 1;
-      if (!b.value) return -1;
-      return a.value.rank - b.value.rank;
-    });
-  }, [displayedGoals]);
+      if (!a.value) return 1
+      if (!b.value) return -1
+      return a.value.rank - b.value.rank
+    })
+  }, [displayedGoals])
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-200 border-t-zinc-800" />
       </div>
-    );
+    )
   }
 
   return (
@@ -132,7 +133,8 @@ export function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-zinc-900">Dashboard</h1>
           <p className="text-sm text-zinc-500">
-            {activeGoals.length} active goal{activeGoals.length !== 1 ? "s" : ""}
+            {activeGoals.length} active goal
+            {activeGoals.length !== 1 ? 's' : ''}
             {completedGoals.length > 0 && (
               <> · {completedGoals.length} completed</>
             )}
@@ -149,11 +151,11 @@ export function Dashboard() {
       {/* View toggle */}
       <div className="mb-4 flex gap-1 rounded-lg bg-zinc-100 p-1 w-fit">
         <button
-          onClick={() => setViewMode("active")}
+          onClick={() => setViewMode('active')}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-            viewMode === "active"
-              ? "bg-white text-zinc-900 shadow-sm"
-              : "text-zinc-500 hover:text-zinc-700"
+            viewMode === 'active'
+              ? 'bg-white text-zinc-900 shadow-sm'
+              : 'text-zinc-500 hover:text-zinc-700'
           }`}
         >
           Active Goals
@@ -164,11 +166,11 @@ export function Dashboard() {
           )}
         </button>
         <button
-          onClick={() => setViewMode("completed")}
+          onClick={() => setViewMode('completed')}
           className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-            viewMode === "completed"
-              ? "bg-white text-zinc-900 shadow-sm"
-              : "text-zinc-500 hover:text-zinc-700"
+            viewMode === 'completed'
+              ? 'bg-white text-zinc-900 shadow-sm'
+              : 'text-zinc-500 hover:text-zinc-700'
           }`}
         >
           Completed Goals
@@ -180,15 +182,15 @@ export function Dashboard() {
         </button>
       </div>
 
-      {displayedGoals.length === 0 && viewMode === "active" ? (
+      {displayedGoals.length === 0 && viewMode === 'active' ? (
         <div className="rounded-xl border-2 border-dashed border-zinc-200 p-12 text-center">
           <h2 className="text-lg font-semibold text-zinc-700 mb-2">
             No active goals
           </h2>
           <p className="text-sm text-zinc-500 mb-4">
             {goals.length === 0
-              ? "Define your first goal to start building your state graph."
-              : "All goals are completed. Create a new goal to keep progressing."}
+              ? 'Define your first goal to start building your state graph.'
+              : 'All goals are completed. Create a new goal to keep progressing.'}
           </p>
           <button
             onClick={() => setShowCreateGoal(true)}
@@ -197,7 +199,7 @@ export function Dashboard() {
             Create Goal
           </button>
         </div>
-      ) : displayedGoals.length === 0 && viewMode === "completed" ? (
+      ) : displayedGoals.length === 0 && viewMode === 'completed' ? (
         <div className="rounded-xl border-2 border-dashed border-zinc-200 p-12 text-center">
           <p className="text-sm text-zinc-500">No completed goals yet.</p>
         </div>
@@ -205,14 +207,16 @@ export function Dashboard() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
             <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">
-              {viewMode === "active" ? "What should I work on right now?" : "Completed Goals"}
+              {viewMode === 'active'
+                ? 'What should I work on right now?'
+                : 'Completed Goals'}
             </h2>
             {valueGroups.map((group) => (
               <CollapsibleSection
-                key={group.value?.id ?? "none"}
-                title={group.value?.label ?? "Other Goals"}
+                key={group.value?.id ?? 'none'}
+                title={group.value?.label ?? 'Other Goals'}
                 count={group.goals.length}
-                storageKey={`goalgroup:${viewMode}:${group.value?.id ?? "none"}`}
+                storageKey={`goalgroup:${viewMode}:${group.value?.id ?? 'none'}`}
               >
                 {group.goals.map((goal) => (
                   <GoalCard
@@ -225,16 +229,18 @@ export function Dashboard() {
               </CollapsibleSection>
             ))}
           </div>
-          {viewMode === "active" && (
+          {viewMode === 'active' && (
             <div className="space-y-4">
               <TimeAllocation refreshKey={timeAllocRefreshKey} />
-              <ValuesPanel onChanged={() => setSuggestRefreshKey((k) => k + 1)} />
+              <ValuesPanel
+                onChanged={() => setSuggestRefreshKey((k) => k + 1)}
+              />
               <SuggestedGoals
                 refreshKey={suggestRefreshKey}
                 onCreateGoal={(title, description) => {
-                  setPrefillTitle(title);
-                  setPrefillDescription(description);
-                  setShowCreateGoal(true);
+                  setPrefillTitle(title)
+                  setPrefillDescription(description)
+                  setShowCreateGoal(true)
                 }}
               />
               <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider">
@@ -254,22 +260,22 @@ export function Dashboard() {
         <CreateGoalForm
           key={`${prefillTitle}-${prefillDescription}`}
           onCreated={() => {
-            setShowCreateGoal(false);
-            setPrefillTitle("");
-            setPrefillDescription("");
-            setRefreshKey((k) => k + 1);
-            setSuggestRefreshKey((k) => k + 1);
-            setTimeAllocRefreshKey((k) => k + 1);
+            setShowCreateGoal(false)
+            setPrefillTitle('')
+            setPrefillDescription('')
+            setRefreshKey((k) => k + 1)
+            setSuggestRefreshKey((k) => k + 1)
+            setTimeAllocRefreshKey((k) => k + 1)
           }}
           onCancel={() => {
-            setShowCreateGoal(false);
-            setPrefillTitle("");
-            setPrefillDescription("");
+            setShowCreateGoal(false)
+            setPrefillTitle('')
+            setPrefillDescription('')
           }}
           initialTitle={prefillTitle}
           initialDescription={prefillDescription}
         />
       </Modal>
     </div>
-  );
+  )
 }

@@ -1,17 +1,17 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { recordEvent } from "@/lib/events/store";
+import { NextResponse } from 'next/server'
+import { recordEvent } from '@/lib/events/store'
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   const evidence = await prisma.evidence.findMany({
     include: { prerequisite: true, stakeholder: true },
-    orderBy: { occurredAt: "desc" },
-  });
-  return NextResponse.json(evidence);
+    orderBy: { occurredAt: 'desc' },
+  })
+  return NextResponse.json(evidence)
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  const body = await request.json()
   const evidence = await prisma.evidence.create({
     data: {
       title: body.title,
@@ -21,12 +21,12 @@ export async function POST(request: Request) {
       prerequisiteId: body.prerequisiteId || null,
       stakeholderId: body.stakeholderId || null,
     },
-  });
+  })
 
-  await recordEvent("EVIDENCE", evidence.id, "CREATED", {
+  await recordEvent('EVIDENCE', evidence.id, 'CREATED', {
     title: evidence.title,
     source: evidence.source,
-  });
+  })
 
-  return NextResponse.json(evidence, { status: 201 });
+  return NextResponse.json(evidence, { status: 201 })
 }
