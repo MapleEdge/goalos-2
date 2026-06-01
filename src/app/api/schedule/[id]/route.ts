@@ -29,6 +29,9 @@ export async function PATCH(
         location: body.location || null,
       }),
       ...(body.color !== undefined && { color: body.color || null }),
+      ...(body.recurrence !== undefined && {
+        recurrence: body.recurrence || null,
+      }),
     },
   })
 

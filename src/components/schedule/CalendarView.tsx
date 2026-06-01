@@ -25,6 +25,8 @@ export interface ScheduleEvent {
   goalId?: string | null
   actionId?: string | null
   color?: string | null
+  recurrence?: string | null
+  recurrenceGroupId?: string | null
   calendarConnection?: {
     provider: string
     accountEmail: string

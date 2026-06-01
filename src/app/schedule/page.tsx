@@ -136,6 +136,7 @@ export default function SchedulePage() {
     allDay?: boolean
     location?: string
     color?: string
+    recurrence?: string
   }) {
     if (!modalEvent) return
     await fetch(`/api/schedule/${modalEvent.id}`, {

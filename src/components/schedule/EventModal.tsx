@@ -50,7 +50,7 @@ export function EventModal({
   const [endTime, setEndTime] = useState(toLocalDatetime(end))
   const [allDay, setAllDay] = useState(initialAllDay ?? event?.allDay ?? false)
   const [color, setColor] = useState(event?.color || '')
-  const [recurrence, setRecurrence] = useState('none')
+  const [recurrence, setRecurrence] = useState(event?.recurrence || 'none')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   function handleSubmit(e: React.FormEvent) {
