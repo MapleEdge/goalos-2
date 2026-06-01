@@ -140,6 +140,27 @@ export async function GET(request: Request) {
     0
   )
 
+  // Fixed period capacity so the donut can show unallocated time in grey.
+  let periodTotalMinutes: number
+  if (period === 'day') {
+    periodTotalMinutes = 24 * 60
+  } else if (period === 'week') {
+    periodTotalMinutes = 7 * 24 * 60
+  } else if (period === 'month') {
+    const daysInMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0
+    ).getDate()
+    periodTotalMinutes = daysInMonth * 24 * 60
+  } else {
+    // "all" has no fixed capacity — percentages stay relative to allocated total
+    periodTotalMinutes = totalMinutes
+  }
+
+  const denominator =
+    period === 'all' ? totalMinutes : Math.max(periodTotalMinutes, totalMinutes)
+
   // Order by value rank so the legend matches the values list (unlinked last).
   const ordered = Array.from(allocations.entries()).sort(
     ([, a], [, b]) => a.rank - b.rank
@@ -152,7 +173,7 @@ export async function GET(request: Request) {
     eventCount: data.count,
     color: VALUE_COLORS[idx % VALUE_COLORS.length] ?? '#3b82f6',
     percentage:
-      totalMinutes > 0 ? Math.round((data.minutes / totalMinutes) * 100) : 0,
+      denominator > 0 ? Math.round((data.minutes / denominator) * 100) : 0,
   }))
 
   // For "all" period, compute days from earliest event to now
@@ -173,6 +194,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     period,
     totalMinutes: Math.round(totalMinutes),
+    periodTotalMinutes: Math.round(periodTotalMinutes),
     daysInPeriod,
     avgMinutesPerDay,
     allocations: result,
