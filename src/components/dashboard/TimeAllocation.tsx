@@ -50,7 +50,8 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
     return () => {
       cancelled = true
     }
-  }, [period])
+    // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional trigger to re-fetch allocation data
+  }, [period, refreshKey])
 
   const header = (
     <div className="flex items-center justify-between mb-3">

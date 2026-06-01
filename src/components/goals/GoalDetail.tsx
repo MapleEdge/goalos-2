@@ -84,7 +84,7 @@ export function GoalDetail({ id }: { id: string }) {
   const [stakeholders, setStakeholders] = useState<StakeholderLite[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [_reloadKey, setReloadKey] = useState(0)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -113,7 +113,8 @@ export function GoalDetail({ id }: { id: string }) {
     return () => {
       cancelled = true
     }
-  }, [id])
+    // biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is an intentional trigger to re-fetch data
+  }, [id, reloadKey])
 
   async function post(body: Record<string, unknown>) {
     setBusy(true)

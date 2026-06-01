@@ -55,7 +55,7 @@ export function Dashboard() {
   >(null)
   const [loading, setLoading] = useState(true)
   const [showCreateGoal, setShowCreateGoal] = useState(false)
-  const [_refreshKey, setRefreshKey] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
   const [suggestRefreshKey, setSuggestRefreshKey] = useState(0)
   const [prefillTitle, setPrefillTitle] = useState('')
   const [prefillDescription, setPrefillDescription] = useState('')
@@ -79,7 +79,8 @@ export function Dashboard() {
     return () => {
       cancelled = true
     }
-  }, [])
+    // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional trigger to re-fetch data
+  }, [refreshKey])
 
   function getReadiness(goalId: string): ReadinessScore | undefined {
     return reasoning?.readinessScores.find((r) => r.goalId === goalId)

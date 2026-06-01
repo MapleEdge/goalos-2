@@ -89,7 +89,7 @@ export function RelationshipImprove() {
   const [active, setActive] = useState<RelationshipHealth | null>(null)
   const [detail, setDetail] = useState<RelationshipHealth | null>(null)
   const [adding, setAdding] = useState(false)
-  const [_reloadKey, setReloadKey] = useState(0)
+  const [reloadKey, setReloadKey] = useState(0)
 
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<FilterKey>('all')
@@ -112,7 +112,8 @@ export function RelationshipImprove() {
     return () => {
       cancelled = true
     }
-  }, [])
+    // biome-ignore lint/correctness/useExhaustiveDependencies: reloadKey is an intentional trigger to re-fetch data
+  }, [reloadKey])
 
   function reload() {
     setLoading(true)

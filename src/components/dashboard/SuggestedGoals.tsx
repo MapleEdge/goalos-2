@@ -53,7 +53,8 @@ export function SuggestedGoals({
 
   useEffect(() => {
     return fetchSuggestions()
-  }, [fetchSuggestions])
+    // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional trigger to re-fetch suggestions
+  }, [refreshKey, fetchSuggestions])
 
   const handleRefresh = () => {
     setRefreshing(true)
