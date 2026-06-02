@@ -15,7 +15,10 @@ const ALL_TIMEZONES: string[] = (() => {
 
 function loadTimezone(): string {
   try {
-    return localStorage.getItem(TIMEZONE_KEY) || Intl.DateTimeFormat().resolvedOptions().timeZone
+    return (
+      localStorage.getItem(TIMEZONE_KEY) ||
+      Intl.DateTimeFormat().resolvedOptions().timeZone
+    )
   } catch {
     return Intl.DateTimeFormat().resolvedOptions().timeZone
   }
