@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -150,6 +150,17 @@ export default function FlowsPage() {
     id: string
     label: string
   } | null>(null)
+
+  // Filter & sort state
+  const [filterType, setFilterType] = useState('')
+  const [filterEntityType, setFilterEntityType] = useState('')
+  const [filterDirection, setFilterDirection] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+  const [filterSearch, setFilterSearch] = useState('')
+  const [sortField, setSortField] = useState<
+    'date' | 'amount' | 'type' | 'entity' | 'label'
+  >('date')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
   // Fetch data
   const fetchTypes = useCallback(() => {
@@ -329,6 +340,65 @@ export default function FlowsPage() {
     (e) => e.type === editFlowEntityType
   )
 
+  const filteredSortedFlows = useMemo(() => {
+    let result = [...flows]
+
+    // Filters
+    if (filterType)
+      result = result.filter((f) => f.resourceTypeId === filterType)
+    if (filterEntityType)
+      result = result.filter((f) => f.entityType === filterEntityType)
+    if (filterDirection)
+      result = result.filter((f) => f.direction === filterDirection)
+    if (filterStatus === 'active') result = result.filter((f) => f.isActive)
+    if (filterStatus === 'paused') result = result.filter((f) => !f.isActive)
+    if (filterSearch) {
+      const q = filterSearch.toLowerCase()
+      result = result.filter(
+        (f) =>
+          f.label.toLowerCase().includes(q) ||
+          (f.notes && f.notes.toLowerCase().includes(q)) ||
+          f.resourceType.name.toLowerCase().includes(q) ||
+          (entities.find((e) => e.id === f.entityId)?.name || '')
+            .toLowerCase()
+            .includes(q)
+      )
+    }
+
+    // Sort
+    const dir = sortDir === 'asc' ? 1 : -1
+    result.sort((a, b) => {
+      switch (sortField) {
+        case 'amount':
+          return (a.amount - b.amount) * dir
+        case 'type':
+          return a.resourceType.name.localeCompare(b.resourceType.name) * dir
+        case 'entity': {
+          const nameA = entities.find((e) => e.id === a.entityId)?.name || ''
+          const nameB = entities.find((e) => e.id === b.entityId)?.name || ''
+          return nameA.localeCompare(nameB) * dir
+        }
+        case 'label':
+          return a.label.localeCompare(b.label) * dir
+        case 'date':
+        default:
+          return 0 // preserve API order (createdAt desc)
+      }
+    })
+
+    return result
+  }, [
+    flows,
+    filterType,
+    filterEntityType,
+    filterDirection,
+    filterStatus,
+    filterSearch,
+    sortField,
+    sortDir,
+    entities,
+  ])
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
       <div className="mb-6 flex items-center justify-between">
@@ -487,13 +557,118 @@ export default function FlowsPage() {
 
       {/* ─── Flows Tab ─── */}
       {activeTab === 'flows' && (
-        <div className="space-y-2">
-          {flows.length === 0 ? (
+        <div className="space-y-3">
+          {/* Filter & Sort Bar */}
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2">
+            <input
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              placeholder="Search flows..."
+              className="rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm focus:border-zinc-500 focus:outline-none w-44"
+            />
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-zinc-500 focus:outline-none"
+            >
+              <option value="">All Types</option>
+              {types.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.icon ? `${t.icon} ` : ''}
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filterEntityType}
+              onChange={(e) => setFilterEntityType(e.target.value)}
+              className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-zinc-500 focus:outline-none"
+            >
+              <option value="">All Entities</option>
+              {Object.entries(ENTITY_TYPE_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filterDirection}
+              onChange={(e) => setFilterDirection(e.target.value)}
+              className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-zinc-500 focus:outline-none"
+            >
+              <option value="">In & Out</option>
+              <option value="INFLOW">Inflow only</option>
+              <option value="OUTFLOW">Outflow only</option>
+            </select>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-zinc-500 focus:outline-none"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+            </select>
+            <div className="ml-auto flex items-center gap-1.5">
+              <span className="text-xs text-zinc-500">Sort:</span>
+              <select
+                value={sortField}
+                onChange={(e) =>
+                  setSortField(e.target.value as typeof sortField)
+                }
+                className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-zinc-500 focus:outline-none"
+              >
+                <option value="date">Date added</option>
+                <option value="amount">Amount</option>
+                <option value="type">Resource type</option>
+                <option value="entity">Entity</option>
+                <option value="label">Label</option>
+              </select>
+              <button
+                onClick={() =>
+                  setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+                }
+                className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm hover:bg-zinc-100"
+                title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
+              >
+                {sortDir === 'asc' ? '↑' : '↓'}
+              </button>
+            </div>
+          </div>
+
+          {/* Result count & clear */}
+          {(filterType ||
+            filterEntityType ||
+            filterDirection ||
+            filterStatus ||
+            filterSearch) && (
+            <div className="flex items-center justify-between text-xs text-zinc-500">
+              <span>
+                Showing {filteredSortedFlows.length} of {flows.length} flows
+              </span>
+              <button
+                onClick={() => {
+                  setFilterType('')
+                  setFilterEntityType('')
+                  setFilterDirection('')
+                  setFilterStatus('')
+                  setFilterSearch('')
+                }}
+                className="text-zinc-500 hover:text-zinc-800 underline"
+              >
+                Clear filters
+              </button>
+            </div>
+          )}
+
+          {filteredSortedFlows.length === 0 ? (
             <p className="text-sm text-zinc-400 py-8 text-center">
-              No resource flows yet.
+              {flows.length === 0
+                ? 'No resource flows yet.'
+                : 'No flows match the current filters.'}
             </p>
           ) : (
-            flows.map((f) => {
+            filteredSortedFlows.map((f) => {
               const entityName =
                 entities.find((e) => e.id === f.entityId)?.name ||
                 f.entityId.slice(0, 8)
