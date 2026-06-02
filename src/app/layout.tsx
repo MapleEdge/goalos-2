@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { GoalPrompt } from '@/components/ui/GoalPrompt'
 import { Nav } from '@/components/ui/Nav'
+import { Providers } from './providers'
 import './globals.css'
 
 const geistSans = Geist({
@@ -31,9 +32,11 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-zinc-50 font-sans">
-        <Nav />
-        <main className="flex-1 pb-24">{children}</main>
-        <GoalPrompt />
+        <Providers>
+          <Nav />
+          <main className="flex-1 pb-24">{children}</main>
+          <GoalPrompt />
+        </Providers>
       </body>
     </html>
   )
