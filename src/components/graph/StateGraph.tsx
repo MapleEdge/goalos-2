@@ -12,12 +12,115 @@ import {
   useEdgesState,
   useNodesState,
   useOnViewportChange,
+  useReactFlow,
   type Viewport,
 } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '@xyflow/react/dist/style.css'
 import { GraphNode } from './GraphNode'
 import { NodeEditModal } from './NodeEditModal'
+
+function GraphSearch({ nodes }: { nodes: Node[] }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const { setCenter, getNode } = useReactFlow()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  const suggestions = useMemo(() => {
+    if (!query.trim()) return []
+    const q = query.toLowerCase()
+    return nodes
+      .filter((n) => {
+        const d = n.data as {
+          label?: string
+          nodeType?: string
+          subtitle?: string
+        }
+        return (
+          d.label?.toLowerCase().includes(q) ||
+          d.nodeType?.toLowerCase().includes(q) ||
+          d.subtitle?.toLowerCase().includes(q)
+        )
+      })
+      .slice(0, 12)
+  }, [query, nodes])
+
+  const handleSelect = useCallback(
+    (nodeId: string) => {
+      const node = getNode(nodeId)
+      if (node) {
+        const x = node.position.x + (node.measured?.width ?? 160) / 2
+        const y = node.position.y + (node.measured?.height ?? 60) / 2
+        setCenter(x, y, { zoom: 1.2, duration: 600 })
+      }
+      setQuery('')
+      setOpen(false)
+    },
+    [getNode, setCenter]
+  )
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target as HTMLElement)
+      ) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div ref={wrapperRef} className="absolute top-4 left-4 z-10 w-72">
+      <input
+        ref={inputRef}
+        type="text"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => query.trim() && setOpen(true)}
+        placeholder="Search nodes…"
+        className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-zinc-400 focus:outline-none"
+      />
+      {open && suggestions.length > 0 && (
+        <ul className="mt-1 max-h-64 overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-lg">
+          {suggestions.map((node) => {
+            const d = node.data as {
+              label?: string
+              nodeType?: string
+              color?: string
+            }
+            return (
+              <li key={node.id}>
+                <button
+                  type="button"
+                  onClick={() => handleSelect(node.id)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-zinc-50"
+                >
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: d.color || '#94a3b8' }}
+                  />
+                  <span className="truncate font-medium text-zinc-800">
+                    {d.label}
+                  </span>
+                  <span className="ml-auto shrink-0 text-[10px] uppercase text-zinc-400">
+                    {d.nodeType}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 interface GoalData {
   id: string
@@ -607,10 +710,12 @@ export function StateGraph() {
         <Background color="#e4e4e7" gap={20} />
         <Controls />
         <ViewportPersistence />
+        <GraphSearch nodes={nodes} />
       </ReactFlow>
 
       {stakeholders.length > STAKEHOLDER_COMPACT_THRESHOLD && (
         <button
+          type="button"
           onClick={() => setShowAllStakeholders((v) => !v)}
           className="absolute top-4 right-4 z-10 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm border border-zinc-200 hover:bg-zinc-50"
         >
