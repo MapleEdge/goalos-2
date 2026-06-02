@@ -2,6 +2,7 @@
 
 import {
   Background,
+  type Connection,
   Controls,
   type Edge,
   MarkerType,
@@ -17,7 +18,9 @@ import {
 } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '@xyflow/react/dist/style.css'
+import { ConnectNodesModal } from './ConnectNodesModal'
 import { GraphNode } from './GraphNode'
+import { NodeCreateModal } from './NodeCreateModal'
 import { NodeEditModal } from './NodeEditModal'
 
 function GraphSearch({ nodes }: { nodes: Node[] }) {
@@ -257,6 +260,15 @@ export function StateGraph() {
   const [editNode, setEditNode] = useState<{ id: string; type: string } | null>(
     null
   )
+  const [showCreate, setShowCreate] = useState(false)
+  const [pendingConnection, setPendingConnection] = useState<{
+    fromId: string
+    fromLabel: string
+    fromType: string
+    toId: string
+    toLabel: string
+    toType: string
+  } | null>(null)
   const hasRestoredViewport = useRef(false)
 
   const handleInit = useCallback((instance: ReactFlowInstance) => {
@@ -639,6 +651,28 @@ export function StateGraph() {
     []
   )
 
+  const handleConnect = useCallback(
+    (connection: Connection) => {
+      const sourceNode = nodes.find((n) => n.id === connection.source)
+      const targetNode = nodes.find((n) => n.id === connection.target)
+      if (!sourceNode || !targetNode) return
+
+      const srcData = sourceNode.data as { label?: string; nodeType?: string }
+      const tgtData = targetNode.data as { label?: string; nodeType?: string }
+      if (!srcData.nodeType || !tgtData.nodeType) return
+
+      setPendingConnection({
+        fromId: sourceNode.id,
+        fromLabel: srcData.label || sourceNode.id,
+        fromType: srcData.nodeType,
+        toId: targetNode.id,
+        toLabel: tgtData.label || targetNode.id,
+        toType: tgtData.nodeType,
+      })
+    },
+    [nodes]
+  )
+
   const reloadData = useCallback(async () => {
     const [
       goalsRes,
@@ -706,6 +740,7 @@ export function StateGraph() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
+        onConnect={handleConnect}
         nodeTypes={nodeTypes}
         onInit={handleInit}
         minZoom={0.1}
@@ -728,6 +763,43 @@ export function StateGraph() {
             ? 'Hide unlinked stakeholders'
             : `Show all ${stakeholders.length} stakeholders`}
         </button>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setShowCreate(true)}
+        className="absolute top-4 left-80 z-10 flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-zinc-800"
+      >
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        New Node
+      </button>
+
+      {showCreate && (
+        <NodeCreateModal
+          onClose={() => setShowCreate(false)}
+          onCreated={() => {
+            setShowCreate(false)
+            reloadData()
+          }}
+        />
+      )}
+
+      {pendingConnection && (
+        <ConnectNodesModal
+          fromId={pendingConnection.fromId}
+          fromLabel={pendingConnection.fromLabel}
+          fromType={pendingConnection.fromType}
+          toId={pendingConnection.toId}
+          toLabel={pendingConnection.toLabel}
+          toType={pendingConnection.toType}
+          onClose={() => setPendingConnection(null)}
+          onCreated={() => {
+            setPendingConnection(null)
+            reloadData()
+          }}
+        />
       )}
 
       {editNode && (
