@@ -12,12 +12,115 @@ import {
   useEdgesState,
   useNodesState,
   useOnViewportChange,
+  useReactFlow,
   type Viewport,
 } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '@xyflow/react/dist/style.css'
 import { GraphNode } from './GraphNode'
 import { NodeEditModal } from './NodeEditModal'
+
+function GraphSearch({ nodes }: { nodes: Node[] }) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const { setCenter, getNode } = useReactFlow()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  const suggestions = useMemo(() => {
+    if (!query.trim()) return []
+    const q = query.toLowerCase()
+    return nodes
+      .filter((n) => {
+        const d = n.data as {
+          label?: string
+          nodeType?: string
+          subtitle?: string
+        }
+        return (
+          d.label?.toLowerCase().includes(q) ||
+          d.nodeType?.toLowerCase().includes(q) ||
+          d.subtitle?.toLowerCase().includes(q)
+        )
+      })
+      .slice(0, 12)
+  }, [query, nodes])
+
+  const handleSelect = useCallback(
+    (nodeId: string) => {
+      const node = getNode(nodeId)
+      if (node) {
+        const x = node.position.x + (node.measured?.width ?? 160) / 2
+        const y = node.position.y + (node.measured?.height ?? 60) / 2
+        setCenter(x, y, { zoom: 1.2, duration: 600 })
+      }
+      setQuery('')
+      setOpen(false)
+    },
+    [getNode, setCenter]
+  )
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target as HTMLElement)
+      ) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div ref={wrapperRef} className="absolute top-4 left-4 z-10 w-72">
+      <input
+        ref={inputRef}
+        type="text"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value)
+          setOpen(true)
+        }}
+        onFocus={() => query.trim() && setOpen(true)}
+        placeholder="Search nodes…"
+        className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-zinc-400 focus:outline-none"
+      />
+      {open && suggestions.length > 0 && (
+        <ul className="mt-1 max-h-64 overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-lg">
+          {suggestions.map((node) => {
+            const d = node.data as {
+              label?: string
+              nodeType?: string
+              color?: string
+            }
+            return (
+              <li key={node.id}>
+                <button
+                  type="button"
+                  onClick={() => handleSelect(node.id)}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-zinc-50"
+                >
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: d.color || '#94a3b8' }}
+                  />
+                  <span className="truncate font-medium text-zinc-800">
+                    {d.label}
+                  </span>
+                  <span className="ml-auto shrink-0 text-[10px] uppercase text-zinc-400">
+                    {d.nodeType}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 interface GoalData {
   id: string
@@ -36,6 +139,43 @@ interface StakeholderData {
   id: string
   name: string
   organization: string | null
+}
+
+interface VehicleData {
+  id: string
+  title: string
+  type: string
+  status: string
+  vehicleGoals: { goalId: string; leverage: string | null }[]
+  controlDimensions: {
+    id: string
+    name: string
+    value: number
+    icon: string | null
+    color: string | null
+  }[]
+}
+
+interface ResourceFlowData {
+  id: string
+  label: string
+  direction: string
+  amount: number
+  entityType: string
+  entityId: string
+  resourceType: {
+    id: string
+    name: string
+    icon: string | null
+    color: string | null
+  }
+}
+
+interface ResourceTypeData {
+  id: string
+  name: string
+  icon: string | null
+  color: string | null
 }
 
 interface RelationshipData {
@@ -57,6 +197,10 @@ const typeColors: Record<string, string> = {
   EVIDENCE: '#3b82f6',
   ACTION: '#8b5cf6',
   STAKEHOLDER: '#ec4899',
+  VEHICLE: '#06b6d4',
+  RESOURCE_TYPE: '#f97316',
+  RESOURCE_FLOW: '#64748b',
+  CONTROL_DIM: '#14b8a6',
 }
 
 const STAKEHOLDER_COLS = 4
@@ -104,6 +248,9 @@ function ViewportPersistence() {
 export function StateGraph() {
   const [goals, setGoals] = useState<GoalData[]>([])
   const [stakeholders, setStakeholders] = useState<StakeholderData[]>([])
+  const [vehicles, setVehicles] = useState<VehicleData[]>([])
+  const [flows, setFlows] = useState<ResourceFlowData[]>([])
+  const [resourceTypes, setResourceTypes] = useState<ResourceTypeData[]>([])
   const [relationships, setRelationships] = useState<RelationshipData[]>([])
   const [loading, setLoading] = useState(true)
   const [showAllStakeholders, setShowAllStakeholders] = useState(false)
@@ -125,20 +272,36 @@ export function StateGraph() {
   useEffect(() => {
     let cancelled = false
     async function load() {
-      const [goalsRes, stakeholdersRes, relsRes] = await Promise.all([
+      const [
+        goalsRes,
+        stakeholdersRes,
+        relsRes,
+        vehiclesRes,
+        flowsRes,
+        typesRes,
+      ] = await Promise.all([
         fetch('/api/goals'),
         fetch('/api/stakeholders'),
         fetch('/api/relationships'),
+        fetch('/api/vehicles'),
+        fetch('/api/resource-flows?activeOnly=false'),
+        fetch('/api/resource-types'),
       ])
-      const [g, s, r] = await Promise.all([
+      const [g, s, r, v, f, t] = await Promise.all([
         goalsRes.json(),
         stakeholdersRes.json(),
         relsRes.json(),
+        vehiclesRes.json(),
+        flowsRes.json(),
+        typesRes.json(),
       ])
       if (!cancelled) {
         setGoals(g)
         setStakeholders(s)
         setRelationships(r)
+        setVehicles(v)
+        setFlows(f)
+        setResourceTypes(t)
         setLoading(false)
       }
     }
@@ -153,6 +316,7 @@ export function StateGraph() {
     const edges: Edge[] = []
     let yGoal = 0
 
+    // ── Goals + prerequisites + evidence + actions ──
     for (const goal of goals) {
       const goalX = 0
       const goalY = yGoal
@@ -247,7 +411,70 @@ export function StateGraph() {
       )
     }
 
-    // Determine which stakeholders have graph relationships
+    // ── Vehicles ──
+    const vehicleStartX = -700
+    let vehicleY = 0
+    const goalIdSet = new Set(goals.map((g) => g.id))
+
+    for (const veh of vehicles) {
+      nodes.push({
+        id: veh.id,
+        type: 'graphNode',
+        position: { x: vehicleStartX, y: vehicleY },
+        data: {
+          label: veh.title,
+          nodeType: 'VEHICLE',
+          status: veh.status,
+          color: typeColors.VEHICLE,
+          subtitle: veh.type.replace(/_/g, ' '),
+        },
+      })
+
+      // Vehicle → Goal edges via vehicleGoals
+      for (const vg of veh.vehicleGoals) {
+        if (goalIdSet.has(vg.goalId)) {
+          edges.push({
+            id: `vg-${veh.id}-${vg.goalId}`,
+            source: veh.id,
+            target: vg.goalId,
+            label: vg.leverage || 'accelerates',
+            markerEnd: { type: MarkerType.ArrowClosed },
+            style: { stroke: typeColors.VEHICLE, strokeDasharray: '6 3' },
+          })
+        }
+      }
+
+      // Control dimension sub-nodes
+      if (veh.controlDimensions.length > 0) {
+        let dimY = vehicleY - (veh.controlDimensions.length * 60) / 2
+        for (const dim of veh.controlDimensions) {
+          const dimNodeId = `ctrl-${dim.id}`
+          nodes.push({
+            id: dimNodeId,
+            type: 'graphNode',
+            position: { x: vehicleStartX - 280, y: dimY },
+            data: {
+              label: `${dim.icon || '📊'} ${dim.name}: ${Math.round(dim.value)}%`,
+              nodeType: 'CONTROL',
+              color: dim.color || typeColors.CONTROL_DIM,
+            },
+          })
+          edges.push({
+            id: `ctrl-edge-${dim.id}`,
+            source: veh.id,
+            target: dimNodeId,
+            label: `${Math.round(dim.value)}%`,
+            markerEnd: { type: MarkerType.ArrowClosed },
+            style: { stroke: dim.color || typeColors.CONTROL_DIM },
+          })
+          dimY += 65
+        }
+      }
+
+      vehicleY += Math.max(veh.controlDimensions.length * 65, 120)
+    }
+
+    // ── Stakeholders (grid layout, right side) ──
     const connectedStakeholderIds = new Set(
       relationships
         .filter(
@@ -266,7 +493,6 @@ export function StateGraph() {
     const visibleStakeholders =
       useCompact && !showAllStakeholders ? connectedStakeholders : stakeholders
 
-    // Grid layout for stakeholders
     for (let i = 0; i < visibleStakeholders.length; i++) {
       const s = visibleStakeholders[i]!
       const col = i % STAKEHOLDER_COLS
@@ -287,7 +513,6 @@ export function StateGraph() {
       })
     }
 
-    // Summary node for hidden stakeholders
     if (
       useCompact &&
       !showAllStakeholders &&
@@ -309,6 +534,52 @@ export function StateGraph() {
       })
     }
 
+    // ── Resource Flows → edges between entities ──
+    // Group flows by entity to create edges from entity to resource type
+    const entityNodeIds = new Set(nodes.map((n) => n.id))
+    const rtNodeIds = new Set<string>()
+
+    // Place resource type nodes at bottom
+    const rtStartY = Math.max(yGoal, vehicleY) + 150
+    let rtX = -300
+    for (const rt of resourceTypes) {
+      const rtNodeId = `rt-${rt.id}`
+      rtNodeIds.add(rtNodeId)
+      nodes.push({
+        id: rtNodeId,
+        type: 'graphNode',
+        position: { x: rtX, y: rtStartY },
+        data: {
+          label: `${rt.icon || '💎'} ${rt.name}`,
+          nodeType: 'RESOURCE',
+          color: rt.color || typeColors.RESOURCE_TYPE,
+        },
+      })
+      rtX += 220
+    }
+
+    // Draw flow edges
+    for (const flow of flows) {
+      const entityExists = entityNodeIds.has(flow.entityId)
+      const rtNodeId = `rt-${flow.resourceType.id}`
+      if (entityExists && rtNodeIds.has(rtNodeId)) {
+        const isInflow = flow.direction === 'INFLOW'
+        edges.push({
+          id: `flow-${flow.id}`,
+          source: isInflow ? rtNodeId : flow.entityId,
+          target: isInflow ? flow.entityId : rtNodeId,
+          label: `${flow.label} ($${flow.amount})`,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: {
+            stroke: flow.resourceType.color || typeColors.RESOURCE_FLOW,
+            strokeDasharray: '4 2',
+            opacity: 0.7,
+          },
+        })
+      }
+    }
+
+    // ── Explicit relationships ──
     for (const rel of relationships) {
       const sourceExists = nodes.some((n) => n.id === rel.fromId)
       const targetExists = nodes.some((n) => n.id === rel.toId)
@@ -325,7 +596,15 @@ export function StateGraph() {
     }
 
     return { initialNodes: nodes, initialEdges: edges }
-  }, [goals, stakeholders, relationships, showAllStakeholders])
+  }, [
+    goals,
+    stakeholders,
+    vehicles,
+    flows,
+    resourceTypes,
+    relationships,
+    showAllStakeholders,
+  ])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edgesState, setEdges, onEdgesChange] = useEdgesState(initialEdges)
@@ -341,8 +620,14 @@ export function StateGraph() {
         setShowAllStakeholders(true)
         return
       }
+      // Only open edit modal for editable types
       const nodeType = (node.data as { nodeType?: string }).nodeType
-      if (nodeType) {
+      if (
+        nodeType &&
+        ['GOAL', 'PREREQUISITE', 'ACTION', 'EVIDENCE', 'STAKEHOLDER'].includes(
+          nodeType
+        )
+      ) {
         setEditNode({ id: node.id, type: nodeType })
       }
     },
@@ -350,19 +635,35 @@ export function StateGraph() {
   )
 
   const reloadData = useCallback(async () => {
-    const [goalsRes, stakeholdersRes, relsRes] = await Promise.all([
+    const [
+      goalsRes,
+      stakeholdersRes,
+      relsRes,
+      vehiclesRes,
+      flowsRes,
+      typesRes,
+    ] = await Promise.all([
       fetch('/api/goals'),
       fetch('/api/stakeholders'),
       fetch('/api/relationships'),
+      fetch('/api/vehicles'),
+      fetch('/api/resource-flows?activeOnly=false'),
+      fetch('/api/resource-types'),
     ])
-    const [g, s, r] = await Promise.all([
+    const [g, s, r, v, f, t] = await Promise.all([
       goalsRes.json(),
       stakeholdersRes.json(),
       relsRes.json(),
+      vehiclesRes.json(),
+      flowsRes.json(),
+      typesRes.json(),
     ])
     setGoals(g)
     setStakeholders(s)
     setRelationships(r)
+    setVehicles(v)
+    setFlows(f)
+    setResourceTypes(t)
   }, [])
 
   if (loading) {
@@ -373,7 +674,11 @@ export function StateGraph() {
     )
   }
 
-  if (goals.length === 0 && stakeholders.length === 0) {
+  if (
+    goals.length === 0 &&
+    stakeholders.length === 0 &&
+    vehicles.length === 0
+  ) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-56px)]">
         <div className="text-center">
@@ -381,7 +686,7 @@ export function StateGraph() {
             No data to visualize
           </h2>
           <p className="text-sm text-zinc-500">
-            Create goals and stakeholders to see your state graph.
+            Create goals, stakeholders, and vehicles to see your state graph.
           </p>
         </div>
       </div>
@@ -398,17 +703,19 @@ export function StateGraph() {
         onNodeClick={handleNodeClick}
         nodeTypes={nodeTypes}
         onInit={handleInit}
-        minZoom={0.2}
+        minZoom={0.1}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
         <Background color="#e4e4e7" gap={20} />
         <Controls />
         <ViewportPersistence />
+        <GraphSearch nodes={nodes} />
       </ReactFlow>
 
       {stakeholders.length > STAKEHOLDER_COMPACT_THRESHOLD && (
         <button
+          type="button"
           onClick={() => setShowAllStakeholders((v) => !v)}
           className="absolute top-4 right-4 z-10 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm border border-zinc-200 hover:bg-zinc-50"
         >
@@ -434,7 +741,7 @@ export function StateGraph() {
         />
       )}
 
-      <div className="absolute bottom-4 left-4 flex gap-2 rounded-lg bg-white/90 p-2 shadow-sm backdrop-blur-sm">
+      <div className="absolute bottom-4 left-4 flex flex-wrap gap-2 rounded-lg bg-white/90 p-2 shadow-sm backdrop-blur-sm max-w-md">
         {Object.entries(typeColors).map(([type, color]) => (
           <div
             key={type}
@@ -444,7 +751,8 @@ export function StateGraph() {
               className="h-3 w-3 rounded-full"
               style={{ backgroundColor: color }}
             />
-            {type.charAt(0) + type.slice(1).toLowerCase()}
+            {type.replace(/_/g, ' ').charAt(0) +
+              type.replace(/_/g, ' ').slice(1).toLowerCase()}
           </div>
         ))}
       </div>

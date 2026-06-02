@@ -12,6 +12,7 @@ async function main() {
   // Clean existing data
   await prisma.resourceFlow.deleteMany()
   await prisma.resourceType.deleteMany()
+  await prisma.controlDimension.deleteMany()
   await prisma.opportunity.deleteMany()
   await prisma.vehicleGoal.deleteMany()
   await prisma.vehicle.deleteMany()
@@ -1683,6 +1684,22 @@ async function main() {
     },
   })
 
+  // Country of Genovia (dictator vehicle for control tracking demo)
+  const genoviaVehicle = await prisma.vehicle.create({
+    data: {
+      title: 'Country of Genovia',
+      description:
+        'Sovereign nation-state under absolute rule — primary vehicle for geopolitical power, resource extraction, and population leverage',
+      type: 'ORGANIZATION',
+      status: 'ACTIVE',
+      institution: 'Government of Genovia',
+      startDate: new Date('2020-01-15'),
+      investmentNotes: 'Annual budget $4.2B, military expenditure 12% of GDP',
+      leverageScore: 10,
+      valueId: values[0].id, // Financial Security
+    },
+  })
+
   // ─── Vehicle-Goal Links ─────────────────────────────────────────
 
   await Promise.all([
@@ -1933,6 +1950,147 @@ async function main() {
     }),
   ])
 
+  // ─── Control Dimensions (extent of control for vehicles) ────────
+
+  await Promise.all([
+    // Genovia — full dictator control panel
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: genoviaVehicle.id,
+        name: 'Financial Access',
+        description:
+          'Control over national treasury, central bank, and tax revenue',
+        value: 92,
+        icon: '💰',
+        color: '#10b981',
+      },
+    }),
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: genoviaVehicle.id,
+        name: 'Army Control',
+        description: 'Loyalty and operational command of armed forces',
+        value: 85,
+        icon: '⚔️',
+        color: '#ef4444',
+      },
+    }),
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: genoviaVehicle.id,
+        name: 'Population Sentiment',
+        description: 'Public approval rating and civil obedience',
+        value: 58,
+        icon: '👥',
+        color: '#f59e0b',
+      },
+    }),
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: genoviaVehicle.id,
+        name: 'Media Control',
+        description:
+          'Influence over state media, censorship apparatus, and narrative',
+        value: 95,
+        icon: '📺',
+        color: '#8b5cf6',
+      },
+    }),
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: genoviaVehicle.id,
+        name: 'Intelligence Network',
+        description: 'Reach and reliability of domestic intelligence agencies',
+        value: 78,
+        icon: '🕵️',
+        color: '#6366f1',
+      },
+    }),
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: genoviaVehicle.id,
+        name: 'Judicial Control',
+        description: 'Ability to influence courts and legal outcomes',
+        value: 88,
+        icon: '⚖️',
+        color: '#14b8a6',
+      },
+    }),
+    // CS Degree — academic control dimensions
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: csDegree.id,
+        name: 'Academic Standing',
+        description: 'GPA, course completion, professor relationships',
+        value: 72,
+        icon: '📚',
+        color: '#3b82f6',
+      },
+    }),
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: csDegree.id,
+        name: 'Research Access',
+        description: 'Lab access, GPU cluster, dataset availability',
+        value: 65,
+        icon: '🔬',
+        color: '#8b5cf6',
+      },
+    }),
+    // Consulting — client control
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: consultingVehicle.id,
+        name: 'Client Pipeline',
+        description: 'Active leads and repeat client relationships',
+        value: 55,
+        icon: '📋',
+        color: '#f59e0b',
+      },
+    }),
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: consultingVehicle.id,
+        name: 'Revenue Predictability',
+        description: 'Monthly recurring vs one-off contracts',
+        value: 40,
+        icon: '📊',
+        color: '#10b981',
+      },
+    }),
+    // Startup — founder control
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: startupVehicle.id,
+        name: 'Technical Velocity',
+        description: 'Speed of shipping features and iterating on product',
+        value: 80,
+        icon: '🚀',
+        color: '#3b82f6',
+      },
+    }),
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: startupVehicle.id,
+        name: 'Runway',
+        description: 'Months of cash remaining before needing funding',
+        value: 35,
+        icon: '⏳',
+        color: '#ef4444',
+      },
+    }),
+    prisma.controlDimension.create({
+      data: {
+        vehicleId: startupVehicle.id,
+        name: 'User Traction',
+        description: 'Active users, engagement metrics, growth rate',
+        value: 22,
+        icon: '📈',
+        color: '#10b981',
+      },
+    }),
+  ])
+
   // ─── Value connections (many-to-many) ───────────────────────────
   // Every entity is connected to one or more values that it relates to.
   // values[0] = Financial Security, values[1] = Career Growth,
@@ -2120,6 +2278,7 @@ async function main() {
     [hondaCivic.id]: [v.family, v.career],
     [dreamCar.id]: [v.career, v.financial],
     [rustSkill.id]: [v.knowledge, v.career],
+    [genoviaVehicle.id]: [v.financial, v.career, v.impact],
   }
 
   for (const [vehicleId, valueIds] of Object.entries(vehicleValueMap)) {
@@ -2456,11 +2615,12 @@ async function main() {
   console.log('  - 7 values')
   console.log('  - 10 completed goals')
   console.log('  - 21 active goals (3 per value)')
-  console.log('  - 12 vehicles')
+  console.log('  - 13 vehicles')
   console.log('  - 22 vehicle-goal links')
   console.log('  - 7 opportunities')
   console.log(`  - ${typeCount} resource types`)
   console.log(`  - ${flowCount} resource flows`)
+  console.log('  - 13 control dimensions across 5 vehicles')
   console.log('  - All entities connected to logical values (many-to-many)')
 }
 

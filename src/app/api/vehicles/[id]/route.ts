@@ -15,6 +15,7 @@ export async function GET(
         include: { goal: { select: { id: true, title: true, status: true } } },
       },
       opportunities: { orderBy: { createdAt: 'desc' } },
+      controlDimensions: { orderBy: { createdAt: 'asc' } },
     },
   })
 

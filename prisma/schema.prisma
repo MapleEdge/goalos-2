@@ -271,6 +271,7 @@ model Vehicle {
 
   vehicleGoals    VehicleGoal[]
   opportunities   Opportunity[]
+  controlDimensions ControlDimension[]
   relationshipsFrom Relationship[] @relation("vehicle_from")
   relationshipsTo   Relationship[] @relation("vehicle_to")
 
@@ -425,6 +426,25 @@ model ResourceFlow {
   @@index([resourceTypeId])
   @@index([direction])
   @@map("resource_flows")
+}
+
+// ─── Vehicle control dimensions ──────────────────────────────────
+
+model ControlDimension {
+  id          String   @id @default(uuid())
+  vehicleId   String
+  name        String   // e.g. "Financial Access", "Army Control", "Population Sentiment"
+  description String?
+  value       Float    @default(0) // 0-100 scale
+  icon        String?  // emoji
+  color       String?  // hex
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, name])
+  @@map("control_dimensions")
 }
 
 // ─── Event sourcing ──────────────────────────────────────────────

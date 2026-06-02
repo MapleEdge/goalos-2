@@ -21,6 +21,15 @@ interface OpportunityData {
   createdAt: string
 }
 
+interface ControlDimensionData {
+  id: string
+  name: string
+  description: string | null
+  value: number
+  icon: string | null
+  color: string | null
+}
+
 interface VehicleData {
   id: string
   title: string
@@ -37,6 +46,7 @@ interface VehicleData {
   values: { id: string; label: string }[]
   vehicleGoals: VehicleGoalData[]
   opportunities: OpportunityData[]
+  controlDimensions: ControlDimensionData[]
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -76,6 +86,12 @@ export function VehicleDetail({ id }: { id: string }) {
   const router = useRouter()
   const [vehicle, setVehicle] = useState<VehicleData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showAddDimension, setShowAddDimension] = useState(false)
+  const [dimName, setDimName] = useState('')
+  const [dimDescription, setDimDescription] = useState('')
+  const [dimValue, setDimValue] = useState('50')
+  const [dimIcon, setDimIcon] = useState('')
+  const [dimColor, setDimColor] = useState('#6366f1')
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/vehicles/${id}`)
@@ -103,6 +119,44 @@ export function VehicleDetail({ id }: { id: string }) {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
+    })
+    load()
+  }
+
+  async function handleAddDimension() {
+    if (!dimName.trim()) return
+    await fetch(`/api/vehicles/${id}/control-dimensions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: dimName,
+        description: dimDescription || null,
+        value: Number(dimValue),
+        icon: dimIcon || null,
+        color: dimColor || null,
+      }),
+    })
+    setDimName('')
+    setDimDescription('')
+    setDimValue('50')
+    setDimIcon('')
+    setDimColor('#6366f1')
+    setShowAddDimension(false)
+    load()
+  }
+
+  async function handleUpdateDimension(dimId: string, newValue: number) {
+    await fetch(`/api/vehicles/${id}/control-dimensions/${dimId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: newValue }),
+    })
+    load()
+  }
+
+  async function handleDeleteDimension(dimId: string) {
+    await fetch(`/api/vehicles/${id}/control-dimensions/${dimId}`, {
+      method: 'DELETE',
     })
     load()
   }
@@ -216,6 +270,129 @@ export function VehicleDetail({ id }: { id: string }) {
               <p className="text-sm text-zinc-600">{vehicle.description}</p>
             </div>
           )}
+
+          {/* Control Dimensions */}
+          <div className="rounded-xl border border-zinc-200 bg-white p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-zinc-700">
+                Control Dimensions ({vehicle.controlDimensions.length})
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowAddDimension(true)}
+                className="rounded-lg border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+              >
+                + Add Dimension
+              </button>
+            </div>
+            {vehicle.controlDimensions.length === 0 ? (
+              <p className="text-sm text-zinc-400">
+                No control dimensions tracked yet. Add dimensions to monitor
+                your extent of control.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {vehicle.controlDimensions.map((dim) => {
+                  const pct = Math.min(100, Math.max(0, dim.value))
+                  const barColor = dim.color || '#6366f1'
+                  return (
+                    <div
+                      key={dim.id}
+                      className="rounded-lg border border-zinc-100 bg-zinc-50 p-3"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          {dim.icon && (
+                            <span className="text-base">{dim.icon}</span>
+                          )}
+                          <span className="text-sm font-medium text-zinc-800">
+                            {dim.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="text-sm font-bold"
+                            style={{ color: barColor }}
+                          >
+                            {pct}%
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDimension(dim.id)}
+                            className="rounded p-0.5 text-zinc-400 hover:bg-red-50 hover:text-red-600 text-xs"
+                            title="Remove"
+                          >
+                            \u2715
+                          </button>
+                        </div>
+                      </div>
+                      {dim.description && (
+                        <p className="text-xs text-zinc-500 mb-2">
+                          {dim.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2.5 rounded-full bg-zinc-200 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{
+                              width: `${pct}%`,
+                              backgroundColor: barColor,
+                            }}
+                          />
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={pct}
+                          onChange={(e) =>
+                            handleUpdateDimension(
+                              dim.id,
+                              Number(e.target.value)
+                            )
+                          }
+                          className="w-20 h-1.5 accent-zinc-700"
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+                {/* Overall control score */}
+                {vehicle.controlDimensions.length > 0 && (
+                  <div className="rounded-lg border-2 border-zinc-300 bg-white p-3 mt-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-zinc-700">
+                        Overall Control
+                      </span>
+                      <span className="text-lg font-bold text-zinc-900">
+                        {Math.round(
+                          vehicle.controlDimensions.reduce(
+                            (sum, d) => sum + d.value,
+                            0
+                          ) / vehicle.controlDimensions.length
+                        )}
+                        %
+                      </span>
+                    </div>
+                    <div className="mt-1 h-3 rounded-full bg-zinc-200 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-zinc-800 transition-all duration-300"
+                        style={{
+                          width: `${Math.round(
+                            vehicle.controlDimensions.reduce(
+                              (sum, d) => sum + d.value,
+                              0
+                            ) / vehicle.controlDimensions.length
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Linked Goals */}
           <div className="rounded-xl border border-zinc-200 bg-white p-5">
@@ -381,6 +558,95 @@ export function VehicleDetail({ id }: { id: string }) {
           </div>
         </div>
       </div>
+
+      {/* Add Dimension Modal */}
+      {showAddDimension && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-lg font-semibold text-zinc-900">
+              Add Control Dimension
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-600">
+                  Name
+                </label>
+                <input
+                  value={dimName}
+                  onChange={(e) => setDimName(e.target.value)}
+                  placeholder="e.g. Financial Access, Army Control"
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-zinc-600">
+                  Description
+                </label>
+                <input
+                  value={dimDescription}
+                  onChange={(e) => setDimDescription(e.target.value)}
+                  placeholder="What does this dimension measure?"
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                />
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="mb-1 block text-xs font-medium text-zinc-600">
+                    Initial Value (0-100)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={dimValue}
+                    onChange={(e) => setDimValue(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                  />
+                </div>
+                <div className="w-24">
+                  <label className="mb-1 block text-xs font-medium text-zinc-600">
+                    Icon
+                  </label>
+                  <input
+                    value={dimIcon}
+                    onChange={(e) => setDimIcon(e.target.value)}
+                    placeholder="💰"
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                  />
+                </div>
+                <div className="w-24">
+                  <label className="mb-1 block text-xs font-medium text-zinc-600">
+                    Color
+                  </label>
+                  <input
+                    type="color"
+                    value={dimColor}
+                    onChange={(e) => setDimColor(e.target.value)}
+                    className="h-[38px] w-full cursor-pointer rounded-lg border border-zinc-300"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAddDimension(false)}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddDimension}
+                disabled={!dimName.trim()}
+                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+              >
+                Add Dimension
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
