@@ -11,6 +11,7 @@ const links = [
   { href: '/graph', label: 'Graph' },
   { href: '/relationships', label: 'Relationships' },
   { href: '/timeline', label: 'Timeline' },
+  { href: '/briefing', label: 'Briefing' },
 ]
 
 export function Nav() {
