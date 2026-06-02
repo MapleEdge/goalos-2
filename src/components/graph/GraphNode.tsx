@@ -9,12 +9,40 @@ interface GraphNodeData {
   subtitle?: string
   color: string
   isSummary?: boolean
+  isHeader?: boolean
   [key: string]: unknown
 }
 
 export function GraphNode({ data }: NodeProps) {
   const nodeData = data as GraphNodeData
   const isSummary = nodeData.isSummary === true
+  const isHeader = nodeData.isHeader === true
+
+  if (isHeader) {
+    return (
+      <div
+        className="px-2 py-1 min-w-[240px] select-none"
+        style={{ pointerEvents: 'none' }}
+      >
+        <div className="flex items-center gap-2">
+          <div
+            className="h-3 w-3 rounded-full"
+            style={{ backgroundColor: nodeData.color }}
+          />
+          <span
+            className="text-sm font-semibold uppercase tracking-wider"
+            style={{ color: nodeData.color }}
+          >
+            {nodeData.label}
+          </span>
+        </div>
+        <div
+          className="mt-1 h-0.5 rounded"
+          style={{ backgroundColor: nodeData.color, opacity: 0.3 }}
+        />
+      </div>
+    )
+  }
 
   return (
     <div

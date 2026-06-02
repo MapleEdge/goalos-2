@@ -2,6 +2,7 @@
 
 import {
   Background,
+  type Connection,
   Controls,
   type Edge,
   MarkerType,
@@ -17,7 +18,9 @@ import {
 } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import '@xyflow/react/dist/style.css'
+import { ConnectNodesModal } from './ConnectNodesModal'
 import { GraphNode } from './GraphNode'
+import { NodeCreateModal } from './NodeCreateModal'
 import { NodeEditModal } from './NodeEditModal'
 
 function GraphSearch({ nodes }: { nodes: Node[] }) {
@@ -209,6 +212,42 @@ const STAKEHOLDER_ROW_H = 90
 const STAKEHOLDER_COMPACT_THRESHOLD = 6
 
 const VIEWPORT_STORAGE_KEY = 'goalos-graph-viewport'
+const LAYOUT_STORAGE_KEY = 'goalos-graph-layout'
+
+type LayoutMode = 'freeform' | 'column'
+
+const COLUMN_ORDER: string[] = [
+  'ACTION',
+  'GOAL',
+  'PREREQUISITE',
+  'EVIDENCE',
+  'VEHICLE',
+  'CONTROL',
+  'STAKEHOLDER',
+  'RESOURCE',
+]
+const COLUMN_WIDTH = 280
+const COLUMN_NODE_GAP = 85
+const COLUMN_HEADER_Y = 0
+const COLUMN_START_Y = 50
+
+function saveLayout(mode: LayoutMode) {
+  try {
+    sessionStorage.setItem(LAYOUT_STORAGE_KEY, mode)
+  } catch {
+    // sessionStorage unavailable
+  }
+}
+
+function loadLayout(): LayoutMode {
+  try {
+    const raw = sessionStorage.getItem(LAYOUT_STORAGE_KEY)
+    if (raw === 'column' || raw === 'freeform') return raw
+  } catch {
+    // ignore
+  }
+  return 'freeform'
+}
 
 function saveViewport(viewport: Viewport) {
   try {
@@ -257,9 +296,34 @@ export function StateGraph() {
   const [editNode, setEditNode] = useState<{ id: string; type: string } | null>(
     null
   )
+  const [showCreate, setShowCreate] = useState(false)
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('freeform')
+
+  // Load persisted layout on mount
+  useEffect(() => {
+    setLayoutMode(loadLayout())
+  }, [])
+
+  const toggleLayout = useCallback(() => {
+    setLayoutMode((prev) => {
+      const next = prev === 'freeform' ? 'column' : 'freeform'
+      saveLayout(next)
+      return next
+    })
+  }, [])
+  const [pendingConnection, setPendingConnection] = useState<{
+    fromId: string
+    fromLabel: string
+    fromType: string
+    toId: string
+    toLabel: string
+    toType: string
+  } | null>(null)
   const hasRestoredViewport = useRef(false)
+  const rfInstance = useRef<ReactFlowInstance | null>(null)
 
   const handleInit = useCallback((instance: ReactFlowInstance) => {
+    rfInstance.current = instance
     const saved = loadViewport()
     if (saved && !hasRestoredViewport.current) {
       instance.setViewport(saved)
@@ -595,6 +659,53 @@ export function StateGraph() {
       }
     }
 
+    // ── Column layout: reposition all nodes by type ──
+    if (layoutMode === 'column') {
+      const typeGroups: Record<string, Node[]> = {}
+      for (const node of nodes) {
+        const nt = (node.data as { nodeType?: string }).nodeType || 'OTHER'
+        if (!typeGroups[nt]) typeGroups[nt] = []
+        typeGroups[nt]!.push(node)
+      }
+
+      let colX = 0
+      for (const type of COLUMN_ORDER) {
+        const group = typeGroups[type]
+        if (!group || group.length === 0) continue
+
+        // Add a header node for the column
+        const headerLabel =
+          type === 'CONTROL'
+            ? 'Control Dimensions'
+            : type === 'RESOURCE'
+              ? 'Resource Types'
+              : `${type.charAt(0)}${type.slice(1).toLowerCase()}s`
+        nodes.push({
+          id: `__col_header_${type}`,
+          type: 'graphNode',
+          position: { x: colX, y: COLUMN_HEADER_Y },
+          data: {
+            label: headerLabel,
+            nodeType: type,
+            color:
+              typeColors[type] ||
+              typeColors[type.replace(/S$/, '')] ||
+              '#94a3b8',
+            isHeader: true,
+          },
+          selectable: false,
+          draggable: false,
+        })
+
+        let rowY = COLUMN_START_Y
+        for (const node of group) {
+          node.position = { x: colX, y: rowY }
+          rowY += COLUMN_NODE_GAP
+        }
+        colX += COLUMN_WIDTH
+      }
+    }
+
     return { initialNodes: nodes, initialEdges: edges }
   }, [
     goals,
@@ -604,6 +715,7 @@ export function StateGraph() {
     resourceTypes,
     relationships,
     showAllStakeholders,
+    layoutMode,
   ])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
@@ -614,24 +726,63 @@ export function StateGraph() {
     setEdges(initialEdges)
   }, [initialNodes, initialEdges, setNodes, setEdges])
 
+  // Fit view when layout mode changes
+  const prevLayout = useRef(layoutMode)
+  useEffect(() => {
+    if (prevLayout.current !== layoutMode) {
+      prevLayout.current = layoutMode
+      setTimeout(() => {
+        rfInstance.current?.fitView({ duration: 400 })
+      }, 50)
+    }
+  }, [layoutMode])
+
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       if (node.id === '__stakeholder_summary') {
         setShowAllStakeholders(true)
         return
       }
+      if (node.id.startsWith('__col_header_')) return
       // Only open edit modal for editable types
       const nodeType = (node.data as { nodeType?: string }).nodeType
       if (
         nodeType &&
-        ['GOAL', 'PREREQUISITE', 'ACTION', 'EVIDENCE', 'STAKEHOLDER'].includes(
-          nodeType
-        )
+        [
+          'GOAL',
+          'PREREQUISITE',
+          'ACTION',
+          'EVIDENCE',
+          'STAKEHOLDER',
+          'VEHICLE',
+        ].includes(nodeType)
       ) {
         setEditNode({ id: node.id, type: nodeType })
       }
     },
     []
+  )
+
+  const handleConnect = useCallback(
+    (connection: Connection) => {
+      const sourceNode = nodes.find((n) => n.id === connection.source)
+      const targetNode = nodes.find((n) => n.id === connection.target)
+      if (!sourceNode || !targetNode) return
+
+      const srcData = sourceNode.data as { label?: string; nodeType?: string }
+      const tgtData = targetNode.data as { label?: string; nodeType?: string }
+      if (!srcData.nodeType || !tgtData.nodeType) return
+
+      setPendingConnection({
+        fromId: sourceNode.id,
+        fromLabel: srcData.label || sourceNode.id,
+        fromType: srcData.nodeType,
+        toId: targetNode.id,
+        toLabel: tgtData.label || targetNode.id,
+        toType: tgtData.nodeType,
+      })
+    },
+    [nodes]
   )
 
   const reloadData = useCallback(async () => {
@@ -701,6 +852,7 @@ export function StateGraph() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
+        onConnect={handleConnect}
         nodeTypes={nodeTypes}
         onInit={handleInit}
         minZoom={0.1}
@@ -713,16 +865,106 @@ export function StateGraph() {
         <GraphSearch nodes={nodes} />
       </ReactFlow>
 
-      {stakeholders.length > STAKEHOLDER_COMPACT_THRESHOLD && (
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
         <button
           type="button"
-          onClick={() => setShowAllStakeholders((v) => !v)}
-          className="absolute top-4 right-4 z-10 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm border border-zinc-200 hover:bg-zinc-50"
+          onClick={toggleLayout}
+          className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm border border-zinc-200 hover:bg-zinc-50"
         >
-          {showAllStakeholders
-            ? 'Hide unlinked stakeholders'
-            : `Show all ${stakeholders.length} stakeholders`}
+          {layoutMode === 'freeform' ? (
+            <>
+              <svg
+                className="h-3.5 w-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 4h6m-6 4h6m-6 4h6m-6 4h6M4 4v16"
+                />
+              </svg>
+              Column View
+            </>
+          ) : (
+            <>
+              <svg
+                className="h-3.5 w-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+              Free-form View
+            </>
+          )}
         </button>
+        {stakeholders.length > STAKEHOLDER_COMPACT_THRESHOLD && (
+          <button
+            type="button"
+            onClick={() => setShowAllStakeholders((v) => !v)}
+            className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 shadow-sm border border-zinc-200 hover:bg-zinc-50"
+          >
+            {showAllStakeholders
+              ? 'Hide unlinked stakeholders'
+              : `Show all ${stakeholders.length} stakeholders`}
+          </button>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setShowCreate(true)}
+        className="absolute top-4 left-80 z-10 flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-zinc-800"
+      >
+        <svg
+          className="h-3.5 w-3.5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 4v16m8-8H4"
+          />
+        </svg>
+        New Node
+      </button>
+
+      {showCreate && (
+        <NodeCreateModal
+          onClose={() => setShowCreate(false)}
+          onCreated={() => {
+            setShowCreate(false)
+            reloadData()
+          }}
+        />
+      )}
+
+      {pendingConnection && (
+        <ConnectNodesModal
+          fromId={pendingConnection.fromId}
+          fromLabel={pendingConnection.fromLabel}
+          fromType={pendingConnection.fromType}
+          toId={pendingConnection.toId}
+          toLabel={pendingConnection.toLabel}
+          toType={pendingConnection.toType}
+          onClose={() => setPendingConnection(null)}
+          onCreated={() => {
+            setPendingConnection(null)
+            reloadData()
+          }}
+        />
       )}
 
       {editNode && (
@@ -735,6 +977,7 @@ export function StateGraph() {
               | 'ACTION'
               | 'EVIDENCE'
               | 'STAKEHOLDER'
+              | 'VEHICLE'
           }
           onClose={() => setEditNode(null)}
           onSaved={reloadData}

@@ -20,6 +20,8 @@ function getForeignKeyFields(
       return { [`evidence${suffix}`]: id }
     case 'ACTION':
       return { [`action${suffix}`]: id }
+    case 'VEHICLE':
+      return { [`vehicle${suffix}`]: id }
     default:
       return {}
   }

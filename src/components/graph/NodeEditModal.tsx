@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
-type NodeType = 'GOAL' | 'PREREQUISITE' | 'ACTION' | 'EVIDENCE' | 'STAKEHOLDER'
+type NodeType =
+  | 'GOAL'
+  | 'PREREQUISITE'
+  | 'ACTION'
+  | 'EVIDENCE'
+  | 'STAKEHOLDER'
+  | 'VEHICLE'
 
 interface NodeEditModalProps {
   nodeId: string
@@ -17,6 +23,7 @@ const API_PATH: Record<NodeType, string> = {
   ACTION: '/api/actions',
   EVIDENCE: '/api/evidence',
   STAKEHOLDER: '/api/stakeholders',
+  VEHICLE: '/api/vehicles',
 }
 
 const STATUS_OPTIONS: Record<NodeType, string[]> = {
@@ -25,6 +32,15 @@ const STATUS_OPTIONS: Record<NodeType, string[]> = {
   ACTION: ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'SKIPPED'],
   EVIDENCE: [],
   STAKEHOLDER: [],
+  VEHICLE: [
+    'IDENTIFIED',
+    'RESEARCHING',
+    'ACQUIRING',
+    'BUILDING',
+    'ACTIVE',
+    'DORMANT',
+    'RETIRED',
+  ],
 }
 
 const PRIORITY_OPTIONS = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
@@ -97,6 +113,42 @@ function getFields(nodeType: NodeType): FieldConfig[] {
           type: 'number',
         },
         { key: 'notes', label: 'Notes', type: 'textarea' },
+      ]
+    case 'VEHICLE':
+      return [
+        { key: 'title', label: 'Title', type: 'text' },
+        { key: 'description', label: 'Description', type: 'textarea' },
+        {
+          key: 'type',
+          label: 'Type',
+          type: 'select',
+          options: [
+            'EDUCATION',
+            'EMPLOYMENT',
+            'BUSINESS',
+            'ASSET',
+            'PLATFORM',
+            'NETWORK',
+            'ORGANIZATION',
+            'EVENT_SERIES',
+            'SKILL',
+            'OTHER',
+          ],
+        },
+        {
+          key: 'status',
+          label: 'Status',
+          type: 'select',
+          options: STATUS_OPTIONS.VEHICLE,
+        },
+        {
+          key: 'institution',
+          label: 'Institution / Organization',
+          type: 'text',
+        },
+        { key: 'startDate', label: 'Start Date', type: 'date' },
+        { key: 'endDate', label: 'End Date', type: 'date' },
+        { key: 'investmentNotes', label: 'Investment Notes', type: 'textarea' },
       ]
   }
 }
