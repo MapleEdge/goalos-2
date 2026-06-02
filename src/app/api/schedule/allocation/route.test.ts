@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET } from './route'
 
+// ── Session mock ────────────────────────────────────────────────
+vi.mock('@/lib/session', () => ({
+  requireSession: vi.fn().mockResolvedValue({
+    user: { id: 'test-user-id', name: 'Test', email: 'test@test.com' },
+  }),
+}))
+
 // ── Prisma mock ──────────────────────────────────────────────────
 vi.mock('@/lib/prisma', () => ({
   prisma: {
@@ -42,6 +49,9 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
     actionId: null,
     calendarConnectionId: null,
     color: null,
+    userId: 'test-user-id',
+    recurrence: null,
+    recurrenceGroupId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
