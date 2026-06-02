@@ -2,6 +2,7 @@
 
 import { ValuePills } from '@goalos/ui/components/ValuePills'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useAiAccess } from '@/lib/useAiAccess'
 import { useTokens } from '@/lib/useTokens'
 import { TimeCommitmentStep } from './TimeCommitmentStep'
 
@@ -76,6 +77,7 @@ export function CreateGoalForm({
   initialSuccessCriteria?: string
 }) {
   const { tokensEnabled } = useTokens()
+  const ai = useAiAccess()
   const [title, setTitle] = useState(initialTitle)
   const [description, setDescription] = useState(initialDescription)
   const [targetDate, setTargetDate] = useState(initialTargetDate)
@@ -138,13 +140,23 @@ export function CreateGoalForm({
     }
     fetch('/api/stakeholders/suggestions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...ai.headers },
       body: JSON.stringify({ title, description, successCriteria }),
     })
       .then((r) => r.json())
-      .then((data: SuggestedStakeholder[]) => setSuggestions(data))
+      .then((data: SuggestedStakeholder[]) => {
+        setSuggestions(data)
+        void ai.refresh()
+      })
       .catch(() => setSuggestions([]))
-  }, [title, description, successCriteria, tokensEnabled])
+  }, [
+    title,
+    description,
+    successCriteria,
+    tokensEnabled,
+    ai.headers,
+    ai.refresh,
+  ])
 
   useEffect(() => {
     if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current)

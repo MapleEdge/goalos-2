@@ -1,5 +1,9 @@
-import { getGeminiClient, getGeminiModel } from '@goalos/shared/lib/gemini'
+import { getGeminiClient } from '@goalos/shared/lib/gemini'
 import { NextResponse } from 'next/server'
+import {
+  consumeCredit,
+  resolveEntitlementFromRequest,
+} from '@/lib/server/entitlement'
 
 const VALID_INTENTS = [
   'review_all',
@@ -60,14 +64,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'input is required' }, { status: 400 })
   }
 
-  const client = getGeminiClient()
+  const entitlement = await resolveEntitlementFromRequest(request)
+  if (!entitlement.hasCredits) {
+    // Free allotment exhausted — client falls back to the offline model/regex.
+    return NextResponse.json({ intent: null, llm: false, reason: 'no-credits' })
+  }
+
+  const client = getGeminiClient(entitlement.apiKey)
   if (!client) {
     return NextResponse.json({ intent: null, llm: false })
   }
 
   try {
     const completion = await client.models.generateContent({
-      model: getGeminiModel(),
+      model: entitlement.model,
       contents: input,
       config: {
         systemInstruction: SYSTEM_PROMPT,
@@ -76,6 +86,8 @@ export async function POST(request: Request) {
         thinkingConfig: { thinkingBudget: 0 },
       },
     })
+
+    await consumeCredit(entitlement)
 
     const raw = completion.text || ''
     const intent = parseIntent(raw)

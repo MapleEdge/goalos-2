@@ -21,11 +21,11 @@ export interface EmbedderState {
  * from installing the app) and are cached locally by Transformers.js, so the
  * engine is offline after the first warm-up.
  */
-const MODEL_ID =
+let modelId =
   process.env.NEXT_PUBLIC_EMBED_MODEL ?? 'mixedbread-ai/mxbai-embed-large-v1'
 
-/** mxbai retrieval works best when the query carries this instruction prefix. */
-const QUERY_PREFIX = 'Represent this sentence for searching relevant passages: '
+/** Some retrieval models expect an instruction prefix on the query text. */
+let queryPrefix = 'Represent this sentence for searching relevant passages: '
 
 let state: EmbedderState = { status: 'idle', progress: 0 }
 let pipe: FeatureExtractionPipeline | null = null
@@ -52,6 +52,29 @@ export function isEmbedderReady(): boolean {
   return state.status === 'ready' && pipe !== null
 }
 
+/** The embedding model id currently configured. */
+export function getEmbedModel(): string {
+  return modelId
+}
+
+/**
+ * Selects which embedding model to load (driven by the active plan tier). When
+ * the model id changes, the current pipeline is discarded and the next
+ * `startEmbedderInstall()` downloads the new one. Calling with the same id is a
+ * no-op so an in-flight or ready model isn't interrupted.
+ */
+export function configureEmbedder(opts: {
+  modelId: string
+  queryPrefix?: string
+}): void {
+  queryPrefix = opts.queryPrefix ?? ''
+  if (opts.modelId === modelId) return
+  modelId = opts.modelId
+  pipe = null
+  loadPromise = null
+  setState({ status: 'idle', progress: 0, error: undefined })
+}
+
 /**
  * Kicks off the background install of the offline model. Safe to call multiple
  * times — the download only runs once. Resolves with the pipeline (or null on
@@ -74,11 +97,12 @@ export function startEmbedderInstall(): Promise<FeatureExtractionPipeline | null
         }
       }
 
+      const targetModel = modelId
       const dtypes: Array<'fp16' | 'q8'> = ['fp16', 'q8']
       let lastError: unknown = null
       for (const dtype of dtypes) {
         try {
-          pipe = await pipeline('feature-extraction', MODEL_ID, {
+          pipe = await pipeline('feature-extraction', targetModel, {
             dtype,
             progress_callback: onProgress,
           })
@@ -114,7 +138,7 @@ export async function embed(
   isQuery = false
 ): Promise<number[][] | null> {
   if (!pipe) return null
-  const input = isQuery ? texts.map((t) => QUERY_PREFIX + t) : texts
+  const input = isQuery ? texts.map((t) => queryPrefix + t) : texts
   const output = await pipe(input, { pooling: 'mean', normalize: true })
   return output.tolist() as number[][]
 }

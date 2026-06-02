@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import { useAiAccess } from '@/lib/useAiAccess'
 import { useTokens } from '@/lib/useTokens'
 
 // ── Types ────────────────────────────────────────────────────────
@@ -59,6 +60,7 @@ const ENTITY_LABELS: Record<string, string> = {
 
 export default function BriefingPage() {
   const { tokensEnabled } = useTokens()
+  const ai = useAiAccess()
   const [text, setText] = useState('')
   const [parsing, setParsing] = useState(false)
   const [applying, setApplying] = useState(false)
@@ -83,15 +85,21 @@ export default function BriefingPage() {
     try {
       const res = await fetch('/api/briefing/parse', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...ai.headers },
         body: JSON.stringify({ text }),
       })
+      if (res.status === 402) {
+        throw new Error(
+          'You have used all your free AI credits this month. Upgrade to Pro or Max for unlimited AI.'
+        )
+      }
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.error || `HTTP ${res.status}`)
       }
       const data: ParseResult = await res.json()
       setParseResult(data)
+      void ai.refresh()
       // Default all to approved
       const defaults: Record<number, boolean> = {}
       data.operations.forEach((_, i) => {
@@ -104,7 +112,7 @@ export default function BriefingPage() {
     } finally {
       setParsing(false)
     }
-  }, [text, tokensEnabled])
+  }, [text, tokensEnabled, ai.headers, ai.refresh])
 
   const handleApply = useCallback(async () => {
     if (!parseResult) return

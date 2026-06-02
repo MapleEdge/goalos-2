@@ -1,9 +1,21 @@
-import { getGeminiClient, getGeminiModel } from '@goalos/shared/lib/gemini'
+import { getGeminiClient } from '@goalos/shared/lib/gemini'
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import {
+  consumeCredit,
+  resolveEntitlementFromRequest,
+} from '@/lib/server/entitlement'
 
 export async function POST(request: Request) {
-  const client = getGeminiClient()
+  const entitlement = await resolveEntitlementFromRequest(request)
+  if (!entitlement.hasCredits) {
+    return NextResponse.json(
+      { error: 'AI credits exhausted', reason: 'no-credits' },
+      { status: 402 }
+    )
+  }
+
+  const client = getGeminiClient(entitlement.apiKey)
   if (!client) {
     return NextResponse.json(
       { error: 'Gemini API key not configured' },
@@ -95,7 +107,7 @@ Respond with ONLY valid JSON (no markdown fences) in this exact format:
 }`
 
   const completion = await client.models.generateContent({
-    model: getGeminiModel(),
+    model: entitlement.model,
     contents: `Parse this briefing into structured GoalOS entity operations:\n\n${text}`,
     config: {
       systemInstruction: systemPrompt,
@@ -114,6 +126,7 @@ Respond with ONLY valid JSON (no markdown fences) in this exact format:
 
   try {
     const parsed = JSON.parse(jsonStr)
+    await consumeCredit(entitlement)
     return NextResponse.json(parsed)
   } catch {
     return NextResponse.json(

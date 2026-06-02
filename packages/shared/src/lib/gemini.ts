@@ -10,13 +10,25 @@ import {
 
 // Shared Gemini client + helpers. The reasoning engine and all AI features work
 // without a key — callers fall back to non-AI behavior when this returns null.
-export function getGeminiClient(): GoogleGenAI | null {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) return null
-  return new GoogleGenAI({ apiKey })
+export function getGeminiClient(apiKey?: string | null): GoogleGenAI | null {
+  const key = apiKey ?? process.env.GEMINI_API_KEY
+  if (!key) return null
+  return new GoogleGenAI({ apiKey: key })
 }
 
 export function getGeminiModel(): string {
+  return process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+}
+
+/**
+ * Resolves the Gemini model for a subscription tier. Max unlocks the Pro model
+ * (higher-quality reasoning); Free and Pro use Flash. The tier is resolved
+ * server-side from the subscription record, never trusted from the client.
+ */
+export function getGeminiModelForPlan(plan?: string | null): string {
+  if (plan === 'max') {
+    return process.env.GEMINI_MODEL_MAX || 'gemini-2.5-pro'
+  }
   return process.env.GEMINI_MODEL || 'gemini-2.5-flash'
 }
 
@@ -46,6 +58,8 @@ export interface GeminiCallOptions {
   model: string
   contents: string
   config?: Record<string, unknown>
+  // Per-customer key to use instead of the shared owner key (paid tiers).
+  apiKey?: string | null
 }
 
 /**
@@ -55,7 +69,7 @@ export interface GeminiCallOptions {
 export async function callGemini(
   opts: GeminiCallOptions
 ): Promise<GenerateContentResponse | null> {
-  const client = getGeminiClient()
+  const client = getGeminiClient(opts.apiKey)
   if (!client) return null
 
   if (isCircuitOpen(geminiCircuitBreaker)) {

@@ -1,5 +1,6 @@
 'use client'
 
+import { Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -44,6 +45,17 @@ export function Nav() {
             )
           })}
           <span className="mx-1 h-5 w-px bg-zinc-200" />
+          <Link
+            href="/pricing"
+            title="Plans & Pricing"
+            className={`rounded-lg p-1.5 transition-colors ${
+              pathname === '/pricing'
+                ? 'bg-zinc-900 text-white'
+                : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
+            }`}
+          >
+            <Sparkles className="h-4.5 w-4.5" />
+          </Link>
           <Link
             href="/profile"
             title="Profile"

@@ -1,4 +1,4 @@
-import { getGeminiClient, getGeminiModel } from '@goalos/shared/lib/gemini'
+import { getGeminiClient } from '@goalos/shared/lib/gemini'
 import { prisma } from '@goalos/shared/lib/prisma'
 import { desanitize, sanitize } from '@goalos/shared/lib/sanitize'
 import type {
@@ -9,6 +9,10 @@ import type {
   ValueExchangeSuggestion,
 } from '@goalos/shared/types'
 import { NextResponse } from 'next/server'
+import {
+  consumeCredit,
+  resolveEntitlementFromRequest,
+} from '@/lib/server/entitlement'
 
 // ─── Keyword-based relevance scoring ─────────────────────────────
 
@@ -202,9 +206,10 @@ async function generateValueExchangeSuggestions(
   stakeholderNotes: string | null,
   matchedCapabilities: CapabilityEntry[],
   valueExchangeAssets: ValueExchangeAsset[],
-  userAssets: UserAsset[]
+  userAssets: UserAsset[],
+  opts: { model: string; apiKey: string | null }
 ): Promise<ValueExchangeSuggestion[]> {
-  const client = getGeminiClient()
+  const client = getGeminiClient(opts.apiKey)
   if (!client) return []
   if (matchedCapabilities.length === 0 || valueExchangeAssets.length === 0)
     return []
@@ -259,7 +264,7 @@ JSON only, no markdown, no explanation.`
 
   try {
     const response = await client.models.generateContent({
-      model: getGeminiModel(),
+      model: opts.model,
       contents: prompt,
     })
 
@@ -299,6 +304,7 @@ JSON only, no markdown, no explanation.`
 // ─── Main endpoint ───────────────────────────────────────────────
 
 export async function POST(request: Request) {
+  const entitlement = await resolveEntitlementFromRequest(request)
   const body = await request.json()
   const goalText = [
     body.title || '',
@@ -336,30 +342,39 @@ export async function POST(request: Request) {
   suggestions.sort((a, b) => b.relevanceScore - a.relevanceScore)
   const top = suggestions.slice(0, 10)
 
-  // For each suggested stakeholder, check if Gemini should generate exchange suggestions
-  const exchangePromises = top.map(async (s) => {
-    const stakeholder = stakeholders.find((st) => st.id === s.stakeholderId)
-    if (!stakeholder) return
+  // Keyword matches above are free; the value-exchange strategies are the AI
+  // surface, so skip them entirely once the Free allotment is exhausted.
+  if (entitlement.hasCredits) {
+    let attempted = false
+    const exchangePromises = top.map(async (s) => {
+      const stakeholder = stakeholders.find((st) => st.id === s.stakeholderId)
+      if (!stakeholder) return
 
-    const veAssets =
-      (stakeholder.valueExchangeAssets as ValueExchangeAsset[] | null) || []
-    const uAssets = (stakeholder.userAssets as UserAsset[] | null) || []
+      const veAssets =
+        (stakeholder.valueExchangeAssets as ValueExchangeAsset[] | null) || []
+      const uAssets = (stakeholder.userAssets as UserAsset[] | null) || []
 
-    if (veAssets.length === 0) return
+      if (veAssets.length === 0) return
+      attempted = true
 
-    s.valueExchangeSuggestions = await generateValueExchangeSuggestions(
-      body.title || '',
-      body.description || '',
-      s.name,
-      s.role,
-      stakeholder.notes,
-      s.capabilities,
-      veAssets,
-      uAssets
-    )
-  })
+      s.valueExchangeSuggestions = await generateValueExchangeSuggestions(
+        body.title || '',
+        body.description || '',
+        s.name,
+        s.role,
+        stakeholder.notes,
+        s.capabilities,
+        veAssets,
+        uAssets,
+        { model: entitlement.model, apiKey: entitlement.apiKey }
+      )
+    })
 
-  await Promise.all(exchangePromises)
+    await Promise.all(exchangePromises)
+
+    // One request to this endpoint = one credit, regardless of fan-out.
+    if (attempted) await consumeCredit(entitlement)
+  }
 
   return NextResponse.json(top)
 }

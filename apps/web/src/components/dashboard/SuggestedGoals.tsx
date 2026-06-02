@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useAiAccess } from '@/lib/useAiAccess'
 import { useTokens } from '@/lib/useTokens'
 
 interface GoalSuggestion {
@@ -16,6 +17,7 @@ interface SuggestionsResponse {
   valuesSummary?: string
   message?: string
   source?: 'gemini' | 'templates'
+  reason?: string
 }
 
 export function SuggestedGoals({
@@ -26,6 +28,7 @@ export function SuggestedGoals({
   onCreateGoal: (title: string, description: string) => void
 }) {
   const { tokensEnabled } = useTokens()
+  const ai = useAiAccess()
   const [data, setData] = useState<SuggestionsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -38,13 +41,14 @@ export function SuggestedGoals({
       return () => {}
     }
     let cancelled = false
-    fetch('/api/goals/suggest')
+    fetch('/api/goals/suggest', { headers: ai.headers })
       .then((r) => r.json())
       .then((d: SuggestionsResponse) => {
         if (!cancelled) {
           setData(d)
           setLoading(false)
           setRefreshing(false)
+          if (d.source === 'gemini') ai.consume()
         }
       })
       .catch(() => {
@@ -56,7 +60,7 @@ export function SuggestedGoals({
     return () => {
       cancelled = true
     }
-  }, [tokensEnabled])
+  }, [tokensEnabled, ai.headers, ai.consume])
 
   useEffect(() => {
     return fetchSuggestions()

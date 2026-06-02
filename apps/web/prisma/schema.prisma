@@ -472,3 +472,62 @@ model Event {
   @@index([occurredAt])
   @@map("events")
 }
+
+// ─── Billing & entitlements ──────────────────────────────────────
+
+enum PlanTier {
+  FREE
+  PRO
+  MAX
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+// A subscriber's entitlement record. Created on first launch as a FREE tier and
+// upgraded by the Stripe webhook on payment. `token` is the opaque credential
+// the client stores and sends with every AI request — it is the only thing that
+// identifies a tier server-side (there is no login). API keys are kept here,
+// server-side only, and are never returned to the client.
+model Subscription {
+  id                   String             @id @default(uuid())
+  token                String             @unique @default(uuid())
+  tier                 PlanTier           @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+
+  // Per-customer Gemini key provisioned for paid tiers. Encrypted at rest;
+  // `geminiKeyResource` is the API Keys API resource name used to revoke it.
+  geminiKeyCipher      String?
+  geminiKeyResource    String?
+
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  usage                AiUsage[]
+
+  @@index([stripeCustomerId])
+  @@map("subscriptions")
+}
+
+// Monthly AI request counter for credit-metered tiers. One row per period
+// (year-month); usage resets implicitly when a new period row is created.
+model AiUsage {
+  id             String       @id @default(uuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  period         String       // e.g. "2026-06"
+  used           Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([subscriptionId, period])
+  @@map("ai_usage")
+}

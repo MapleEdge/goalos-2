@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { BillingSection } from '@/components/settings/BillingSection'
 import { useTimezone } from '@/lib/useTimezone'
 import { useTokens } from '@/lib/useTokens'
 
@@ -86,6 +87,8 @@ export default function SettingsPage() {
       </p>
 
       <div className="space-y-6">
+        <BillingSection />
+
         <section className="rounded-xl border border-zinc-200 bg-white p-6">
           <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider mb-4">
             AI & Tokens

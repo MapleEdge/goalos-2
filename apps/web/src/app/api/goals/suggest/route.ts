@@ -1,7 +1,11 @@
-import { getGeminiClient, getGeminiModel } from '@goalos/shared/lib/gemini'
+import { getGeminiClient } from '@goalos/shared/lib/gemini'
 import { prisma } from '@goalos/shared/lib/prisma'
 import type { GoalSuggestion, ValueRow } from '@goalos/shared/types'
 import { NextResponse } from 'next/server'
+import {
+  consumeCredit,
+  resolveEntitlementFromRequest,
+} from '@/lib/server/entitlement'
 
 // --- Gemini integration via the @google/genai SDK ---
 
@@ -12,9 +16,10 @@ async function generateWithGemini(
     description: string | null
     status: string
     completedAt: Date | null
-  }[]
+  }[],
+  opts: { model: string; apiKey: string | null }
 ): Promise<GoalSuggestion[] | null> {
-  const client = getGeminiClient()
+  const client = getGeminiClient(opts.apiKey)
   if (!client) return null
 
   const activeGoals = existingGoals.filter((g) => g.status === 'ACTIVE')
@@ -77,7 +82,7 @@ Suggest new goals I should pursue, building on what I've already accomplished.`
 
   try {
     const completion = await client.models.generateContent({
-      model: getGeminiModel(),
+      model: opts.model,
       contents: userPrompt,
       config: {
         systemInstruction: systemPrompt,
@@ -424,7 +429,8 @@ function generateTemplateSuggestions(
   return unique.slice(0, 8)
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const entitlement = await resolveEntitlementFromRequest(request)
   const [values, goals] = await Promise.all([
     prisma.value.findMany({ orderBy: { rank: 'asc' } }),
     prisma.goal.findMany({
@@ -449,13 +455,28 @@ export async function GET() {
     .map((v) => `${v.label} (rank: ${v.rank})`)
     .join(', ')
 
+  // Free allotment exhausted: serve template suggestions and flag the upsell.
+  if (!entitlement.hasCredits) {
+    return NextResponse.json({
+      suggestions: generateTemplateSuggestions(typedValues, goals),
+      valuesSummary,
+      source: 'templates',
+      reason: 'no-credits',
+    })
+  }
+
   // Try Gemini first, fall back to templates
-  let suggestions = await generateWithGemini(typedValues, goals)
+  let suggestions = await generateWithGemini(typedValues, goals, {
+    model: entitlement.model,
+    apiKey: entitlement.apiKey,
+  })
   let source: 'gemini' | 'templates' = 'gemini'
 
   if (!suggestions || suggestions.length === 0) {
     suggestions = generateTemplateSuggestions(typedValues, goals)
     source = 'templates'
+  } else {
+    await consumeCredit(entitlement)
   }
 
   return NextResponse.json({

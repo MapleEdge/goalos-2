@@ -9,6 +9,7 @@ import {
   classifyIntentSemantic,
   INTENT_CONFIDENCE,
 } from '@/lib/semantic/intent'
+import { useAiAccess } from '@/lib/useAiAccess'
 import { useTokens } from '@/lib/useTokens'
 
 interface ParsedGoal {
@@ -214,7 +215,9 @@ function buildIntent(type: IntentType, input: string): IntentResult {
 
 async function detectIntent(
   input: string,
-  useAi = true
+  useAi = true,
+  aiHeaders: Record<string, string> = {},
+  onLlmUsed?: () => void
 ): Promise<IntentResult> {
   const trimmed = input.trim()
 
@@ -236,12 +239,13 @@ async function detectIntent(
     try {
       const res = await fetch('/api/intent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...aiHeaders },
         body: JSON.stringify({ input: trimmed }),
       })
       const data = await res.json()
 
       if (data.llm && data.intent) {
+        onLlmUsed?.()
         return buildIntent(data.intent as IntentType, trimmed)
       }
     } catch {
@@ -335,6 +339,7 @@ interface RecommendationsData {
 
 export function GoalPrompt() {
   const { tokensEnabled } = useTokens()
+  const ai = useAiAccess()
   const [inputValue, setInputValue] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showProgress, setShowProgress] = useState(false)
@@ -471,7 +476,12 @@ export function GoalPrompt() {
     const trimmed = inputValue.trim()
     if (!trimmed) return
 
-    const intent = await detectIntent(trimmed, tokensEnabled)
+    const intent = await detectIntent(
+      trimmed,
+      tokensEnabled,
+      ai.headers,
+      ai.consume
+    )
 
     switch (intent.type) {
       case 'review_all':

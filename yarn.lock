@@ -1080,12 +1080,14 @@ __metadata:
     "@xyflow/react": "npm:^12.10.2"
     date-fns: "npm:^4.4.0"
     dotenv: "npm:^17.4.2"
+    google-auth-library: "npm:^10.6.2"
     jsdom: "npm:^29.1.1"
     lucide-react: "npm:^1.17.0"
     next: "npm:16.2.6"
     prisma: "npm:^7.8.0"
     react: "npm:19.2.4"
     react-dom: "npm:19.2.4"
+    stripe: "npm:^22.2.0"
     tailwindcss: "npm:^4"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5"
@@ -5672,7 +5674,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"google-auth-library@npm:^10.3.0":
+"google-auth-library@npm:^10.3.0, google-auth-library@npm:^10.6.2":
   version: 10.6.2
   resolution: "google-auth-library@npm:10.6.2"
   dependencies:
@@ -8371,6 +8373,18 @@ __metadata:
   version: 5.0.3
   resolution: "strip-json-comments@npm:5.0.3"
   checksum: 10/3ccbf26f278220f785e4b71f8a719a6a063d72558cc63cb450924254af258a4f4c008b8c9b055373a680dc7bd525be9e543ad742c177f8a7667e0b726258e0e4
+  languageName: node
+  linkType: hard
+
+"stripe@npm:^22.2.0":
+  version: 22.2.0
+  resolution: "stripe@npm:22.2.0"
+  peerDependencies:
+    "@types/node": ">=18"
+  peerDependenciesMeta:
+    "@types/node":
+      optional: true
+  checksum: 10/2f428faf61c23024aac87fd6190c5086c4330014c04db249e24ce4d5af1e9d99a5dcd14beed5e03956e48c5ab1969c6ea7201fd510eef936411dc3292a10a2b4
   languageName: node
   linkType: hard
 
