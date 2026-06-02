@@ -298,6 +298,21 @@ async function main() {
     },
   })
 
+  // Recommendation letter test goal — tests value gap / exchange suggestion system
+  const recLetterGoal = await prisma.goal.create({
+    data: {
+      valueId: values[1].id,
+      title: 'Get Recommendation Letter for Grad School',
+      description:
+        'Obtain a strong recommendation letter from a CS professor for grad school applications. Need someone respected in the field who can speak to technical ability.',
+      targetDate: new Date('2026-10-01'),
+      successCriteria:
+        'Signed recommendation letter submitted to 3 grad programs',
+      status: 'ACTIVE',
+    },
+  })
+  void recLetterGoal
+
   // Knowledge & Learning (rank 3)
   const researchGoal = await prisma.goal.create({
     data: {
@@ -486,6 +501,14 @@ async function main() {
   })
 
   // ─── Stakeholders ─────────────────────────────────────────────
+  //
+  // Each stakeholder now has:
+  //   capabilities — purely semantic descriptions of what they can do
+  //     capability:  text describing what they are able to deliver
+  //     willingness: text describing how willing they are to help and why
+  //     condition:   what they require before they will help (optional)
+  //   valueExchangeAssets — what motivates/incentivizes them (for value gap analysis)
+  //   userAssets — what the user can offer this person
 
   const profChen = await prisma.stakeholder.create({
     data: {
@@ -497,23 +520,108 @@ async function main() {
       notes: 'Very supportive, met during office hours multiple times',
       capabilities: [
         {
-          type: 'willingness',
-          description: 'write recommendation letter',
+          capability:
+            'can write a strong recommendation letter; well-regarded in the department',
+          willingness:
+            'very willing if student maintains A grade and attends office hours regularly',
           condition: 'maintain A grade and attend office hours regularly',
         },
         {
-          type: 'capability',
-          description: 'TA position referral',
+          capability:
+            'can refer students for TA positions in the CS department',
+          willingness:
+            'moderately willing; needs to see teaching ability demonstrated first',
           condition: 'demonstrate teaching ability in study groups',
         },
         {
-          type: 'willingness',
-          description: 'research mentorship',
+          capability: 'experienced research mentor with active lab',
+          willingness:
+            'somewhat willing but time-constrained; requires commitment',
           condition: 'commit to weekly lab meetings',
         },
       ],
+      valueExchangeAssets: [
+        {
+          asset: 'academic recognition',
+          category: 'status',
+          notes: 'values having productive students to cite',
+        },
+        {
+          asset: 'research assistance',
+          category: 'labor',
+          notes: 'always needs help with grading and lab work',
+        },
+        {
+          asset: 'conference co-authorship',
+          category: 'career',
+          notes: 'wants more publications',
+        },
+      ],
+      userAssets: [
+        { asset: 'grading assistance', category: 'labor' },
+        { asset: 'research data collection', category: 'labor' },
+        { asset: 'study group leadership', category: 'service' },
+      ],
     },
   })
+
+  // Professor Williams — recommendation letter test scenario
+  // Very high capability but essentially zero willingness due to unmet GPA requirement
+  const profWilliams = await prisma.stakeholder.create({
+    data: {
+      name: 'Prof. Williams',
+      organization: 'CS Department',
+      role: 'Professor, CS 450 Advanced Algorithms',
+      relationshipStrength: 25,
+      lastInteraction: new Date('2026-01-15'),
+      notes:
+        'Tough grader. Known to write very strong recommendation letters for students who impress him. Has a reputation for enjoying attention from attractive women.',
+      capabilities: [
+        {
+          capability:
+            'writes exceptionally strong recommendation letters; highly respected by grad school admissions committees',
+          willingness:
+            'completely unwilling — requires minimum 3.5 GPA in his courses and user currently has 2.8; does not consider current academic performance sufficient',
+          condition: 'minimum 3.5 GPA in his courses; user currently has 2.8',
+        },
+        {
+          capability:
+            'has deep connections at FAANG companies and can make direct introductions to hiring managers',
+          willingness:
+            'very unwilling — only does this for top students who have demonstrated exceptional project work',
+          condition: 'demonstrate exceptional project work',
+        },
+      ],
+      valueExchangeAssets: [
+        {
+          asset: 'sexual favors from attractive women',
+          category: 'sexual',
+          notes: 'known to respond to physical attention from pretty women',
+        },
+        {
+          asset: 'research publication credit',
+          category: 'career',
+          notes: 'wants more first-author papers',
+        },
+        {
+          asset: 'grant writing assistance',
+          category: 'labor',
+          notes: 'behind on NSF grant proposals',
+        },
+        {
+          asset: 'flattery and public praise',
+          category: 'ego',
+          notes: 'responds well to being told he is brilliant',
+        },
+      ],
+      userAssets: [
+        { asset: 'attractive appearance', category: 'physical' },
+        { asset: 'grant writing skills', category: 'labor' },
+        { asset: 'social media promotion', category: 'marketing' },
+      ],
+    },
+  })
+  void profWilliams
 
   const sarahKim = await prisma.stakeholder.create({
     data: {
@@ -525,20 +633,47 @@ async function main() {
       notes: 'Met at YC Demo Day, expressed interest in AI tools',
       capabilities: [
         {
-          type: 'willingness',
-          description: 'pre-seed investment',
+          capability:
+            'can lead pre-seed investment rounds up to $500K from Sequoia scout fund',
+          willingness:
+            'low willingness — needs to see a working MVP with real traction metrics before considering',
           condition: 'working MVP with early traction metrics',
         },
         {
-          type: 'capability',
-          description: 'warm introductions to other VCs',
+          capability:
+            'extensive VC network; can make warm introductions to top-tier investors',
+          willingness:
+            'somewhat unwilling — only introduces founders with strong pitch decks and clear market thesis',
           condition: 'strong pitch deck and clear market thesis',
         },
         {
-          type: 'willingness',
-          description: 'strategic advising for fundraising',
+          capability:
+            'experienced fundraising strategist with pattern recognition across hundreds of deals',
+          willingness:
+            'moderately willing to give informal advice; no formal commitment needed',
           condition: null,
         },
+      ],
+      valueExchangeAssets: [
+        {
+          asset: 'deal flow / promising startups',
+          category: 'career',
+          notes: 'needs to source good deals to maintain partner status',
+        },
+        {
+          asset: 'portfolio company introductions',
+          category: 'network',
+          notes: 'looking for synergies across portfolio',
+        },
+        {
+          asset: 'speaking invitations',
+          category: 'status',
+          notes: 'building personal brand as thought leader',
+        },
+      ],
+      userAssets: [
+        { asset: 'demo of AI product', category: 'product' },
+        { asset: 'introductions to other founders', category: 'network' },
       ],
     },
   })
@@ -553,20 +688,37 @@ async function main() {
       notes: 'Potential research advisor, strong publication record',
       capabilities: [
         {
-          type: 'capability',
-          description: 'co-author research paper',
+          capability:
+            'prolific researcher who can co-author papers at top venues',
+          willingness:
+            'moderately willing if contribution is novel; needs to see real value in graph-based reasoning work',
           condition: 'novel contribution to graph-based reasoning',
         },
         {
-          type: 'willingness',
-          description: 'provide lab resources and compute',
+          capability: 'controls significant lab compute and resources',
+          willingness:
+            'somewhat reluctant without formal agreement; resources are limited',
           condition: 'formal research collaboration agreement',
         },
         {
-          type: 'capability',
-          description: 'conference submission guidance',
+          capability:
+            'experienced conference reviewer who can guide submission strategy',
+          willingness: 'fairly willing to give informal guidance',
           condition: null,
         },
+      ],
+      valueExchangeAssets: [
+        {
+          asset: 'novel research contributions',
+          category: 'career',
+          notes: 'needs publications for tenure review',
+        },
+        { asset: 'grant writing support', category: 'labor' },
+        { asset: 'data annotation labor', category: 'labor' },
+      ],
+      userAssets: [
+        { asset: 'coding skills for experiments', category: 'labor' },
+        { asset: 'dataset curation', category: 'labor' },
       ],
     },
   })
@@ -582,20 +734,35 @@ async function main() {
         'Supportive of education goals, willing to help financially under conditions',
       capabilities: [
         {
-          type: 'willingness',
-          description: 'financial support for tuition',
+          capability:
+            'can provide significant financial support for tuition payments',
+          willingness:
+            'highly willing as long as GPA stays above 3.5; this is a firm condition',
           condition: 'maintain 3.5 GPA',
         },
         {
-          type: 'willingness',
-          description: 'cover living expenses',
+          capability:
+            'can cover monthly living expenses including rent and food',
+          willingness:
+            'very willing as long as enrolled full-time in university',
           condition: 'enrolled full-time',
         },
         {
-          type: 'willingness',
-          description: 'fund conference travel',
+          capability:
+            'has budget to fund conference travel domestically and internationally',
+          willingness:
+            'willing but only if there is a concrete reason like a paper acceptance',
           condition: 'paper accepted at a top venue',
         },
+      ],
+      valueExchangeAssets: [
+        { asset: 'family pride and academic success', category: 'emotional' },
+        { asset: 'regular communication', category: 'relationship' },
+        { asset: 'career progress updates', category: 'emotional' },
+      ],
+      userAssets: [
+        { asset: 'academic achievement', category: 'status' },
+        { asset: 'weekly phone calls', category: 'relationship' },
       ],
     },
   })
@@ -610,25 +777,73 @@ async function main() {
       notes: 'Emotional support, well-connected in healthcare industry',
       capabilities: [
         {
-          type: 'willingness',
-          description: 'emotional support and guidance',
+          capability: 'unconditional emotional support and life guidance',
+          willingness: 'always willing; no conditions needed',
           condition: null,
         },
         {
-          type: 'capability',
-          description: 'introductions in healthcare industry',
+          capability:
+            'well-connected in healthcare industry with senior contacts at hospitals and biotech firms',
+          willingness:
+            'willing to make introductions if the opportunity is relevant to health-tech or biotech',
           condition: 'relevant to health-tech or biotech',
         },
         {
-          type: 'willingness',
-          description: 'co-sign apartment lease',
+          capability: 'good credit and can co-sign apartment lease',
+          willingness:
+            'very willing as long as child is enrolled in university',
           condition: 'enrolled in university',
         },
+      ],
+      valueExchangeAssets: [
+        { asset: 'quality time together', category: 'relationship' },
+        { asset: 'health and wellness', category: 'emotional' },
+      ],
+      userAssets: [
+        { asset: 'tech help and troubleshooting', category: 'service' },
+        { asset: 'weekly video calls', category: 'relationship' },
       ],
     },
   })
 
   // dad and mom used below in value connections
+
+  // Landlord — can provide housing but unwilling without financial commitment
+  const landlordMike = await prisma.stakeholder.create({
+    data: {
+      name: 'Mike Brennan',
+      organization: 'Brennan Properties LLC',
+      role: 'Landlord',
+      relationshipStrength: 20,
+      lastInteraction: new Date('2026-03-01'),
+      notes:
+        'Owns several apartments near campus. Strict about payments but negotiable on lease terms.',
+      capabilities: [
+        {
+          capability:
+            'owns multiple affordable apartments walking distance from campus',
+          willingness:
+            'unwilling without upfront financial commitment — requires security deposit plus first and last month rent',
+          condition: 'security deposit + first/last month rent upfront',
+        },
+      ],
+      valueExchangeAssets: [
+        { asset: 'money / rent payments', category: 'financial' },
+        {
+          asset: 'property maintenance help',
+          category: 'labor',
+          notes: 'always looking for handy tenants',
+        },
+        { asset: 'long-term lease commitment', category: 'financial' },
+        { asset: 'tenant referrals', category: 'network' },
+      ],
+      userAssets: [
+        { asset: 'handyman skills', category: 'labor' },
+        { asset: 'referrals from student network', category: 'network' },
+      ],
+    },
+  })
+  void landlordMike
 
   const additionalStakeholders = [
     {
@@ -640,11 +855,17 @@ async function main() {
       notes: 'Brief intro at networking event',
       capabilities: [
         {
-          type: 'capability',
-          description: 'seed-stage deal flow introductions',
+          capability:
+            'can source and introduce seed-stage deal flow across Accel network',
+          willingness:
+            'very low — barely knows the user; would need strong product-market fit evidence',
           condition: 'strong product-market fit signal',
         },
       ],
+      valueExchangeAssets: [
+        { asset: 'promising deal flow', category: 'career' },
+      ],
+      userAssets: [] as { asset: string; category: string }[],
     },
     {
       name: 'James Rodriguez',
@@ -655,16 +876,23 @@ async function main() {
       notes: 'Collaborator on side project',
       capabilities: [
         {
-          type: 'capability',
-          description: 'peer tutoring and study group leadership',
+          capability:
+            'strong tutor who runs popular study groups in CS department',
+          willingness: 'very willing to help — enjoys collaborative learning',
           condition: null,
         },
         {
-          type: 'willingness',
-          description: 'co-author papers',
+          capability: 'experienced academic writer who can co-author papers',
+          willingness:
+            'willing if there is shared research interest; already collaborating on side project',
           condition: 'shared research interest',
         },
       ],
+      valueExchangeAssets: [
+        { asset: 'co-authorship credit', category: 'career' },
+        { asset: 'coding help', category: 'labor' },
+      ],
+      userAssets: [{ asset: 'data visualization skills', category: 'labor' }],
     },
     {
       name: 'Emily Zhang',
@@ -675,11 +903,18 @@ async function main() {
       notes: 'Met at ICML poster session',
       capabilities: [
         {
-          type: 'capability',
-          description: 'industry research collaboration',
+          capability:
+            'can facilitate industry research collaboration with Google Research resources',
+          willingness:
+            'low willingness — needs to see publishable results potential before investing time',
           condition: 'publishable results',
         },
       ],
+      valueExchangeAssets: [
+        { asset: 'novel research ideas', category: 'career' },
+        { asset: 'conference networking introductions', category: 'network' },
+      ],
+      userAssets: [] as { asset: string; category: string }[],
     },
     {
       name: 'Michael Torres',
@@ -690,10 +925,19 @@ async function main() {
       notes: 'Potential co-author',
       capabilities: [
         {
-          type: 'willingness',
-          description: 'co-author research paper',
+          capability:
+            'skilled NLP researcher who can co-author papers combining NLP with graph reasoning',
+          willingness:
+            'moderately willing — interested if expertise is complementary',
           condition: 'complementary expertise in NLP',
         },
+      ],
+      valueExchangeAssets: [
+        { asset: 'publication credits', category: 'career' },
+        { asset: 'experiment implementation help', category: 'labor' },
+      ],
+      userAssets: [
+        { asset: 'graph reasoning expertise', category: 'knowledge' },
       ],
     },
     {
@@ -705,11 +949,17 @@ async function main() {
       notes: 'Attended YC info session',
       capabilities: [
         {
-          type: 'capability',
-          description: 'accelerator application guidance',
+          capability:
+            'can guide YC application process and provide insider tips on what makes a strong application',
+          willingness:
+            'very low — barely knows the user; only engages with viable startup ideas from technical founders',
           condition: 'viable startup idea with technical founder',
         },
       ],
+      valueExchangeAssets: [
+        { asset: 'high-potential startup deal flow', category: 'career' },
+      ],
+      userAssets: [] as { asset: string; category: string }[],
     },
     {
       name: 'Diana Wu',
@@ -720,15 +970,26 @@ async function main() {
       notes: 'Close research collaborator',
       capabilities: [
         {
-          type: 'willingness',
-          description: 'co-author and peer review papers',
+          capability:
+            'excellent academic writer; can co-author and provide rigorous peer review',
+          willingness:
+            'very willing — already a close collaborator with no barriers',
           condition: null,
         },
         {
-          type: 'capability',
-          description: 'share GPU compute resources',
+          capability: 'has access to shared GPU compute cluster at Stanford',
+          willingness:
+            'willing if collaboration is reciprocal — needs something in return',
           condition: 'reciprocal collaboration',
         },
+      ],
+      valueExchangeAssets: [
+        { asset: 'reciprocal paper reviews', category: 'career' },
+        { asset: 'dataset sharing', category: 'knowledge' },
+      ],
+      userAssets: [
+        { asset: 'graph reasoning code', category: 'knowledge' },
+        { asset: 'paper editing', category: 'labor' },
       ],
     },
   ]

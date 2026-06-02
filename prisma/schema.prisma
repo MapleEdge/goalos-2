@@ -50,7 +50,9 @@ model Stakeholder {
   relationshipStrength Int     @default(0) // 0-100
   lastInteraction    DateTime?
   notes              String?
-  capabilities       Json?    // Array of { type: "willingness"|"capability", description, condition? }
+  capabilities       Json?    // Array of { capability: string, willingness: string, condition?: string }
+  valueExchangeAssets Json?   // Array of { asset: string, category: string, notes?: string }
+  userAssets          Json?   // Array of { asset: string, category: string } — what the user can offer
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

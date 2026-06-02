@@ -23,6 +23,8 @@ export async function POST(request: Request) {
         : null,
       notes: body.notes,
       capabilities: body.capabilities ?? undefined,
+      valueExchangeAssets: body.valueExchangeAssets ?? undefined,
+      userAssets: body.userAssets ?? undefined,
     },
   })
 

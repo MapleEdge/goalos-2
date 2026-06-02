@@ -17,10 +17,21 @@ interface Stakeholder {
   role: string | null
 }
 
-interface Capability {
-  type: 'willingness' | 'capability'
-  description: string
-  condition: string | null
+interface CapabilityEntry {
+  capability: string
+  willingness: string
+  condition?: string | null
+  // legacy format support
+  type?: string
+  description?: string
+}
+
+interface ValueExchangeSuggestion {
+  strategy: string
+  reasoning: string
+  userAssetUsed: string | null
+  stakeholderMotivator: string
+  feasibility: 'high' | 'medium' | 'low'
 }
 
 interface SuggestedStakeholder {
@@ -28,8 +39,9 @@ interface SuggestedStakeholder {
   name: string
   organization: string | null
   role: string | null
-  matchingCapabilities: Capability[]
+  capabilities: CapabilityEntry[]
   relevanceScore: number
+  valueExchangeSuggestions?: ValueExchangeSuggestion[]
 }
 
 interface SelectedStakeholder {
@@ -99,9 +111,9 @@ export function CreateGoalForm({
   const [editingStakeholderId, setEditingStakeholderId] = useState<
     string | null
   >(null)
-  const [editingCapabilities, setEditingCapabilities] = useState<Capability[]>(
-    []
-  )
+  const [editingCapabilities, setEditingCapabilities] = useState<
+    CapabilityEntry[]
+  >([])
   const [savingCapabilities, setSavingCapabilities] = useState(false)
 
   useEffect(() => {
@@ -178,14 +190,14 @@ export function CreateGoalForm({
   }
 
   function acceptSuggestion(s: SuggestedStakeholder) {
-    const bestCap = s.matchingCapabilities[0]
+    const bestCap = s.capabilities[0]
     setSelectedStakeholders((prev) => [
       ...prev,
       {
         stakeholderId: s.stakeholderId,
         name: s.name,
         organization: s.organization,
-        label: bestCap?.description || '',
+        label: bestCap?.capability || bestCap?.description || '',
       },
     ])
     if (!showStakeholders) setShowStakeholders(true)
@@ -198,14 +210,14 @@ export function CreateGoalForm({
   async function startEditing(stakeholderId: string) {
     const res = await fetch(`/api/stakeholders/${stakeholderId}`)
     const data = await res.json()
-    const caps = (data.capabilities as Capability[] | null) || []
+    const caps = (data.capabilities as CapabilityEntry[] | null) || []
     setEditingCapabilities(caps)
     setEditingStakeholderId(stakeholderId)
   }
 
   function updateCapability(
     index: number,
-    field: keyof Capability,
+    field: keyof CapabilityEntry,
     value: string
   ) {
     setEditingCapabilities((prev) =>
@@ -220,13 +232,15 @@ export function CreateGoalForm({
   function addCapability() {
     setEditingCapabilities((prev) => [
       ...prev,
-      { type: 'willingness', description: '', condition: null },
+      { capability: '', willingness: '', condition: null },
     ])
   }
 
   async function saveCapabilities(stakeholderId: string) {
     setSavingCapabilities(true)
-    const valid = editingCapabilities.filter((c) => c.description.trim())
+    const valid = editingCapabilities.filter((c) =>
+      (c.capability || c.description || '').trim()
+    )
     await fetch(`/api/stakeholders/${stakeholderId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -527,16 +541,9 @@ export function CreateGoalForm({
                         className="rounded-lg border border-zinc-200 bg-zinc-50 p-2 space-y-1.5"
                       >
                         <div className="flex items-center gap-1.5">
-                          <select
-                            value={cap.type}
-                            onChange={(e) =>
-                              updateCapability(i, 'type', e.target.value)
-                            }
-                            className="rounded border border-zinc-300 px-1.5 py-1 text-xs focus:border-zinc-500 focus:outline-none"
-                          >
-                            <option value="willingness">willingness</option>
-                            <option value="capability">capability</option>
-                          </select>
+                          <span className="text-xs font-medium text-zinc-500">
+                            #{i + 1}
+                          </span>
                           <button
                             type="button"
                             onClick={() => deleteCapability(i)}
@@ -557,11 +564,20 @@ export function CreateGoalForm({
                         </div>
                         <input
                           type="text"
-                          value={cap.description}
+                          value={cap.capability || cap.description || ''}
                           onChange={(e) =>
-                            updateCapability(i, 'description', e.target.value)
+                            updateCapability(i, 'capability', e.target.value)
                           }
-                          placeholder="Description"
+                          placeholder="Capability — what can they do?"
+                          className="w-full rounded border border-zinc-300 px-2 py-1 text-xs focus:border-zinc-500 focus:outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={cap.willingness || ''}
+                          onChange={(e) =>
+                            updateCapability(i, 'willingness', e.target.value)
+                          }
+                          placeholder="Willingness — how willing are they?"
                           className="w-full rounded border border-zinc-300 px-2 py-1 text-xs focus:border-zinc-500 focus:outline-none"
                         />
                         <input
@@ -611,32 +627,104 @@ export function CreateGoalForm({
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-1.5 space-y-1 pl-8">
-                    {s.matchingCapabilities.map((cap, i) => (
-                      <div key={i} className="text-xs">
-                        <span
-                          className={`inline-block rounded px-1.5 py-0.5 font-medium ${
-                            cap.type === 'willingness'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-blue-100 text-blue-700'
-                          }`}
+                  <>
+                    {/* Semantic capabilities */}
+                    <div className="mt-1.5 space-y-2 pl-8">
+                      {s.capabilities.map((cap, i) => (
+                        <div
+                          key={i}
+                          className="text-xs rounded border border-zinc-100 bg-zinc-50 p-2"
                         >
-                          {cap.type}
-                        </span>
-                        <span className="ml-1.5 text-zinc-700">
-                          {cap.description}
-                        </span>
-                        {cap.condition && (
-                          <span className="ml-1 text-zinc-500">
-                            — given{' '}
-                            <span className="font-medium text-zinc-700">
-                              {cap.condition}
+                          <div className="flex items-start gap-1.5">
+                            <span className="inline-block rounded bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700 flex-shrink-0">
+                              capability
                             </span>
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                            <span className="text-zinc-700">
+                              {cap.capability || cap.description}
+                            </span>
+                          </div>
+                          <div className="flex items-start gap-1.5 mt-1">
+                            <span className="inline-block rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-700 flex-shrink-0">
+                              willingness
+                            </span>
+                            <span className="text-zinc-600">
+                              {cap.willingness || 'not specified'}
+                            </span>
+                          </div>
+                          {cap.condition && (
+                            <div className="mt-1 text-zinc-500 pl-0.5">
+                              condition:{' '}
+                              <span className="font-medium text-zinc-700">
+                                {cap.condition}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Value exchange suggestions (when AI detects willingness gap) */}
+                    {s.valueExchangeSuggestions &&
+                      s.valueExchangeSuggestions.length > 0 && (
+                        <div className="mt-2 ml-8 rounded-lg border border-red-200 bg-red-50 p-2.5">
+                          <p className="text-xs font-semibold text-red-700 mb-1.5">
+                            Willingness gap detected — suggested value
+                            exchanges:
+                          </p>
+                          <div className="space-y-2">
+                            {s.valueExchangeSuggestions.map((ve, i) => (
+                              <div
+                                key={i}
+                                className="rounded border border-red-100 bg-white p-2"
+                              >
+                                <div className="flex items-start gap-1.5">
+                                  <span
+                                    className={`mt-0.5 inline-block h-4 w-4 flex-shrink-0 rounded text-center text-[10px] font-bold leading-4 ${
+                                      ve.feasibility === 'high'
+                                        ? 'bg-green-100 text-green-700'
+                                        : ve.feasibility === 'medium'
+                                          ? 'bg-amber-100 text-amber-700'
+                                          : 'bg-red-100 text-red-700'
+                                    }`}
+                                  >
+                                    {i + 1}
+                                  </span>
+                                  <div className="flex-1">
+                                    <p className="text-xs font-medium text-zinc-800">
+                                      {ve.strategy}
+                                    </p>
+                                    <p className="mt-0.5 text-[11px] text-zinc-500">
+                                      {ve.reasoning}
+                                    </p>
+                                    <div className="mt-1 flex flex-wrap gap-1.5">
+                                      {ve.userAssetUsed && (
+                                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+                                          You offer: {ve.userAssetUsed}
+                                        </span>
+                                      )}
+                                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">
+                                        They want: {ve.stakeholderMotivator}
+                                      </span>
+                                      <span
+                                        className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                                          ve.feasibility === 'high'
+                                            ? 'bg-green-50 text-green-600'
+                                            : ve.feasibility === 'medium'
+                                              ? 'bg-amber-50 text-amber-600'
+                                              : 'bg-red-50 text-red-600'
+                                        }`}
+                                      >
+                                        {ve.feasibility} feasibility
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                  </>
                 )}
               </div>
             ))}
