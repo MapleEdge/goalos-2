@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { BackupRestoreSection } from '@/components/settings/BackupRestoreSection'
 import { BillingSection } from '@/components/settings/BillingSection'
 import { useTimezone } from '@/lib/useTimezone'
 import { useTokens } from '@/lib/useTokens'
@@ -198,27 +199,7 @@ export default function SettingsPage() {
           )}
         </section>
 
-        <section className="rounded-xl border border-zinc-200 bg-white p-6">
-          <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider mb-4">
-            Data
-          </h2>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-zinc-700">Export Data</p>
-                <p className="text-xs text-zinc-500 mt-0.5">
-                  Download all your goals, vehicles, and stakeholders as JSON.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors"
-              >
-                Export
-              </button>
-            </div>
-          </div>
-        </section>
+        <BackupRestoreSection />
 
         <section className="rounded-xl border border-zinc-200 bg-white p-6">
           <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider mb-4">
