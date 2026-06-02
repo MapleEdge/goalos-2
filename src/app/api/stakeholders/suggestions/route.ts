@@ -3,12 +3,13 @@ import { getGeminiClient, getGeminiModel } from '@/lib/gemini'
 import { prisma } from '@/lib/prisma'
 import { desanitize, sanitize } from '@/lib/sanitize'
 
-interface Capability {
-  type: 'willingness' | 'capability'
-  description: string
-  condition: string | null
-  capabilityScore?: number
-  willingnessScore?: number
+interface CapabilityEntry {
+  capability: string
+  willingness: string
+  condition?: string | null
+  // legacy format support
+  type?: string
+  description?: string
 }
 
 interface ValueExchangeAsset {
@@ -35,15 +36,12 @@ interface SuggestedStakeholder {
   name: string
   organization: string | null
   role: string | null
-  matchingCapabilities: Capability[]
+  capabilities: CapabilityEntry[]
   relevanceScore: number
-  capabilityScore: number
-  willingnessScore: number
-  valueGap: number // how much willingness is missing (0 = willing, 100 = completely unwilling)
   valueExchangeSuggestions: ValueExchangeSuggestion[]
 }
 
-// ─── Keyword-based relevance (fallback when Gemini unavailable) ──
+// ─── Keyword-based relevance scoring ─────────────────────────────
 
 const KEYWORDS_MAP: Record<string, string[]> = {
   university: [
@@ -168,29 +166,44 @@ const KEYWORDS_MAP: Record<string, string[]> = {
   apartment: ['housing', 'lease', 'rent', 'security deposit'],
 }
 
+function getCapText(cap: CapabilityEntry): string {
+  return cap.capability || cap.description || ''
+}
+
 function computeRelevance(
   goalText: string,
-  capabilities: Capability[]
-): { matched: Capability[]; score: number } {
+  capabilities: CapabilityEntry[]
+): { matched: CapabilityEntry[]; score: number } {
   const lower = goalText.toLowerCase()
   const goalWords = lower.split(/\s+/)
-  const matched: Capability[] = []
+  const matched: CapabilityEntry[] = []
 
   for (const cap of capabilities) {
-    const capDesc = cap.description.toLowerCase()
+    const capText = getCapText(cap).toLowerCase()
+    const capWill = (cap.willingness || '').toLowerCase()
     const capCond = (cap.condition || '').toLowerCase()
     let score = 0
 
-    const capWords = capDesc.split(/\s+/)
+    const capWords = capText.split(/\s+/)
     for (const word of capWords) {
       if (word.length > 3 && lower.includes(word)) score += 2
+    }
+
+    // Also check willingness text for relevant keywords
+    const willWords = capWill.split(/\s+/)
+    for (const word of willWords) {
+      if (word.length > 3 && lower.includes(word)) score += 1
     }
 
     for (const goalWord of goalWords) {
       const relatedTerms = KEYWORDS_MAP[goalWord]
       if (!relatedTerms) continue
       for (const term of relatedTerms) {
-        if (capDesc.includes(term) || capCond.includes(term)) {
+        if (
+          capText.includes(term) ||
+          capCond.includes(term) ||
+          capWill.includes(term)
+        ) {
           score += 1
         }
       }
@@ -218,23 +231,23 @@ async function generateValueExchangeSuggestions(
   stakeholderName: string,
   stakeholderRole: string | null,
   stakeholderNotes: string | null,
-  matchingCapabilities: Capability[],
+  matchedCapabilities: CapabilityEntry[],
   valueExchangeAssets: ValueExchangeAsset[],
   userAssets: UserAsset[]
 ): Promise<ValueExchangeSuggestion[]> {
   const client = getGeminiClient()
   if (!client) return []
+  if (matchedCapabilities.length === 0 || valueExchangeAssets.length === 0)
+    return []
 
-  const bestCap = matchingCapabilities[0]
-  if (!bestCap) return []
+  const capsBlock = matchedCapabilities
+    .map(
+      (c, i) =>
+        `${i + 1}. Capability: ${sanitize(getCapText(c))}\n   Willingness: ${sanitize(c.willingness || 'unknown')}\n   Condition: ${sanitize(c.condition || 'none stated')}`
+    )
+    .join('\n')
 
-  const capScore = bestCap.capabilityScore ?? 50
-  const willScore = bestCap.willingnessScore ?? 50
-
-  // Only generate exchange suggestions when there is a value gap
-  if (willScore >= 60) return []
-
-  const prompt = `You are a strategic advisor helping someone achieve their goals through stakeholder relationships.
+  const prompt = `You are a strategic advisor helping someone achieve their goals through stakeholder relationships. You think in terms of VALUE EXCHANGE — what can be offered to get what is needed.
 
 GOAL: ${sanitize(goalTitle)}
 GOAL DETAILS: ${sanitize(goalDescription || 'No additional details')}
@@ -243,34 +256,30 @@ STAKEHOLDER: ${sanitize(stakeholderName)}
 ROLE: ${sanitize(stakeholderRole || 'Unknown')}
 NOTES: ${sanitize(stakeholderNotes || 'None')}
 
-RELEVANT CAPABILITY: ${sanitize(bestCap.description)}
-- Capability Score: ${capScore}/100 (how well they can deliver)
-- Willingness Score: ${willScore}/100 (how likely they are to help)
-- Condition: ${sanitize(bestCap.condition || 'None stated')}
+STAKEHOLDER CAPABILITIES (what they can do + how willing they are):
+${capsBlock}
 
 WHAT MOTIVATES THIS STAKEHOLDER (things they value/want):
-${valueExchangeAssets.map((a) => `- ${sanitize(a.asset)} (${sanitize(a.category)})${a.notes ? ': ' + sanitize(a.notes) : ''}`).join('\n')}
+${valueExchangeAssets.map((a) => `- ${sanitize(a.asset)} (${sanitize(a.category)})${a.notes ? `: ${sanitize(a.notes)}` : ''}`).join('\n')}
 
 WHAT THE USER CAN OFFER:
 ${userAssets.length > 0 ? userAssets.map((a) => `- ${sanitize(a.asset)} (${sanitize(a.category)})`).join('\n') : '- Nothing specific listed'}
 
-The stakeholder has HIGH capability (${capScore}/100) but LOW willingness (${willScore}/100).
-The user needs to bridge this "value gap" — the gap between what the stakeholder can do and what they're willing to do.
+TASK: Analyze the willingness descriptions above. If the stakeholder is UNWILLING or has LOW willingness for what the user needs, generate exactly 3 creative VALUE EXCHANGE strategies to bridge the gap.
 
-Generate exactly 3 creative but realistic VALUE EXCHANGE strategies. Each strategy should:
-1. Identify something the stakeholder wants (from their motivators list)
-2. Match it with something the user can offer (from their assets or inferred abilities)
-3. Explain how this exchange would increase the stakeholder's willingness
-4. Be specific, actionable, and grounded in the stakeholder's known motivations
+Each strategy should:
+1. Identify something the stakeholder wants (from their motivators)
+2. Match it with something the user can offer (from their assets or inferred)
+3. Explain why this exchange would increase willingness
+4. Be specific, actionable, and grounded in the known motivations
 
-Think of this as a VALUE EXCHANGE — what can the user give to get what they need?
-Be creative but reasonable. Consider direct exchanges, indirect favors, social dynamics, and strategic positioning.
+If the stakeholder is already willing (willingness descriptions suggest they are happy to help), return an empty array [].
 
-Respond ONLY with a JSON array of exactly 3 objects:
+Respond ONLY with a JSON array of 0 or 3 objects:
 [
   {
     "strategy": "One-sentence description of the exchange strategy",
-    "reasoning": "Why this would work given the stakeholder's motivations",
+    "reasoning": "Why this would work given the stakeholder's motivations and willingness barriers",
     "userAssetUsed": "Which user asset is being leveraged (or null if general)",
     "stakeholderMotivator": "Which stakeholder motivator this targets",
     "feasibility": "high" | "medium" | "low"
@@ -286,13 +295,13 @@ JSON only, no markdown, no explanation.`
     })
 
     const text = response.text?.trim() || ''
-    // Strip markdown code fences if present
     const jsonStr = text
       .replace(/^```(?:json)?\n?/i, '')
       .replace(/\n?```$/i, '')
     const parsed = JSON.parse(jsonStr)
 
     if (!Array.isArray(parsed)) return []
+    if (parsed.length === 0) return []
 
     return parsed
       .slice(0, 3)
@@ -338,31 +347,19 @@ export async function POST(request: Request) {
   const suggestions: SuggestedStakeholder[] = []
 
   for (const s of stakeholders) {
-    const caps = (s.capabilities as Capability[] | null) || []
+    const caps = (s.capabilities as CapabilityEntry[] | null) || []
     if (caps.length === 0) continue
 
     const { matched, score } = computeRelevance(goalText, caps)
     if (matched.length === 0) continue
-
-    // Compute aggregate capability and willingness scores from matched capabilities
-    const avgCapability =
-      matched.reduce((sum, c) => sum + (c.capabilityScore ?? 50), 0) /
-      matched.length
-    const avgWillingness =
-      matched.reduce((sum, c) => sum + (c.willingnessScore ?? 50), 0) /
-      matched.length
-    const valueGap = Math.max(0, 100 - avgWillingness)
 
     suggestions.push({
       stakeholderId: s.id,
       name: s.name,
       organization: s.organization,
       role: s.role,
-      matchingCapabilities: matched,
+      capabilities: matched,
       relevanceScore: score,
-      capabilityScore: Math.round(avgCapability),
-      willingnessScore: Math.round(avgWillingness),
-      valueGap: Math.round(valueGap),
       valueExchangeSuggestions: [],
     })
   }
@@ -370,10 +367,8 @@ export async function POST(request: Request) {
   suggestions.sort((a, b) => b.relevanceScore - a.relevanceScore)
   const top = suggestions.slice(0, 10)
 
-  // For stakeholders with a value gap (low willingness), generate exchange suggestions
+  // For each suggested stakeholder, check if Gemini should generate exchange suggestions
   const exchangePromises = top.map(async (s) => {
-    if (s.valueGap <= 40) return // willing enough, no exchange needed
-
     const stakeholder = stakeholders.find((st) => st.id === s.stakeholderId)
     if (!stakeholder) return
 
@@ -389,7 +384,7 @@ export async function POST(request: Request) {
       s.name,
       s.role,
       stakeholder.notes,
-      s.matchingCapabilities,
+      s.capabilities,
       veAssets,
       uAssets
     )

@@ -503,10 +503,10 @@ async function main() {
   // ─── Stakeholders ─────────────────────────────────────────────
   //
   // Each stakeholder now has:
-  //   capabilities  — what they CAN do and how WILLING they are
-  //     capabilityScore  (0-100): how well they can deliver the thing
-  //     willingnessScore (0-100): how likely they are to do it for you
-  //     condition: what they require before they will help
+  //   capabilities — purely semantic descriptions of what they can do
+  //     capability:  text describing what they are able to deliver
+  //     willingness: text describing how willing they are to help and why
+  //     condition:   what they require before they will help (optional)
   //   valueExchangeAssets — what motivates/incentivizes them (for value gap analysis)
   //   userAssets — what the user can offer this person
 
@@ -520,24 +520,23 @@ async function main() {
       notes: 'Very supportive, met during office hours multiple times',
       capabilities: [
         {
-          type: 'capability',
-          description: 'write recommendation letter',
-          capabilityScore: 95,
-          willingnessScore: 80,
+          capability:
+            'can write a strong recommendation letter; well-regarded in the department',
+          willingness:
+            'very willing if student maintains A grade and attends office hours regularly',
           condition: 'maintain A grade and attend office hours regularly',
         },
         {
-          type: 'capability',
-          description: 'TA position referral',
-          capabilityScore: 90,
-          willingnessScore: 70,
+          capability:
+            'can refer students for TA positions in the CS department',
+          willingness:
+            'moderately willing; needs to see teaching ability demonstrated first',
           condition: 'demonstrate teaching ability in study groups',
         },
         {
-          type: 'capability',
-          description: 'research mentorship',
-          capabilityScore: 85,
-          willingnessScore: 60,
+          capability: 'experienced research mentor with active lab',
+          willingness:
+            'somewhat willing but time-constrained; requires commitment',
           condition: 'commit to weekly lab meetings',
         },
       ],
@@ -567,7 +566,7 @@ async function main() {
   })
 
   // Professor Williams — recommendation letter test scenario
-  // High capability (can write the letter) but ZERO willingness (user has 2.8 GPA, needs 3.5)
+  // Very high capability but essentially zero willingness due to unmet GPA requirement
   const profWilliams = await prisma.stakeholder.create({
     data: {
       name: 'Prof. Williams',
@@ -579,17 +578,17 @@ async function main() {
         'Tough grader. Known to write very strong recommendation letters for students who impress him. Has a reputation for enjoying attention from attractive women.',
       capabilities: [
         {
-          type: 'capability',
-          description: 'write recommendation letter for grad school',
-          capabilityScore: 98,
-          willingnessScore: 5,
+          capability:
+            'writes exceptionally strong recommendation letters; highly respected by grad school admissions committees',
+          willingness:
+            'completely unwilling — requires minimum 3.5 GPA in his courses and user currently has 2.8; does not consider current academic performance sufficient',
           condition: 'minimum 3.5 GPA in his courses; user currently has 2.8',
         },
         {
-          type: 'capability',
-          description: 'introduce to industry contacts at FAANG',
-          capabilityScore: 80,
-          willingnessScore: 10,
+          capability:
+            'has deep connections at FAANG companies and can make direct introductions to hiring managers',
+          willingness:
+            'very unwilling — only does this for top students who have demonstrated exceptional project work',
           condition: 'demonstrate exceptional project work',
         },
       ],
@@ -634,24 +633,24 @@ async function main() {
       notes: 'Met at YC Demo Day, expressed interest in AI tools',
       capabilities: [
         {
-          type: 'capability',
-          description: 'pre-seed investment up to $500K',
-          capabilityScore: 95,
-          willingnessScore: 25,
+          capability:
+            'can lead pre-seed investment rounds up to $500K from Sequoia scout fund',
+          willingness:
+            'low willingness — needs to see a working MVP with real traction metrics before considering',
           condition: 'working MVP with early traction metrics',
         },
         {
-          type: 'capability',
-          description: 'warm introductions to other VCs',
-          capabilityScore: 90,
-          willingnessScore: 40,
+          capability:
+            'extensive VC network; can make warm introductions to top-tier investors',
+          willingness:
+            'somewhat unwilling — only introduces founders with strong pitch decks and clear market thesis',
           condition: 'strong pitch deck and clear market thesis',
         },
         {
-          type: 'capability',
-          description: 'strategic advising for fundraising',
-          capabilityScore: 85,
-          willingnessScore: 50,
+          capability:
+            'experienced fundraising strategist with pattern recognition across hundreds of deals',
+          willingness:
+            'moderately willing to give informal advice; no formal commitment needed',
           condition: null,
         },
       ],
@@ -689,24 +688,22 @@ async function main() {
       notes: 'Potential research advisor, strong publication record',
       capabilities: [
         {
-          type: 'capability',
-          description: 'co-author research paper',
-          capabilityScore: 95,
-          willingnessScore: 55,
+          capability:
+            'prolific researcher who can co-author papers at top venues',
+          willingness:
+            'moderately willing if contribution is novel; needs to see real value in graph-based reasoning work',
           condition: 'novel contribution to graph-based reasoning',
         },
         {
-          type: 'capability',
-          description: 'provide lab resources and compute',
-          capabilityScore: 90,
-          willingnessScore: 45,
+          capability: 'controls significant lab compute and resources',
+          willingness:
+            'somewhat reluctant without formal agreement; resources are limited',
           condition: 'formal research collaboration agreement',
         },
         {
-          type: 'capability',
-          description: 'conference submission guidance',
-          capabilityScore: 85,
-          willingnessScore: 70,
+          capability:
+            'experienced conference reviewer who can guide submission strategy',
+          willingness: 'fairly willing to give informal guidance',
           condition: null,
         },
       ],
@@ -737,24 +734,24 @@ async function main() {
         'Supportive of education goals, willing to help financially under conditions',
       capabilities: [
         {
-          type: 'capability',
-          description: 'financial support for tuition',
-          capabilityScore: 80,
-          willingnessScore: 85,
+          capability:
+            'can provide significant financial support for tuition payments',
+          willingness:
+            'highly willing as long as GPA stays above 3.5; this is a firm condition',
           condition: 'maintain 3.5 GPA',
         },
         {
-          type: 'capability',
-          description: 'cover living expenses',
-          capabilityScore: 75,
-          willingnessScore: 90,
+          capability:
+            'can cover monthly living expenses including rent and food',
+          willingness:
+            'very willing as long as enrolled full-time in university',
           condition: 'enrolled full-time',
         },
         {
-          type: 'capability',
-          description: 'fund conference travel',
-          capabilityScore: 70,
-          willingnessScore: 60,
+          capability:
+            'has budget to fund conference travel domestically and internationally',
+          willingness:
+            'willing but only if there is a concrete reason like a paper acceptance',
           condition: 'paper accepted at a top venue',
         },
       ],
@@ -780,24 +777,21 @@ async function main() {
       notes: 'Emotional support, well-connected in healthcare industry',
       capabilities: [
         {
-          type: 'capability',
-          description: 'emotional support and guidance',
-          capabilityScore: 95,
-          willingnessScore: 100,
+          capability: 'unconditional emotional support and life guidance',
+          willingness: 'always willing; no conditions needed',
           condition: null,
         },
         {
-          type: 'capability',
-          description: 'introductions in healthcare industry',
-          capabilityScore: 70,
-          willingnessScore: 80,
+          capability:
+            'well-connected in healthcare industry with senior contacts at hospitals and biotech firms',
+          willingness:
+            'willing to make introductions if the opportunity is relevant to health-tech or biotech',
           condition: 'relevant to health-tech or biotech',
         },
         {
-          type: 'capability',
-          description: 'co-sign apartment lease',
-          capabilityScore: 85,
-          willingnessScore: 90,
+          capability: 'good credit and can co-sign apartment lease',
+          willingness:
+            'very willing as long as child is enrolled in university',
           condition: 'enrolled in university',
         },
       ],
@@ -814,7 +808,7 @@ async function main() {
 
   // dad and mom used below in value connections
 
-  // Landlord — high capability to provide housing, low willingness unless paid
+  // Landlord — can provide housing but unwilling without financial commitment
   const landlordMike = await prisma.stakeholder.create({
     data: {
       name: 'Mike Brennan',
@@ -826,10 +820,10 @@ async function main() {
         'Owns several apartments near campus. Strict about payments but negotiable on lease terms.',
       capabilities: [
         {
-          type: 'capability',
-          description: 'provide affordable housing near campus',
-          capabilityScore: 95,
-          willingnessScore: 15,
+          capability:
+            'owns multiple affordable apartments walking distance from campus',
+          willingness:
+            'unwilling without upfront financial commitment — requires security deposit plus first and last month rent',
           condition: 'security deposit + first/last month rent upfront',
         },
       ],
@@ -861,17 +855,17 @@ async function main() {
       notes: 'Brief intro at networking event',
       capabilities: [
         {
-          type: 'capability',
-          description: 'seed-stage deal flow introductions',
-          capabilityScore: 80,
-          willingnessScore: 15,
+          capability:
+            'can source and introduce seed-stage deal flow across Accel network',
+          willingness:
+            'very low — barely knows the user; would need strong product-market fit evidence',
           condition: 'strong product-market fit signal',
         },
       ],
       valueExchangeAssets: [
         { asset: 'promising deal flow', category: 'career' },
       ],
-      userAssets: [],
+      userAssets: [] as { asset: string; category: string }[],
     },
     {
       name: 'James Rodriguez',
@@ -882,17 +876,15 @@ async function main() {
       notes: 'Collaborator on side project',
       capabilities: [
         {
-          type: 'capability',
-          description: 'peer tutoring and study group leadership',
-          capabilityScore: 75,
-          willingnessScore: 80,
+          capability:
+            'strong tutor who runs popular study groups in CS department',
+          willingness: 'very willing to help — enjoys collaborative learning',
           condition: null,
         },
         {
-          type: 'capability',
-          description: 'co-author papers',
-          capabilityScore: 70,
-          willingnessScore: 65,
+          capability: 'experienced academic writer who can co-author papers',
+          willingness:
+            'willing if there is shared research interest; already collaborating on side project',
           condition: 'shared research interest',
         },
       ],
@@ -911,10 +903,10 @@ async function main() {
       notes: 'Met at ICML poster session',
       capabilities: [
         {
-          type: 'capability',
-          description: 'industry research collaboration',
-          capabilityScore: 85,
-          willingnessScore: 30,
+          capability:
+            'can facilitate industry research collaboration with Google Research resources',
+          willingness:
+            'low willingness — needs to see publishable results potential before investing time',
           condition: 'publishable results',
         },
       ],
@@ -922,7 +914,7 @@ async function main() {
         { asset: 'novel research ideas', category: 'career' },
         { asset: 'conference networking introductions', category: 'network' },
       ],
-      userAssets: [],
+      userAssets: [] as { asset: string; category: string }[],
     },
     {
       name: 'Michael Torres',
@@ -933,10 +925,10 @@ async function main() {
       notes: 'Potential co-author',
       capabilities: [
         {
-          type: 'capability',
-          description: 'co-author research paper',
-          capabilityScore: 80,
-          willingnessScore: 50,
+          capability:
+            'skilled NLP researcher who can co-author papers combining NLP with graph reasoning',
+          willingness:
+            'moderately willing — interested if expertise is complementary',
           condition: 'complementary expertise in NLP',
         },
       ],
@@ -957,17 +949,17 @@ async function main() {
       notes: 'Attended YC info session',
       capabilities: [
         {
-          type: 'capability',
-          description: 'accelerator application guidance',
-          capabilityScore: 90,
-          willingnessScore: 10,
+          capability:
+            'can guide YC application process and provide insider tips on what makes a strong application',
+          willingness:
+            'very low — barely knows the user; only engages with viable startup ideas from technical founders',
           condition: 'viable startup idea with technical founder',
         },
       ],
       valueExchangeAssets: [
         { asset: 'high-potential startup deal flow', category: 'career' },
       ],
-      userAssets: [],
+      userAssets: [] as { asset: string; category: string }[],
     },
     {
       name: 'Diana Wu',
@@ -978,17 +970,16 @@ async function main() {
       notes: 'Close research collaborator',
       capabilities: [
         {
-          type: 'capability',
-          description: 'co-author and peer review papers',
-          capabilityScore: 85,
-          willingnessScore: 85,
+          capability:
+            'excellent academic writer; can co-author and provide rigorous peer review',
+          willingness:
+            'very willing — already a close collaborator with no barriers',
           condition: null,
         },
         {
-          type: 'capability',
-          description: 'share GPU compute resources',
-          capabilityScore: 75,
-          willingnessScore: 60,
+          capability: 'has access to shared GPU compute cluster at Stanford',
+          willingness:
+            'willing if collaboration is reciprocal — needs something in return',
           condition: 'reciprocal collaboration',
         },
       ],

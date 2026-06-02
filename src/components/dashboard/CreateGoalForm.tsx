@@ -16,12 +16,13 @@ interface Stakeholder {
   role: string | null
 }
 
-interface Capability {
-  type: 'willingness' | 'capability'
-  description: string
-  condition: string | null
-  capabilityScore?: number
-  willingnessScore?: number
+interface CapabilityEntry {
+  capability: string
+  willingness: string
+  condition?: string | null
+  // legacy format support
+  type?: string
+  description?: string
 }
 
 interface ValueExchangeSuggestion {
@@ -37,11 +38,8 @@ interface SuggestedStakeholder {
   name: string
   organization: string | null
   role: string | null
-  matchingCapabilities: Capability[]
+  capabilities: CapabilityEntry[]
   relevanceScore: number
-  capabilityScore?: number
-  willingnessScore?: number
-  valueGap?: number
   valueExchangeSuggestions?: ValueExchangeSuggestion[]
 }
 
@@ -111,9 +109,9 @@ export function CreateGoalForm({
   const [editingStakeholderId, setEditingStakeholderId] = useState<
     string | null
   >(null)
-  const [editingCapabilities, setEditingCapabilities] = useState<Capability[]>(
-    []
-  )
+  const [editingCapabilities, setEditingCapabilities] = useState<
+    CapabilityEntry[]
+  >([])
   const [savingCapabilities, setSavingCapabilities] = useState(false)
 
   useEffect(() => {
@@ -197,14 +195,14 @@ export function CreateGoalForm({
   }
 
   function acceptSuggestion(s: SuggestedStakeholder) {
-    const bestCap = s.matchingCapabilities[0]
+    const bestCap = s.capabilities[0]
     setSelectedStakeholders((prev) => [
       ...prev,
       {
         stakeholderId: s.stakeholderId,
         name: s.name,
         organization: s.organization,
-        label: bestCap?.description || '',
+        label: bestCap?.capability || bestCap?.description || '',
       },
     ])
     if (!showStakeholders) setShowStakeholders(true)
@@ -217,14 +215,14 @@ export function CreateGoalForm({
   async function startEditing(stakeholderId: string) {
     const res = await fetch(`/api/stakeholders/${stakeholderId}`)
     const data = await res.json()
-    const caps = (data.capabilities as Capability[] | null) || []
+    const caps = (data.capabilities as CapabilityEntry[] | null) || []
     setEditingCapabilities(caps)
     setEditingStakeholderId(stakeholderId)
   }
 
   function updateCapability(
     index: number,
-    field: keyof Capability,
+    field: keyof CapabilityEntry,
     value: string
   ) {
     setEditingCapabilities((prev) =>
@@ -239,13 +237,15 @@ export function CreateGoalForm({
   function addCapability() {
     setEditingCapabilities((prev) => [
       ...prev,
-      { type: 'willingness', description: '', condition: null },
+      { capability: '', willingness: '', condition: null },
     ])
   }
 
   async function saveCapabilities(stakeholderId: string) {
     setSavingCapabilities(true)
-    const valid = editingCapabilities.filter((c) => c.description.trim())
+    const valid = editingCapabilities.filter((c) =>
+      (c.capability || c.description || '').trim()
+    )
     await fetch(`/api/stakeholders/${stakeholderId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -556,16 +556,9 @@ export function CreateGoalForm({
                         className="rounded-lg border border-zinc-200 bg-zinc-50 p-2 space-y-1.5"
                       >
                         <div className="flex items-center gap-1.5">
-                          <select
-                            value={cap.type}
-                            onChange={(e) =>
-                              updateCapability(i, 'type', e.target.value)
-                            }
-                            className="rounded border border-zinc-300 px-1.5 py-1 text-xs focus:border-zinc-500 focus:outline-none"
-                          >
-                            <option value="willingness">willingness</option>
-                            <option value="capability">capability</option>
-                          </select>
+                          <span className="text-xs font-medium text-zinc-500">
+                            #{i + 1}
+                          </span>
                           <button
                             type="button"
                             onClick={() => deleteCapability(i)}
@@ -586,11 +579,20 @@ export function CreateGoalForm({
                         </div>
                         <input
                           type="text"
-                          value={cap.description}
+                          value={cap.capability || cap.description || ''}
                           onChange={(e) =>
-                            updateCapability(i, 'description', e.target.value)
+                            updateCapability(i, 'capability', e.target.value)
                           }
-                          placeholder="Description"
+                          placeholder="Capability — what can they do?"
+                          className="w-full rounded border border-zinc-300 px-2 py-1 text-xs focus:border-zinc-500 focus:outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={cap.willingness || ''}
+                          onChange={(e) =>
+                            updateCapability(i, 'willingness', e.target.value)
+                          }
+                          placeholder="Willingness — how willing are they?"
                           className="w-full rounded border border-zinc-300 px-2 py-1 text-xs focus:border-zinc-500 focus:outline-none"
                         />
                         <input
@@ -641,69 +643,48 @@ export function CreateGoalForm({
                   </div>
                 ) : (
                   <>
-                    {/* Capability/Willingness scores bar */}
-                    {s.capabilityScore !== undefined && (
-                      <div className="mt-2 pl-8 flex items-center gap-3 text-xs">
-                        <span className="text-zinc-500">Capability</span>
-                        <div className="flex-1 h-1.5 bg-zinc-200 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-blue-500 rounded-full"
-                            style={{ width: `${s.capabilityScore}%` }}
-                          />
-                        </div>
-                        <span className="font-medium text-blue-700 w-7 text-right">
-                          {s.capabilityScore}
-                        </span>
-                        <span className="text-zinc-500 ml-2">Willingness</span>
-                        <div className="flex-1 h-1.5 bg-zinc-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${(s.willingnessScore ?? 50) < 40 ? 'bg-red-400' : (s.willingnessScore ?? 50) < 70 ? 'bg-amber-400' : 'bg-green-500'}`}
-                            style={{ width: `${s.willingnessScore ?? 50}%` }}
-                          />
-                        </div>
-                        <span
-                          className={`font-medium w-7 text-right ${(s.willingnessScore ?? 50) < 40 ? 'text-red-600' : (s.willingnessScore ?? 50) < 70 ? 'text-amber-600' : 'text-green-700'}`}
+                    {/* Semantic capabilities */}
+                    <div className="mt-1.5 space-y-2 pl-8">
+                      {s.capabilities.map((cap, i) => (
+                        <div
+                          key={i}
+                          className="text-xs rounded border border-zinc-100 bg-zinc-50 p-2"
                         >
-                          {s.willingnessScore ?? '?'}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Matching capabilities */}
-                    <div className="mt-1.5 space-y-1 pl-8">
-                      {s.matchingCapabilities.map((cap, i) => (
-                        <div key={i} className="text-xs">
-                          <span
-                            className={`inline-block rounded px-1.5 py-0.5 font-medium ${
-                              cap.type === 'willingness'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-blue-100 text-blue-700'
-                            }`}
-                          >
-                            {cap.type}
-                          </span>
-                          <span className="ml-1.5 text-zinc-700">
-                            {cap.description}
-                          </span>
+                          <div className="flex items-start gap-1.5">
+                            <span className="inline-block rounded bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700 flex-shrink-0">
+                              capability
+                            </span>
+                            <span className="text-zinc-700">
+                              {cap.capability || cap.description}
+                            </span>
+                          </div>
+                          <div className="flex items-start gap-1.5 mt-1">
+                            <span className="inline-block rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-700 flex-shrink-0">
+                              willingness
+                            </span>
+                            <span className="text-zinc-600">
+                              {cap.willingness || 'not specified'}
+                            </span>
+                          </div>
                           {cap.condition && (
-                            <span className="ml-1 text-zinc-500">
-                              — given{' '}
+                            <div className="mt-1 text-zinc-500 pl-0.5">
+                              condition:{' '}
                               <span className="font-medium text-zinc-700">
                                 {cap.condition}
                               </span>
-                            </span>
+                            </div>
                           )}
                         </div>
                       ))}
                     </div>
 
-                    {/* Value exchange suggestions (when value gap exists) */}
+                    {/* Value exchange suggestions (when AI detects willingness gap) */}
                     {s.valueExchangeSuggestions &&
                       s.valueExchangeSuggestions.length > 0 && (
                         <div className="mt-2 ml-8 rounded-lg border border-red-200 bg-red-50 p-2.5">
                           <p className="text-xs font-semibold text-red-700 mb-1.5">
-                            Value Gap — {s.valueGap}% willingness deficit.
-                            Suggested exchanges:
+                            Willingness gap detected — suggested value
+                            exchanges:
                           </p>
                           <div className="space-y-2">
                             {s.valueExchangeSuggestions.map((ve, i) => (
