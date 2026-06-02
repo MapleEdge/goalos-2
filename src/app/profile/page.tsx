@@ -13,17 +13,17 @@ export default function ProfilePage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">
+              <span className="block text-xs font-medium text-zinc-500 mb-1">
                 Name
-              </label>
+              </span>
               <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
                 Samuel Lu
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-500 mb-1">
+              <span className="block text-xs font-medium text-zinc-500 mb-1">
                 Email
-              </label>
+              </span>
               <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
                 samuelbolu@gmail.com
               </div>
