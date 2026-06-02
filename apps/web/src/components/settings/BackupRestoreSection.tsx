@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { type AccountInfo, PublicClientApplication } from '@azure/msal-browser'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 type Status = 'idle' | 'loading' | 'success' | 'error'
 
@@ -9,12 +10,13 @@ interface StatusState {
   message: string
 }
 
-// ── OneDrive Picker (via Microsoft's v8 picker SDK) ────────────
-const ONEDRIVE_CLIENT_ID = process.env.NEXT_PUBLIC_ONEDRIVE_CLIENT_ID ?? ''
+// ── Env-var driven client IDs ───────────────────────────────────
+const MS_CLIENT_ID = process.env.NEXT_PUBLIC_MICROSOFT_CLIENT_ID ?? ''
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ''
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY ?? ''
 
-/** Trigger a browser download of a Blob. */
+// ── Helpers ─────────────────────────────────────────────────────
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -26,15 +28,13 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url)
 }
 
-function timestamp() {
+function ts() {
   return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
 }
 
-// ── Google Drive helpers ────────────────────────────────────────
+// ── Google Identity Services helpers ────────────────────────────
 
-let gisTokenClient: google.accounts.oauth2.TokenClient | null = null
 let gapiInited = false
-let gisInited = false
 
 function ensureGapiScript(): Promise<void> {
   if (gapiInited) return Promise.resolve()
@@ -63,6 +63,8 @@ function ensureGapiScript(): Promise<void> {
   })
 }
 
+let gisInited = false
+
 function ensureGisScript(): Promise<void> {
   if (gisInited) return Promise.resolve()
   return new Promise((resolve, reject) => {
@@ -82,45 +84,64 @@ function ensureGisScript(): Promise<void> {
   })
 }
 
-function getGoogleAccessToken(): Promise<string> {
+interface GoogleUser {
+  email: string
+  name: string
+  accessToken: string
+}
+
+function signInWithGoogle(): Promise<GoogleUser> {
   return new Promise((resolve, reject) => {
-    if (!gisTokenClient) {
-      gisTokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: 'https://www.googleapis.com/auth/drive.file',
-        callback: (resp) => {
-          if (resp.error) {
-            reject(new Error(resp.error))
-          } else {
-            resolve(resp.access_token)
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope:
+        'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+      callback: async (resp) => {
+        if (resp.error) {
+          reject(new Error(resp.error))
+          return
+        }
+        try {
+          const info = await fetch(
+            'https://www.googleapis.com/oauth2/v3/userinfo',
+            { headers: { Authorization: `Bearer ${resp.access_token}` } }
+          )
+          const profile = (await info.json()) as {
+            email: string
+            name: string
           }
-        },
-      })
-    }
-    gisTokenClient.requestAccessToken()
+          resolve({
+            email: profile.email,
+            name: profile.name,
+            accessToken: resp.access_token,
+          })
+        } catch {
+          resolve({
+            email: 'Google user',
+            name: 'Google user',
+            accessToken: resp.access_token,
+          })
+        }
+      },
+    })
+    client.requestAccessToken()
   })
 }
 
 async function uploadToGoogleDrive(
+  token: string,
   json: string,
   filename: string
 ): Promise<string> {
-  await ensureGapiScript()
-  await ensureGisScript()
-  const token = await getGoogleAccessToken()
-
-  const metadata = {
-    name: filename,
-    mimeType: 'application/json',
-  }
-
   const form = new FormData()
   form.append(
     'metadata',
-    new Blob([JSON.stringify(metadata)], { type: 'application/json' })
+    new Blob(
+      [JSON.stringify({ name: filename, mimeType: 'application/json' })],
+      { type: 'application/json' }
+    )
   )
   form.append('file', new Blob([json], { type: 'application/json' }))
-
   const res = await fetch(
     'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
     {
@@ -129,17 +150,12 @@ async function uploadToGoogleDrive(
       body: form,
     }
   )
-
   if (!res.ok) throw new Error(`Google Drive upload failed: ${res.statusText}`)
-  const data = await res.json()
+  const data = (await res.json()) as { id: string }
   return data.id
 }
 
-async function pickFromGoogleDrive(): Promise<string> {
-  await ensureGapiScript()
-  await ensureGisScript()
-  const token = await getGoogleAccessToken()
-
+async function pickFromGoogleDrive(token: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const picker = new google.picker.PickerBuilder()
       .addView(new google.picker.DocsView().setMimeTypes('application/json'))
@@ -151,12 +167,9 @@ async function pickFromGoogleDrive(): Promise<string> {
             reject(new Error('No file selected'))
             return
           }
-          const fileId = doc.id
           const res = await fetch(
-            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
+            `https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media`,
+            { headers: { Authorization: `Bearer ${token}` } }
           )
           if (!res.ok) {
             reject(new Error('Failed to download from Google Drive'))
@@ -172,90 +185,106 @@ async function pickFromGoogleDrive(): Promise<string> {
   })
 }
 
-// ── OneDrive helpers ────────────────────────────────────────────
+// ── Microsoft (MSAL.js) helpers ─────────────────────────────────
 
-function ensureOneDriveScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if ((window as unknown as Record<string, unknown>).OneDrive) {
-      resolve()
-      return
-    }
-    if (document.getElementById('onedrive-script')) {
-      resolve()
-      return
-    }
-    const s = document.createElement('script')
-    s.id = 'onedrive-script'
-    s.src = 'https://js.live.net/v7.2/OneDrive.js'
-    s.onload = () => resolve()
-    s.onerror = reject
-    document.head.appendChild(s)
-  })
-}
-
-interface OneDriveFile {
-  '@microsoft.graph.downloadUrl'?: string
+interface MsUser {
+  email: string
   name: string
+  account: AccountInfo
 }
 
-interface OneDrivePickerResult {
-  value: OneDriveFile[]
-}
+let msalInstance: PublicClientApplication | null = null
 
-interface OneDriveSDK {
-  open(options: Record<string, unknown>): void
-  save(options: Record<string, unknown>): void
-}
-
-async function uploadToOneDrive(json: string, filename: string): Promise<void> {
-  await ensureOneDriveScript()
-  const sdk = (window as unknown as { OneDrive: OneDriveSDK }).OneDrive
-
-  return new Promise((resolve, reject) => {
-    // OneDrive JS SDK save-picker: opens a UI for the user to choose a folder
-    const blob = new Blob([json], { type: 'application/json' })
-    const file = new File([blob], filename, { type: 'application/json' })
-
-    sdk.save({
-      clientId: ONEDRIVE_CLIENT_ID,
-      action: 'save',
-      sourceInputElementId: '', // not used when providing file
-      file,
-      fileName: filename,
-      openInNewWindow: true,
-      success: () => resolve(),
-      cancel: () => reject(new Error('OneDrive save cancelled')),
-      error: (err: Error) => reject(err),
-    })
-  })
-}
-
-async function pickFromOneDrive(): Promise<string> {
-  await ensureOneDriveScript()
-  const sdk = (window as unknown as { OneDrive: OneDriveSDK }).OneDrive
-
-  return new Promise((resolve, reject) => {
-    sdk.open({
-      clientId: ONEDRIVE_CLIENT_ID,
-      action: 'download',
-      multiSelect: false,
-      advanced: {
-        filter: '.json',
+function getMsalInstance(): PublicClientApplication {
+  if (!msalInstance) {
+    msalInstance = new PublicClientApplication({
+      auth: {
+        clientId: MS_CLIENT_ID,
+        authority: 'https://login.microsoftonline.com/common',
+        redirectUri:
+          typeof window !== 'undefined' ? window.location.origin : '/',
       },
-      success: async (result: OneDrivePickerResult) => {
-        const file = result.value?.[0]
-        const url = file?.['@microsoft.graph.downloadUrl']
-        if (!url) {
-          reject(new Error('No download URL returned'))
-          return
-        }
-        const res = await fetch(url)
-        resolve(await res.text())
-      },
-      cancel: () => reject(new Error('OneDrive picker cancelled')),
-      error: (err: Error) => reject(err),
+      cache: { cacheLocation: 'sessionStorage' },
     })
-  })
+  }
+  return msalInstance
+}
+
+const MS_SCOPES = ['User.Read', 'Files.ReadWrite']
+
+async function signInWithMicrosoft(): Promise<MsUser> {
+  const msal = getMsalInstance()
+  await msal.initialize()
+  const result = await msal.loginPopup({ scopes: MS_SCOPES })
+  return {
+    email: result.account.username,
+    name: result.account.name ?? result.account.username,
+    account: result.account,
+  }
+}
+
+async function getMsToken(account: AccountInfo): Promise<string> {
+  const msal = getMsalInstance()
+  try {
+    const result = await msal.acquireTokenSilent({
+      scopes: MS_SCOPES,
+      account,
+    })
+    return result.accessToken
+  } catch {
+    const result = await msal.acquireTokenPopup({
+      scopes: MS_SCOPES,
+      account,
+    })
+    return result.accessToken
+  }
+}
+
+async function uploadToOneDrive(
+  account: AccountInfo,
+  json: string,
+  filename: string
+): Promise<void> {
+  const token = await getMsToken(account)
+  const res = await fetch(
+    `https://graph.microsoft.com/v1.0/me/drive/root:/GoalOS Backups/${filename}:/content`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: json,
+    }
+  )
+  if (!res.ok) throw new Error(`OneDrive upload failed: ${res.statusText}`)
+}
+
+interface DriveItem {
+  id: string
+  name: string
+  '@microsoft.graph.downloadUrl': string
+}
+
+async function listOneDriveBackups(account: AccountInfo): Promise<DriveItem[]> {
+  const token = await getMsToken(account)
+  const res = await fetch(
+    "https://graph.microsoft.com/v1.0/me/drive/root:/GoalOS Backups:/children?$filter=endsWith(name,'.json')&$orderby=lastModifiedDateTime desc&$top=20",
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+  if (!res.ok) {
+    if (res.status === 404) return []
+    throw new Error(`OneDrive list failed: ${res.statusText}`)
+  }
+  const data = (await res.json()) as { value: DriveItem[] }
+  return data.value
+}
+
+async function downloadFromOneDrive(item: DriveItem): Promise<string> {
+  const url = item['@microsoft.graph.downloadUrl']
+  if (!url) throw new Error('No download URL for file')
+  const res = await fetch(url)
+  return await res.text()
 }
 
 // ── Component ───────────────────────────────────────────────────
@@ -273,8 +302,88 @@ export function BackupRestoreSection() {
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge')
   const [confirmReplace, setConfirmReplace] = useState(false)
 
+  // ── Auth state ────────────────────────────────────────────────
+  const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null)
+  const [msUser, setMsUser] = useState<MsUser | null>(null)
+  const [authLoading, setAuthLoading] = useState<'google' | 'microsoft' | null>(
+    null
+  )
+  const [authError, setAuthError] = useState('')
+
+  // OneDrive file picker state
+  const [oneDriveFiles, setOneDriveFiles] = useState<DriveItem[]>([])
+  const [showOneDrivePicker, setShowOneDrivePicker] = useState(false)
+
   const hasGoogleConfig = Boolean(GOOGLE_CLIENT_ID && GOOGLE_API_KEY)
-  const hasOneDriveConfig = Boolean(ONEDRIVE_CLIENT_ID)
+  const hasMsConfig = Boolean(MS_CLIENT_ID)
+
+  // Check for existing MSAL session on mount
+  useEffect(() => {
+    if (!hasMsConfig) return
+    const msal = getMsalInstance()
+    msal.initialize().then(() => {
+      const accounts = msal.getAllAccounts()
+      if (accounts[0]) {
+        setMsUser({
+          email: accounts[0].username,
+          name: accounts[0].name ?? accounts[0].username,
+          account: accounts[0],
+        })
+      }
+    })
+  }, [hasMsConfig])
+
+  // ── Sign in / sign out ────────────────────────────────────────
+
+  const handleGoogleSignIn = useCallback(async () => {
+    setAuthLoading('google')
+    setAuthError('')
+    try {
+      await ensureGapiScript()
+      await ensureGisScript()
+      const user = await signInWithGoogle()
+      setGoogleUser(user)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Google sign-in failed'
+      if (!msg.includes('popup_closed')) setAuthError(msg)
+    } finally {
+      setAuthLoading(null)
+    }
+  }, [])
+
+  const handleMsSignIn = useCallback(async () => {
+    setAuthLoading('microsoft')
+    setAuthError('')
+    try {
+      const user = await signInWithMicrosoft()
+      setMsUser(user)
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Microsoft sign-in failed'
+      if (!msg.includes('user_cancelled')) setAuthError(msg)
+    } finally {
+      setAuthLoading(null)
+    }
+  }, [])
+
+  const handleGoogleSignOut = useCallback(() => {
+    setGoogleUser(null)
+    google.accounts.oauth2.revoke(googleUser?.accessToken ?? '', () => {})
+  }, [googleUser])
+
+  const handleMsSignOut = useCallback(async () => {
+    setMsUser(null)
+    setOneDriveFiles([])
+    setShowOneDrivePicker(false)
+    if (msUser) {
+      const msal = getMsalInstance()
+      try {
+        await msal.logoutPopup({ account: msUser.account })
+      } catch {
+        // Silent logout failure is OK
+      }
+    }
+  }, [msUser])
 
   // ── Export ────────────────────────────────────────────────────
 
@@ -295,11 +404,12 @@ export function BackupRestoreSection() {
     const json = await doExport()
     if (!json) return
     const blob = new Blob([json], { type: 'application/json' })
-    downloadBlob(blob, `goalos-backup-${timestamp()}.json`)
+    downloadBlob(blob, `goalos-backup-${ts()}.json`)
     setExportStatus({ status: 'success', message: 'Backup downloaded!' })
   }, [doExport])
 
   const exportToGoogleDrive = useCallback(async () => {
+    if (!googleUser) return
     const json = await doExport()
     if (!json) return
     setExportStatus({
@@ -307,27 +417,41 @@ export function BackupRestoreSection() {
       message: 'Uploading to Google Drive...',
     })
     try {
-      await uploadToGoogleDrive(json, `goalos-backup-${timestamp()}.json`)
-      setExportStatus({ status: 'success', message: 'Saved to Google Drive!' })
+      await uploadToGoogleDrive(
+        googleUser.accessToken,
+        json,
+        `goalos-backup-${ts()}.json`
+      )
+      setExportStatus({
+        status: 'success',
+        message: 'Saved to Google Drive!',
+      })
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : 'Google Drive upload failed'
       setExportStatus({ status: 'error', message: msg })
     }
-  }, [doExport])
+  }, [doExport, googleUser])
 
   const exportToOneDrive = useCallback(async () => {
+    if (!msUser) return
     const json = await doExport()
     if (!json) return
-    setExportStatus({ status: 'loading', message: 'Uploading to OneDrive...' })
+    setExportStatus({
+      status: 'loading',
+      message: 'Uploading to OneDrive...',
+    })
     try {
-      await uploadToOneDrive(json, `goalos-backup-${timestamp()}.json`)
-      setExportStatus({ status: 'success', message: 'Saved to OneDrive!' })
+      await uploadToOneDrive(msUser.account, json, `goalos-backup-${ts()}.json`)
+      setExportStatus({
+        status: 'success',
+        message: 'Saved to OneDrive (GoalOS Backups folder)!',
+      })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'OneDrive upload failed'
       setExportStatus({ status: 'error', message: msg })
     }
-  }, [doExport])
+  }, [doExport, msUser])
 
   // ── Import ────────────────────────────────────────────────────
 
@@ -345,9 +469,9 @@ export function BackupRestoreSection() {
           body: json,
         })
         if (!res.ok) {
-          const err = await res.json().catch(() => null)
+          const errBody = await res.json().catch(() => null)
           throw new Error(
-            err?.error?.message ?? `Import failed: ${res.statusText}`
+            errBody?.error?.message ?? `Import failed: ${res.statusText}`
           )
         }
         const result = await res.json()
@@ -359,6 +483,7 @@ export function BackupRestoreSection() {
           message: `Imported ${total} records (${importMode} mode)`,
         })
         setConfirmReplace(false)
+        setShowOneDrivePicker(false)
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Import failed'
         setImportStatus({ status: 'error', message: msg })
@@ -381,13 +506,13 @@ export function BackupRestoreSection() {
       if (!file) return
       const json = await file.text()
       await doImport(json)
-      // Reset input so the same file can be re-selected
       e.target.value = ''
     },
     [doImport]
   )
 
   const importFromGoogleDrive = useCallback(async () => {
+    if (!googleUser) return
     if (importMode === 'replace' && !confirmReplace) {
       setConfirmReplace(true)
       return
@@ -397,7 +522,7 @@ export function BackupRestoreSection() {
       message: 'Picking file from Google Drive...',
     })
     try {
-      const json = await pickFromGoogleDrive()
+      const json = await pickFromGoogleDrive(googleUser.accessToken)
       await doImport(json)
     } catch (err) {
       const msg =
@@ -408,29 +533,54 @@ export function BackupRestoreSection() {
         setImportStatus({ status: 'error', message: msg })
       }
     }
-  }, [doImport, importMode, confirmReplace])
+  }, [doImport, googleUser, importMode, confirmReplace])
 
-  const importFromOneDrive = useCallback(async () => {
+  const openOneDrivePicker = useCallback(async () => {
+    if (!msUser) return
     if (importMode === 'replace' && !confirmReplace) {
       setConfirmReplace(true)
       return
     }
     setImportStatus({
       status: 'loading',
-      message: 'Picking file from OneDrive...',
+      message: 'Loading OneDrive backups...',
     })
     try {
-      const json = await pickFromOneDrive()
-      await doImport(json)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'OneDrive import failed'
-      if (msg.includes('cancelled')) {
-        setImportStatus({ status: 'idle', message: '' })
+      const files = await listOneDriveBackups(msUser.account)
+      setOneDriveFiles(files)
+      setShowOneDrivePicker(true)
+      if (files.length === 0) {
+        setImportStatus({
+          status: 'idle',
+          message: 'No backup files found in GoalOS Backups folder',
+        })
       } else {
+        setImportStatus({ status: 'idle', message: '' })
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Failed to list OneDrive files'
+      setImportStatus({ status: 'error', message: msg })
+    }
+  }, [msUser, importMode, confirmReplace])
+
+  const importFromOneDriveFile = useCallback(
+    async (item: DriveItem) => {
+      setImportStatus({
+        status: 'loading',
+        message: `Downloading ${item.name}...`,
+      })
+      try {
+        const json = await downloadFromOneDrive(item)
+        await doImport(json)
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : 'OneDrive import failed'
         setImportStatus({ status: 'error', message: msg })
       }
-    }
-  }, [doImport, importMode, confirmReplace])
+    },
+    [doImport]
+  )
 
   return (
     <section className="rounded-xl border border-zinc-200 bg-white p-6">
@@ -441,6 +591,99 @@ export function BackupRestoreSection() {
         Export your goals, vehicles, stakeholders, and all related data as a
         snapshot. Restore from a previous backup file or from cloud storage.
       </p>
+
+      {/* ── Connected Accounts ────────────────────── */}
+      {(hasGoogleConfig || hasMsConfig) && (
+        <div className="mb-6 rounded-lg border border-zinc-100 bg-zinc-50 p-4">
+          <h3 className="text-xs font-semibold text-zinc-600 mb-3">
+            Cloud Accounts
+          </h3>
+          <div className="space-y-2">
+            {/* Google */}
+            {hasGoogleConfig && (
+              <div className="flex items-center justify-between">
+                {googleUser ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <GoogleDriveIcon />
+                      <span className="text-xs text-zinc-700">
+                        {googleUser.email}
+                      </span>
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                        Connected
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleGoogleSignOut}
+                      className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+                    >
+                      Sign out
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    disabled={authLoading === 'google'}
+                    className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                  >
+                    {authLoading === 'google' ? (
+                      <LoadingSpinner />
+                    ) : (
+                      <GoogleIcon />
+                    )}
+                    Sign in with Google
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Microsoft */}
+            {hasMsConfig && (
+              <div className="flex items-center justify-between">
+                {msUser ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <MicrosoftIcon />
+                      <span className="text-xs text-zinc-700">
+                        {msUser.email}
+                      </span>
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                        Connected
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleMsSignOut}
+                      className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+                    >
+                      Sign out
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleMsSignIn}
+                    disabled={authLoading === 'microsoft'}
+                    className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors disabled:opacity-50"
+                  >
+                    {authLoading === 'microsoft' ? (
+                      <LoadingSpinner />
+                    ) : (
+                      <MicrosoftIcon />
+                    )}
+                    Sign in with Microsoft
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          {authError && (
+            <p className="mt-2 text-xs text-red-600">{authError}</p>
+          )}
+        </div>
+      )}
 
       {/* ── Export ────────────────────────────────── */}
       <div className="mb-6">
@@ -455,7 +698,7 @@ export function BackupRestoreSection() {
             <DownloadIcon />
             Download JSON
           </button>
-          {hasGoogleConfig && (
+          {googleUser && (
             <button
               type="button"
               onClick={exportToGoogleDrive}
@@ -466,7 +709,7 @@ export function BackupRestoreSection() {
               Google Drive
             </button>
           )}
-          {hasOneDriveConfig && (
+          {msUser && (
             <button
               type="button"
               onClick={exportToOneDrive}
@@ -569,7 +812,7 @@ export function BackupRestoreSection() {
             <UploadIcon />
             Upload JSON
           </button>
-          {hasGoogleConfig && (
+          {googleUser && (
             <button
               type="button"
               onClick={importFromGoogleDrive}
@@ -580,10 +823,10 @@ export function BackupRestoreSection() {
               Google Drive
             </button>
           )}
-          {hasOneDriveConfig && (
+          {msUser && (
             <button
               type="button"
-              onClick={importFromOneDrive}
+              onClick={openOneDrivePicker}
               disabled={importStatus.status === 'loading'}
               className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50 transition-colors disabled:opacity-50"
             >
@@ -592,12 +835,45 @@ export function BackupRestoreSection() {
             </button>
           )}
         </div>
+
+        {/* OneDrive file list */}
+        {showOneDrivePicker && oneDriveFiles.length > 0 && (
+          <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-zinc-600">
+                GoalOS Backups on OneDrive
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowOneDrivePicker(false)}
+                className="text-xs text-zinc-400 hover:text-zinc-600"
+              >
+                Close
+              </button>
+            </div>
+            <ul className="space-y-1">
+              {oneDriveFiles.map((file) => (
+                <li key={file.id}>
+                  <button
+                    type="button"
+                    onClick={() => importFromOneDriveFile(file)}
+                    disabled={importStatus.status === 'loading'}
+                    className="w-full text-left rounded-md px-2 py-1.5 text-xs text-zinc-600 hover:bg-white hover:shadow-sm transition-all disabled:opacity-50"
+                  >
+                    {file.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <StatusMessage state={importStatus} />
       </div>
 
-      {!hasGoogleConfig && !hasOneDriveConfig && (
+      {!hasGoogleConfig && !hasMsConfig && (
         <p className="mt-4 text-xs text-zinc-400">
-          To enable cloud storage, set{' '}
+          To enable cloud storage sign-in, set{' '}
           <code className="bg-zinc-100 px-1 rounded">
             NEXT_PUBLIC_GOOGLE_CLIENT_ID
           </code>
@@ -607,7 +883,7 @@ export function BackupRestoreSection() {
           </code>
           , and/or{' '}
           <code className="bg-zinc-100 px-1 rounded">
-            NEXT_PUBLIC_ONEDRIVE_CLIENT_ID
+            NEXT_PUBLIC_MICROSOFT_CLIENT_ID
           </code>{' '}
           in your environment.
         </p>
@@ -619,8 +895,9 @@ export function BackupRestoreSection() {
 // ── Status badge ────────────────────────────────────────────────
 
 function StatusMessage({ state }: { state: StatusState }) {
-  if (state.status === 'idle') return null
-  const colors = {
+  if (state.status === 'idle' && !state.message) return null
+  const colors: Record<Status, string> = {
+    idle: 'text-zinc-500',
     loading: 'text-blue-600',
     success: 'text-emerald-600',
     error: 'text-red-600',
@@ -695,10 +972,44 @@ function UploadIcon() {
   )
 }
 
+function GoogleIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24">
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+      />
+    </svg>
+  )
+}
+
 function GoogleDriveIcon() {
   return (
     <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
       <path d="M7.71 3.5L1.15 15l3.43 5.95L11.14 9.45zm1.14 0l6.57 11.36H23l-6.57-11.36zm7.71 12.86H8.28l-3.43 5.95h8.28z" />
+    </svg>
+  )
+}
+
+function MicrosoftIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 23 23">
+      <path fill="#f35325" d="M1 1h10v10H1z" />
+      <path fill="#81bc06" d="M12 1h10v10H12z" />
+      <path fill="#05a6f0" d="M1 12h10v10H1z" />
+      <path fill="#ffba08" d="M12 12h10v10H12z" />
     </svg>
   )
 }

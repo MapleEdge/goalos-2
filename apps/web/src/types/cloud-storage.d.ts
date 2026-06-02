@@ -17,6 +17,7 @@ declare namespace google.accounts.oauth2 {
   }
 
   function initTokenClient(config: TokenClientConfig): TokenClient
+  function revoke(token: string, callback: () => void): void
 }
 
 declare namespace google.picker {
