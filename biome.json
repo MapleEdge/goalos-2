@@ -102,7 +102,7 @@
       }
     },
     {
-      "includes": ["*.config.{js,ts,mts,mjs}", "prisma/seed.ts"],
+      "includes": ["**/*.config.{js,ts,mts,mjs}", "**/prisma/seed.ts"],
       "linter": {
         "rules": {
           "style": {

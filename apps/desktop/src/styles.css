@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/* Generate Tailwind classes used by the shared @goalos/ui package */
+@source "../../../packages/ui/src";
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #fafafa;
+  color: #171717;
+}
