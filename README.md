@@ -138,13 +138,13 @@ GEMINI_MODEL=gemini-2.5-flash
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start dev server |
-| `npm run build` | Production build |
-| `npm run lint` | Run ESLint |
-| `npm run db:generate` | Generate Prisma client |
-| `npm run db:push` | Push schema to database |
-| `npm run db:seed` | Seed example data |
-| `npm run db:studio` | Open Prisma Studio |
+| `yarn dev` | Start dev server |
+| `yarn build` | Production build |
+| `yarn lint` | Run Biome linter |
+| `yarn db:generate` | Generate Prisma client |
+| `yarn prisma db push` | Push schema to database |
+| `yarn db:seed` | Seed example data |
+| `yarn db:studio` | Open Prisma Studio |
 
 ## API Routes
 
