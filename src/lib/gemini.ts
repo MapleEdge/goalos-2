@@ -24,6 +24,7 @@ export function isGeminiAvailable(): boolean {
   return Boolean(process.env.GEMINI_API_KEY)
 }
 
+
 // ── Resilience policies (singleton per process) ─────────────────
 
 const geminiRetry = createRetryPolicy({
