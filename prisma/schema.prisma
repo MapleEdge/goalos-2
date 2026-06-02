@@ -445,6 +445,48 @@ model ControlDimension {
   @@map("control_dimensions")
 }
 
+// ─── Briefing history ────────────────────────────────────────────
+
+enum SuggestionDecision {
+  ACCEPTED
+  REJECTED
+  SKIPPED
+}
+
+model BriefingSession {
+  id          String   @id @default(uuid())
+  inputText   String   // the raw freeform text the user pasted
+  aiSummary   String?  // Gemini's summary of the briefing
+  createdAt   DateTime @default(now())
+
+  suggestions BriefingSuggestion[]
+
+  @@index([createdAt])
+  @@map("briefing_sessions")
+}
+
+model BriefingSuggestion {
+  id              String             @id @default(uuid())
+  sessionId       String
+  operationType   String             // "create" | "update"
+  entityType      String             // "goal" | "vehicle" | "stakeholder" | "controlDimension" | "value"
+  entityTitle     String             // display title of the proposed entity
+  reason          String?            // AI's reason for the suggestion
+  proposedData    Json               // the full operation data blob
+  decision        SuggestionDecision @default(ACCEPTED)
+  rejectionReason String?            // optional user-provided reason for rejection
+  resultAction    String?            // "created" | "updated" | "error:..." | null if rejected
+  resultEntityId  String?            // id of the created/updated entity (null if rejected)
+  createdAt       DateTime           @default(now())
+
+  session         BriefingSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([entityType])
+  @@index([decision])
+  @@map("briefing_suggestions")
+}
+
 // ─── Event sourcing ──────────────────────────────────────────────
 
 model Event {
