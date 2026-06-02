@@ -36,6 +36,7 @@ export interface ScheduleEvent {
 interface CalendarViewProps {
   events: ScheduleEvent[]
   timeZone?: string
+  now?: (() => Date) | Date | string
   onEventClick: (event: ScheduleEvent) => void
   onSlotSelect: (start: Date, end: Date, allDay: boolean) => void
   onEventDrop: (
@@ -80,6 +81,7 @@ function sourceColor(source: string): string {
 export function CalendarView({
   events,
   timeZone,
+  now,
   onEventClick,
   onSlotSelect,
   onEventDrop,
@@ -133,6 +135,7 @@ export function CalendarView({
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}
         timeZone={timeZone || 'local'}
+        now={now}
         nowIndicator={true}
         height="auto"
         expandRows={true}

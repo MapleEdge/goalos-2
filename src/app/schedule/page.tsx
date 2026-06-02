@@ -5,6 +5,7 @@ import { CalendarSettings } from '@/components/schedule/CalendarSettings'
 import type { ScheduleEvent } from '@/components/schedule/CalendarView'
 import { CalendarView } from '@/components/schedule/CalendarView'
 import { EventModal } from '@/components/schedule/EventModal'
+import { useOnlineTime } from '@/lib/useOnlineTime'
 import { useTimezone } from '@/lib/useTimezone'
 
 interface CalendarConnection {
@@ -17,6 +18,7 @@ interface CalendarConnection {
 
 export default function SchedulePage() {
   const { timezone } = useTimezone()
+  const { getNow } = useOnlineTime(timezone)
   const [events, setEvents] = useState<ScheduleEvent[]>([])
   const [connections, setConnections] = useState<CalendarConnection[]>([])
   const [loading, setLoading] = useState(true)
@@ -241,6 +243,7 @@ export default function SchedulePage() {
       <CalendarView
         events={events}
         timeZone={timezone}
+        now={getNow}
         onEventClick={handleEventClick}
         onSlotSelect={handleSlotSelect}
         onEventDrop={handleEventDrop}
