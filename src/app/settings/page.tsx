@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTokens } from '@/lib/useTokens'
 
 const TIMEZONE_KEY = 'goalos-timezone'
@@ -12,6 +12,41 @@ const ALL_TIMEZONES: string[] = (() => {
     return ['UTC']
   }
 })()
+
+interface TzInfo {
+  id: string
+  label: string
+  offset: string
+  abbr: string
+}
+
+function getTzInfo(tz: string, now: Date): TzInfo {
+  try {
+    const short = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'short',
+    })
+      .formatToParts(now)
+      .find((p) => p.type === 'timeZoneName')?.value || ''
+
+    const long = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'longOffset',
+    })
+      .formatToParts(now)
+      .find((p) => p.type === 'timeZoneName')?.value || ''
+
+    const offset = long.replace('GMT', 'UTC') || 'UTC'
+    return {
+      id: tz,
+      label: `${tz.replace(/_/g, ' ')} (${offset}, ${short})`,
+      offset,
+      abbr: short,
+    }
+  } catch {
+    return { id: tz, label: tz.replace(/_/g, ' '), offset: '', abbr: '' }
+  }
+}
 
 function loadTimezone(): string {
   try {
@@ -38,16 +73,28 @@ export default function SettingsPage() {
   const [tzSearch, setTzSearch] = useState('')
   const [tzDropdownOpen, setTzDropdownOpen] = useState(false)
 
+  const tzInfoMap = useMemo(() => {
+    const now = new Date()
+    const map = new Map<string, TzInfo>()
+    for (const tz of ALL_TIMEZONES) {
+      map.set(tz, getTzInfo(tz, now))
+    }
+    return map
+  }, [])
+
   useEffect(() => {
     const tz = loadTimezone()
     setTimezone(tz)
-    setTzSearch(tz.replace(/_/g, ' '))
-  }, [])
+    const info = tzInfoMap.get(tz)
+    setTzSearch(info ? info.label : tz.replace(/_/g, ' '))
+  }, [tzInfoMap])
 
   const filteredTimezones = tzSearch
-    ? ALL_TIMEZONES.filter((tz) =>
-        tz.toLowerCase().replace(/_/g, ' ').includes(tzSearch.toLowerCase())
-      )
+    ? ALL_TIMEZONES.filter((tz) => {
+        const info = tzInfoMap.get(tz)
+        const searchable = info ? info.label.toLowerCase() : tz.toLowerCase()
+        return searchable.includes(tzSearch.toLowerCase())
+      })
     : ALL_TIMEZONES
 
   return (
@@ -116,31 +163,35 @@ export default function SettingsPage() {
                   setTimeout(() => setTzDropdownOpen(false), 150)
                 }}
                 placeholder="Search time zones…"
-                className="w-56 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                className="w-80 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-400"
               />
               {tzDropdownOpen && filteredTimezones.length > 0 && (
-                <ul className="absolute right-0 z-20 mt-1 max-h-48 w-56 overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-lg">
-                  {filteredTimezones.slice(0, 50).map((tz) => (
-                    <li key={tz}>
-                      <button
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault()
-                          setTimezone(tz)
-                          setTzSearch(tz.replace(/_/g, ' '))
-                          saveTimezone(tz)
-                          setTzDropdownOpen(false)
-                        }}
-                        className={`w-full px-3 py-1.5 text-left text-xs hover:bg-zinc-50 ${
-                          tz === timezone
-                            ? 'font-semibold text-zinc-900 bg-zinc-50'
-                            : 'text-zinc-600'
-                        }`}
-                      >
-                        {tz.replace(/_/g, ' ')}
-                      </button>
-                    </li>
-                  ))}
+                <ul className="absolute right-0 z-20 mt-1 max-h-48 w-80 overflow-y-auto rounded-lg border border-zinc-200 bg-white shadow-lg">
+                  {filteredTimezones.slice(0, 50).map((tz) => {
+                    const info = tzInfoMap.get(tz)
+                    const display = info ? info.label : tz.replace(/_/g, ' ')
+                    return (
+                      <li key={tz}>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault()
+                            setTimezone(tz)
+                            setTzSearch(display)
+                            saveTimezone(tz)
+                            setTzDropdownOpen(false)
+                          }}
+                          className={`w-full px-3 py-1.5 text-left text-xs hover:bg-zinc-50 ${
+                            tz === timezone
+                              ? 'font-semibold text-zinc-900 bg-zinc-50'
+                              : 'text-zinc-600'
+                          }`}
+                        >
+                          {display}
+                        </button>
+                      </li>
+                    )
+                  })}
                   {filteredTimezones.length > 50 && (
                     <li className="px-3 py-1.5 text-xs text-zinc-400">
                       Type to narrow results…
