@@ -624,9 +624,14 @@ export function StateGraph() {
       const nodeType = (node.data as { nodeType?: string }).nodeType
       if (
         nodeType &&
-        ['GOAL', 'PREREQUISITE', 'ACTION', 'EVIDENCE', 'STAKEHOLDER'].includes(
-          nodeType
-        )
+        [
+          'GOAL',
+          'PREREQUISITE',
+          'ACTION',
+          'EVIDENCE',
+          'STAKEHOLDER',
+          'VEHICLE',
+        ].includes(nodeType)
       ) {
         setEditNode({ id: node.id, type: nodeType })
       }
@@ -735,6 +740,7 @@ export function StateGraph() {
               | 'ACTION'
               | 'EVIDENCE'
               | 'STAKEHOLDER'
+              | 'VEHICLE'
           }
           onClose={() => setEditNode(null)}
           onSaved={reloadData}
