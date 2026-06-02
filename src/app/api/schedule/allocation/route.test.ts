@@ -162,7 +162,8 @@ describe('GET /api/schedule/allocation', () => {
       expect(body.avgMinutesPerDay).toBe(120) // 120 / 1 day
       expect(body.allocations).toHaveLength(1)
       expect(body.allocations[0].valueLabel).toBe('Career Growth')
-      expect(body.allocations[0].percentage).toBe(100)
+      // 120 min / 1440 min (24h day capacity) = 8%
+      expect(body.allocations[0].percentage).toBe(8)
     })
   })
 
@@ -323,13 +324,15 @@ describe('GET /api/schedule/allocation', () => {
         (a: { valueLabel: string }) => a.valueLabel === 'Career Growth'
       )
       expect(career.totalMinutes).toBe(120)
-      expect(career.percentage).toBe(67) // 120/180 ≈ 66.67 → 67
+      // 120 min / 1440 min (24h day capacity) = 8%
+      expect(career.percentage).toBe(8)
 
       const health = body.allocations.find(
         (a: { valueLabel: string }) => a.valueLabel === 'Health & Fitness'
       )
       expect(health.totalMinutes).toBe(60)
-      expect(health.percentage).toBe(33)
+      // 60 min / 1440 min (24h day capacity) = 4%
+      expect(health.percentage).toBe(4)
     })
 
     it('puts events without a goal value in the "Unlinked Events" bucket', async () => {
@@ -560,9 +563,11 @@ describe('GET /api/schedule/allocation', () => {
         (s: number, a: { percentage: number }) => s + a.percentage,
         0
       )
-      // With rounding, might not be exactly 100 but should be close
-      expect(total).toBeGreaterThanOrEqual(99)
-      expect(total).toBeLessThanOrEqual(101)
+      // Percentages are now relative to period capacity (24h = 1440 min for day),
+      // not total allocated, so three 1-hour events sum to ~12% of the day.
+      // 3 × 60min / 1440min × 100 ≈ 4% each → sum ≈ 12
+      expect(total).toBeGreaterThanOrEqual(11)
+      expect(total).toBeLessThanOrEqual(13)
     })
 
     it('falls back to unknown period as "week"', async () => {
