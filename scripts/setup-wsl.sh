@@ -105,8 +105,7 @@ install_docker() {
   # shellcheck disable=SC1091
   UBUNTU_CODENAME=$(. /etc/os-release && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME}}")
 
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-    https://download.docker.com/linux/ubuntu ${UBUNTU_CODENAME} stable" \
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu ${UBUNTU_CODENAME} stable" \
     | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
   sudo apt-get update -qq
@@ -123,7 +122,7 @@ else
 fi
 
 # Make sure Docker daemon is running (WSL2 may need manual start)
-if ! docker info &>/dev/null 2>&1; then
+if ! docker info &>/dev/null; then
   info "Starting Docker daemon..."
   if command -v systemctl &>/dev/null && systemctl is-system-running &>/dev/null 2>&1; then
     sudo systemctl start docker
@@ -133,7 +132,7 @@ if ! docker info &>/dev/null 2>&1; then
     sleep 3
   fi
 
-  if ! docker info &>/dev/null 2>&1; then
+  if ! docker info &>/dev/null; then
     warn "Docker daemon may not be running. If you're on WSL2, consider enabling systemd:"
     warn "  Add '[boot] systemd=true' to /etc/wsl.conf and restart WSL."
     warn "  Alternatively, install Docker Desktop for Windows with WSL2 backend."
@@ -145,7 +144,7 @@ else
 fi
 
 # Verify docker compose plugin
-if docker compose version &>/dev/null 2>&1; then
+if docker compose version &>/dev/null; then
   ok "Docker Compose $(docker compose version --short 2>/dev/null)"
 else
   warn "docker compose plugin not found. Install it or use Docker Desktop."

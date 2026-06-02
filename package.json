@@ -52,6 +52,7 @@
     "@sentry/nextjs": "^10.46.0",
     "@xyflow/react": "^12.10.2",
     "better-auth": "^1.6.13",
+    "cockatiel": "^3.1.2",
     "date-fns": "^4.4.0",
     "dotenv": "^17.4.2",
     "next": "16.2.6",
