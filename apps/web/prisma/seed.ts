@@ -10,6 +10,8 @@ const prisma = new PrismaClient({ adapter })
 
 async function main() {
   // Clean existing data
+  await prisma.aiUsage.deleteMany()
+  await prisma.subscription.deleteMany()
   await prisma.idempotencyKey.deleteMany()
   await prisma.resourceFlow.deleteMany()
   await prisma.resourceType.deleteMany()
@@ -2612,6 +2614,17 @@ async function main() {
   const flowCount = await prisma.resourceFlow.count()
   const typeCount = await prisma.resourceType.count()
 
+  // A known trialing Pro subscription for local dev/testing without Stripe.
+  // Production tokens are issued per-install via /api/subscription/register.
+  await prisma.subscription.create({
+    data: {
+      token: 'dev-trial-token',
+      tier: 'PRO',
+      status: 'TRIALING',
+      currentPeriodEnd: new Date(Date.now() + 60 * 86_400_000),
+    },
+  })
+
   console.log('Seed data created successfully')
   console.log('  - 7 values')
   console.log('  - 10 completed goals')
@@ -2623,6 +2636,7 @@ async function main() {
   console.log(`  - ${flowCount} resource flows`)
   console.log('  - 13 control dimensions across 5 vehicles')
   console.log('  - All entities connected to logical values (many-to-many)')
+  console.log("  - 1 trialing Pro subscription (token 'dev-trial-token')")
 }
 
 main()

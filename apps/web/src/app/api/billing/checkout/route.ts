@@ -1,5 +1,6 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import type Stripe from 'stripe'
 import { isPlanId, type PlanId } from '@/lib/plan'
 import { appBaseUrl, getStripe, priceIdForPlan } from '@/lib/server/stripe'
 
@@ -40,13 +41,22 @@ export async function POST(request: Request) {
     token = sub.token
   }
 
+  // Pro includes a 2-month free trial (card collected, $0 until it ends).
+  // Max has no trial and is charged immediately.
+  const TRIAL_DAYS = 60
+  const subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData =
+    {
+      metadata: { token: sub.token, plan },
+      ...(plan === 'pro' ? { trial_period_days: TRIAL_DAYS } : {}),
+    }
+
   const base = appBaseUrl()
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     line_items: [{ price: priceId, quantity: 1 }],
     client_reference_id: sub.token,
     metadata: { token: sub.token, plan },
-    subscription_data: { metadata: { token: sub.token, plan } },
+    subscription_data: subscriptionData,
     ...(sub.stripeCustomerId ? { customer: sub.stripeCustomerId } : {}),
     success_url: `${base}/pricing?status=success`,
     cancel_url: `${base}/pricing?status=cancelled`,

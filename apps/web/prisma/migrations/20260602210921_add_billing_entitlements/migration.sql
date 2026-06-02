@@ -2,14 +2,14 @@
 CREATE TYPE "PlanTier" AS ENUM ('FREE', 'PRO', 'MAX');
 
 -- CreateEnum
-CREATE TYPE "SubscriptionStatus" AS ENUM ('ACTIVE', 'PAST_DUE', 'CANCELED', 'INCOMPLETE');
+CREATE TYPE "SubscriptionStatus" AS ENUM ('NONE', 'TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELED', 'INCOMPLETE');
 
 -- CreateTable
 CREATE TABLE "subscriptions" (
     "id" TEXT NOT NULL,
     "token" TEXT NOT NULL,
     "tier" "PlanTier" NOT NULL DEFAULT 'FREE',
-    "status" "SubscriptionStatus" NOT NULL DEFAULT 'ACTIVE',
+    "status" "SubscriptionStatus" NOT NULL DEFAULT 'NONE',
     "stripeCustomerId" TEXT,
     "stripeSubscriptionId" TEXT,
     "geminiKeyCipher" TEXT,

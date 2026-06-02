@@ -24,6 +24,15 @@ import {
 /** Opaque subscription token persisted on the device. */
 const TOKEN_KEY = 'goalos-sub-token'
 
+/** Server-derived subscription state (mirrors the API's status union). */
+export type SubscriptionState =
+  | 'none'
+  | 'trialing'
+  | 'active'
+  | 'past_due'
+  | 'canceled'
+  | 'incomplete'
+
 export interface PlanUsage {
   /** AI requests consumed this period (server-tracked). */
   used: number
@@ -37,11 +46,14 @@ export interface PlanUsage {
 
 interface EntitlementResponse {
   token?: string
+  status: SubscriptionState
+  entitled: boolean
   tier: PlanId
   creditLimit: number | null
   used: number
   remaining: number | null
   hasCredits: boolean
+  trialEndsAt: string | null
 }
 
 interface PlanContextValue {
@@ -49,6 +61,12 @@ interface PlanContextValue {
   plan: PlanConfig
   /** Subscription token sent with AI requests; null until registered. */
   token: string | null
+  /** Server-derived subscription state. */
+  status: SubscriptionState
+  /** Whether any AI is unlocked (trial/paid, or metered Free fallback). */
+  entitled: boolean
+  /** Trial end (ISO) while trialing, else null. */
+  trialEndsAt: string | null
   usage: PlanUsage
   loading: boolean
   /** Re-pull tier + usage from the server. */
@@ -68,6 +86,9 @@ const PlanContext = createContext<PlanContextValue>({
   planId: DEFAULT_PLAN,
   plan: getPlan(DEFAULT_PLAN),
   token: null,
+  status: 'none',
+  entitled: false,
+  trialEndsAt: null,
   usage: UNLIMITED_USAGE,
   loading: true,
   refresh: async () => {},
@@ -86,12 +107,18 @@ function usageFrom(e: EntitlementResponse): PlanUsage {
 export function PlanProvider({ children }: { children: ReactNode }) {
   const [planId, setPlanId] = useState<PlanId>(DEFAULT_PLAN)
   const [token, setToken] = useState<string | null>(null)
+  const [status, setStatus] = useState<SubscriptionState>('none')
+  const [entitled, setEntitled] = useState(false)
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null)
   const [usage, setUsage] = useState<PlanUsage>(UNLIMITED_USAGE)
   const [loading, setLoading] = useState(true)
   const tokenRef = useRef<string | null>(null)
 
   const apply = useCallback((e: EntitlementResponse) => {
     if (isPlanId(e.tier)) setPlanId(e.tier)
+    setStatus(e.status)
+    setEntitled(e.entitled)
+    setTrialEndsAt(e.trialEndsAt)
     setUsage(usageFrom(e))
   }, [])
 
@@ -179,6 +206,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
         planId,
         plan: getPlan(planId),
         token,
+        status,
+        entitled,
+        trialEndsAt,
         usage,
         loading,
         refresh,

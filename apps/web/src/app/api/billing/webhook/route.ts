@@ -14,8 +14,9 @@ export const dynamic = 'force-dynamic'
 
 function mapStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
   switch (status) {
-    case 'active':
     case 'trialing':
+      return SubscriptionStatus.TRIALING
+    case 'active':
       return SubscriptionStatus.ACTIVE
     case 'past_due':
     case 'unpaid':
@@ -26,6 +27,11 @@ function mapStatus(status: Stripe.Subscription.Status): SubscriptionStatus {
     default:
       return SubscriptionStatus.CANCELED
   }
+}
+
+/** Trialing and active subscriptions grant full paid-tier access. */
+function isEntitledStatus(s: SubscriptionStatus): boolean {
+  return s === SubscriptionStatus.TRIALING || s === SubscriptionStatus.ACTIVE
 }
 
 /** Provisions and stores a per-customer Gemini key once, for paid tiers. */
@@ -71,10 +77,11 @@ async function applySubscription(stripeSub: Stripe.Subscription) {
     return
   }
 
+  const entitled = isEntitledStatus(status)
   await prisma.subscription.update({
     where: { id: sub.id },
     data: {
-      tier: status === SubscriptionStatus.ACTIVE ? tier : PlanTier.FREE,
+      tier: entitled ? tier : PlanTier.FREE,
       status,
       stripeSubscriptionId: stripeSub.id,
       stripeCustomerId:
@@ -85,7 +92,8 @@ async function applySubscription(stripeSub: Stripe.Subscription) {
     },
   })
 
-  if (status === SubscriptionStatus.ACTIVE) {
+  // Provision the customer's key as soon as they're entitled (trial included).
+  if (entitled) {
     await ensureCustomerKey(sub.id, plan)
   }
 }

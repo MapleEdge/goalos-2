@@ -11,8 +11,23 @@ function resetLabel(): string {
   return next.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
 }
 
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function daysLeft(iso: string): number {
+  return Math.max(
+    0,
+    Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000)
+  )
+}
+
 export function BillingSection() {
-  const { planId, plan, token, usage, loading } = usePlan()
+  const { planId, plan, token, status, trialEndsAt, usage, loading } = usePlan()
   const [busy, setBusy] = useState<PlanId | 'portal' | null>(null)
 
   async function startCheckout(target: PlanId) {
@@ -47,11 +62,17 @@ export function BillingSection() {
     }
   }
 
-  const metered = usage.limit != null
+  const isTrialing = status === 'trialing'
+  const isActive = status === 'active'
+  const isFallback = status === 'canceled' || status === 'past_due'
+  const isLocked = !isTrialing && !isActive && !isFallback
+  const metered = isFallback && usage.limit != null
   const pct =
     metered && usage.limit
       ? Math.min(100, Math.round((usage.used / usage.limit) * 100))
       : 0
+
+  const displayName = isLocked ? 'No active plan' : plan.name
 
   return (
     <section className="rounded-xl border border-zinc-200 bg-white p-6">
@@ -63,13 +84,22 @@ export function BillingSection() {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-lg font-semibold text-zinc-900">
-              {plan.name}
+              {displayName}
             </span>
-            {plan.price > 0 && (
+            {!isLocked && plan.price > 0 && (
               <span className="text-xs text-zinc-500">${plan.price}/mo</span>
             )}
+            {isTrialing && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                Free trial
+              </span>
+            )}
           </div>
-          <p className="text-xs text-zinc-500 mt-0.5">{plan.tagline}</p>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            {isLocked
+              ? 'Start your 2-month free trial to unlock AI features.'
+              : plan.tagline}
+          </p>
         </div>
         {loading && (
           <Loader2 className="h-4 w-4 animate-spin text-zinc-400" aria-hidden />
@@ -77,7 +107,26 @@ export function BillingSection() {
       </div>
 
       <div className="mt-5">
-        {metered ? (
+        {isTrialing && (
+          <div className="flex items-center gap-2 text-sm text-zinc-700">
+            <InfinityIcon className="h-4 w-4 text-emerald-600" aria-hidden />
+            <span>
+              Unlimited {plan.aiModelLabel}.
+              {trialEndsAt
+                ? ` Free for ${daysLeft(trialEndsAt)} more days — renews ${formatDate(
+                    trialEndsAt
+                  )} at $${plan.price}/mo.`
+                : ''}
+            </span>
+          </div>
+        )}
+        {isActive && (
+          <div className="flex items-center gap-2 text-sm text-zinc-700">
+            <InfinityIcon className="h-4 w-4 text-emerald-600" aria-hidden />
+            Unlimited {plan.aiModelLabel}. Renews monthly at ${plan.price}/mo.
+          </div>
+        )}
+        {isFallback && (
           <div>
             <div className="flex items-center justify-between text-xs text-zinc-600 mb-1.5">
               <span>
@@ -94,19 +143,20 @@ export function BillingSection() {
               />
             </div>
             <p className="text-xs text-zinc-400 mt-1.5">
-              Resets {resetLabel()}. Powered by {plan.aiModelLabel}.
+              Free fallback after cancellation. Resets {resetLabel()}. Powered
+              by {plan.aiModelLabel}.
             </p>
           </div>
-        ) : (
-          <div className="flex items-center gap-2 text-sm text-zinc-700">
-            <InfinityIcon className="h-4 w-4 text-emerald-600" aria-hidden />
-            Unlimited {plan.aiModelLabel} AI usage
-          </div>
+        )}
+        {isLocked && (
+          <p className="text-sm text-zinc-500">
+            No AI access yet. Start a free trial below to begin.
+          </p>
         )}
       </div>
 
       <div className="mt-6 flex flex-wrap gap-2">
-        {planId !== 'pro' && planId !== 'max' && (
+        {(isLocked || isFallback || planId === 'free') && (
           <button
             type="button"
             onClick={() => startCheckout('pro')}
@@ -114,7 +164,7 @@ export function BillingSection() {
             className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
           >
             {busy === 'pro' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Upgrade to Pro
+            Start 2-month free trial
           </button>
         )}
         {planId !== 'max' && (
@@ -125,10 +175,10 @@ export function BillingSection() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3.5 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
           >
             {busy === 'max' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Upgrade to Max
+            {isLocked || isFallback ? 'Go Max' : 'Upgrade to Max'}
           </button>
         )}
-        {(planId === 'pro' || planId === 'max') && (
+        {(isTrialing || isActive) && (
           <button
             type="button"
             onClick={openPortal}

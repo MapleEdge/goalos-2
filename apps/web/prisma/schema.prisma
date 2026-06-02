@@ -482,22 +482,26 @@ enum PlanTier {
 }
 
 enum SubscriptionStatus {
+  NONE
+  TRIALING
   ACTIVE
   PAST_DUE
   CANCELED
   INCOMPLETE
 }
 
-// A subscriber's entitlement record. Created on first launch as a FREE tier and
-// upgraded by the Stripe webhook on payment. `token` is the opaque credential
-// the client stores and sends with every AI request — it is the only thing that
-// identifies a tier server-side (there is no login). API keys are kept here,
-// server-side only, and are never returned to the client.
+// A subscriber's entitlement record. Created on first launch with status NONE
+// (no AI access) — new users must start a Stripe trial to unlock AI. The Stripe
+// webhook moves it through TRIALING/ACTIVE, and cancellation drops it to the
+// metered FREE fallback. `token` is the opaque credential the client stores and
+// sends with every AI request — it is the only thing that identifies a tier
+// server-side (there is no login). API keys are kept here, server-side only,
+// and are never returned to the client.
 model Subscription {
   id                   String             @id @default(uuid())
   token                String             @unique @default(uuid())
   tier                 PlanTier           @default(FREE)
-  status               SubscriptionStatus @default(ACTIVE)
+  status               SubscriptionStatus @default(NONE)
 
   stripeCustomerId     String?            @unique
   stripeSubscriptionId String?            @unique

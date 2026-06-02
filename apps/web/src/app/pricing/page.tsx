@@ -42,12 +42,13 @@ export default function PricingPage() {
         Choose your plan
       </h1>
       <p className="text-sm text-zinc-500 text-center mt-2 mb-10">
-        Every tier unlocks progressively more powerful AI. Cancel anytime.
+        Start with a 2-month free trial of Pro. Cancel anytime and keep the free
+        fallback tier.
       </p>
 
       {banner === 'success' && (
         <div className="mb-8 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Payment received — your plan is now active.
+          You're all set — your plan is now active.
         </div>
       )}
       {banner === 'cancelled' && (
@@ -89,6 +90,11 @@ export default function PricingPage() {
               <p className="text-xs text-zinc-500 mt-2 min-h-[2.5rem]">
                 {plan.tagline}
               </p>
+              {id === 'pro' && (
+                <p className="text-xs font-medium text-emerald-700 mt-1">
+                  2 months free, then ${plan.price}/mo
+                </p>
+              )}
 
               <div className="mt-5">
                 {isCurrent ? (
@@ -113,10 +119,12 @@ export default function PricingPage() {
                     {busy === id && (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     )}
-                    Upgrade to {plan.name}
+                    {id === 'pro' ? 'Start 2-month free trial' : 'Upgrade now'}
                   </button>
                 ) : (
-                  <div className="h-[38px]" />
+                  <p className="flex h-[38px] items-center text-xs text-zinc-400">
+                    Fallback tier after cancellation
+                  </p>
                 )}
               </div>
 
