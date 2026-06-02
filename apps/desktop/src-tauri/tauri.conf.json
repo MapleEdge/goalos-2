@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.goalos.desktop",
   "build": {
-    "beforeDevCommand": "yarn dev",
-    "devUrl": "http://127.0.0.1:1420",
+    "beforeDevCommand": "yarn workspace @goalos/web dev",
+    "devUrl": "http://localhost:3000",
     "beforeBuildCommand": "yarn build",
     "frontendDist": "../dist"
   },
