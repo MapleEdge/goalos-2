@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { GoalPrompt } from '@/components/ui/GoalPrompt'
+import { ModelStatus } from '@/components/ui/ModelStatus'
 import { Nav } from '@/components/ui/Nav'
 import { Providers } from './providers'
 import './globals.css'
@@ -36,6 +37,7 @@ export default function RootLayout({
           <Nav />
           <main className="flex-1 pb-24">{children}</main>
           <GoalPrompt />
+          <ModelStatus />
         </Providers>
       </body>
     </html>

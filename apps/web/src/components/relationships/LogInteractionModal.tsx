@@ -1,5 +1,6 @@
 'use client'
 
+import { ArrowRight } from 'lucide-react'
 import { useState } from 'react'
 
 type InteractionType = 'MEETING' | 'EMAIL' | 'CALL' | 'MESSAGE' | 'NOTE'
@@ -148,8 +149,10 @@ export function LogInteractionModal({
 
         <div className="mb-4 flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
           <span>Relationship strength</span>
-          <span className="font-medium text-zinc-900">
-            {currentStrength}% → {projected}%
+          <span className="flex items-center gap-1 font-medium text-zinc-900">
+            {currentStrength}%
+            <ArrowRight className="size-3" />
+            {projected}%
           </span>
         </div>
 

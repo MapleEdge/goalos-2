@@ -4,16 +4,16 @@ import { ValuePills } from '@goalos/ui/components/ValuePills'
 import { useState } from 'react'
 
 const VEHICLE_TYPES = [
-  { value: 'EDUCATION', label: 'Education', icon: '🎓' },
-  { value: 'EMPLOYMENT', label: 'Employment', icon: '💼' },
-  { value: 'BUSINESS', label: 'Business', icon: '🚀' },
-  { value: 'ASSET', label: 'Asset', icon: '🏠' },
-  { value: 'PLATFORM', label: 'Platform', icon: '📝' },
-  { value: 'NETWORK', label: 'Network', icon: '🤝' },
-  { value: 'ORGANIZATION', label: 'Organization', icon: '🏛️' },
-  { value: 'EVENT_SERIES', label: 'Event Series', icon: '🎉' },
-  { value: 'SKILL', label: 'Skill', icon: '🧠' },
-  { value: 'OTHER', label: 'Other', icon: '📦' },
+  { value: 'EDUCATION', label: 'Education' },
+  { value: 'EMPLOYMENT', label: 'Employment' },
+  { value: 'BUSINESS', label: 'Business' },
+  { value: 'ASSET', label: 'Asset' },
+  { value: 'PLATFORM', label: 'Platform' },
+  { value: 'NETWORK', label: 'Network' },
+  { value: 'ORGANIZATION', label: 'Organization' },
+  { value: 'EVENT_SERIES', label: 'Event Series' },
+  { value: 'SKILL', label: 'Skill' },
+  { value: 'OTHER', label: 'Other' },
 ]
 
 const VEHICLE_STATUSES = [
@@ -114,7 +114,7 @@ export function CreateVehicleForm({
             >
               {VEHICLE_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
-                  {t.icon} {t.label}
+                  {t.label}
                 </option>
               ))}
             </select>

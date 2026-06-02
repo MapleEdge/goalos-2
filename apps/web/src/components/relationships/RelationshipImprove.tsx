@@ -1,5 +1,6 @@
 'use client'
 
+import { ArrowRight } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import {
   firstName,
@@ -316,8 +317,12 @@ export function RelationshipImprove() {
                   {item.talkingPoints.length > 0 && (
                     <ul className="mt-1.5 space-y-0.5">
                       {item.talkingPoints.map((p, i) => (
-                        <li key={i} className="text-xs text-zinc-500">
-                          → {p}
+                        <li
+                          key={i}
+                          className="flex items-start gap-1 text-xs text-zinc-500"
+                        >
+                          <ArrowRight className="size-3 shrink-0 mt-0.5" />
+                          <span>{p}</span>
                         </li>
                       ))}
                     </ul>

@@ -1,6 +1,7 @@
 'use client'
 
 import { Handle, type NodeProps, Position } from '@xyflow/react'
+import { AppIcon } from '@/lib/icons'
 
 interface GraphNodeData {
   label: string
@@ -8,6 +9,7 @@ interface GraphNodeData {
   status?: string
   subtitle?: string
   color: string
+  icon?: string
   isSummary?: boolean
   isHeader?: boolean
   [key: string]: unknown
@@ -90,9 +92,12 @@ export function GraphNode({ data }: NodeProps) {
         )}
       </div>
       <p
-        className={`text-xs font-medium leading-tight truncate ${isSummary ? 'text-zinc-500 italic' : 'text-zinc-900'}`}
+        className={`flex items-center gap-1 text-xs font-medium leading-tight ${isSummary ? 'text-zinc-500 italic' : 'text-zinc-900'}`}
       >
-        {nodeData.label}
+        {nodeData.icon && (
+          <AppIcon name={nodeData.icon} className="size-3.5 shrink-0" />
+        )}
+        <span className="truncate">{nodeData.label}</span>
       </p>
       {nodeData.subtitle && (
         <p className="text-[10px] text-zinc-500 truncate">

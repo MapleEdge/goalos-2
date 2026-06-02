@@ -1,6 +1,9 @@
 'use client'
 
+import { ArrowDown, ArrowUp, Pause, Pencil, Play, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { IconPicker } from '@/components/ui/IconPicker'
+import { AppIcon } from '@/lib/icons'
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -466,7 +469,12 @@ export default function FlowsPage() {
                     }}
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      {ts.icon && <span className="text-lg">{ts.icon}</span>}
+                      {ts.icon && (
+                        <AppIcon
+                          name={ts.icon}
+                          className="size-5 text-zinc-700"
+                        />
+                      )}
                       <span className="font-semibold text-zinc-800">
                         {ts.resourceTypeName}
                       </span>
@@ -531,7 +539,9 @@ export default function FlowsPage() {
                           key={ts.resourceTypeId}
                           className="flex items-center gap-1.5 text-xs"
                         >
-                          {ts.icon && <span>{ts.icon}</span>}
+                          {ts.icon && (
+                            <AppIcon name={ts.icon} className="size-3.5" />
+                          )}
                           <span className="text-zinc-500">
                             {ts.resourceTypeName}:
                           </span>
@@ -574,7 +584,6 @@ export default function FlowsPage() {
               <option value="">All Types</option>
               {types.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.icon ? `${t.icon} ` : ''}
                   {t.name}
                 </option>
               ))}
@@ -631,7 +640,11 @@ export default function FlowsPage() {
                 className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm hover:bg-zinc-100"
                 title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
               >
-                {sortDir === 'asc' ? '↑' : '↓'}
+                {sortDir === 'asc' ? (
+                  <ArrowUp className="size-4" />
+                ) : (
+                  <ArrowDown className="size-4" />
+                )}
               </button>
             </div>
           </div>
@@ -690,7 +703,17 @@ export default function FlowsPage() {
                         : 'bg-red-100 text-red-700'
                     }`}
                   >
-                    {f.direction === 'INFLOW' ? '↑ IN' : '↓ OUT'}
+                    {f.direction === 'INFLOW' ? (
+                      <span className="flex items-center gap-0.5">
+                        <ArrowUp className="size-3" />
+                        IN
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-0.5">
+                        <ArrowDown className="size-3" />
+                        OUT
+                      </span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -730,14 +753,18 @@ export default function FlowsPage() {
                       className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
                       title="Edit"
                     >
-                      ✎
+                      <Pencil className="size-4" />
                     </button>
                     <button
                       onClick={() => toggleFlowActive(f.id, f.isActive)}
                       className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
                       title={f.isActive ? 'Pause' : 'Resume'}
                     >
-                      {f.isActive ? '⏸' : '▶'}
+                      {f.isActive ? (
+                        <Pause className="size-4" />
+                      ) : (
+                        <Play className="size-4" />
+                      )}
                     </button>
                     <button
                       onClick={() =>
@@ -746,7 +773,7 @@ export default function FlowsPage() {
                       className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-600"
                       title="Delete"
                     >
-                      ✕
+                      <X className="size-4" />
                     </button>
                   </div>
                 </div>
@@ -773,7 +800,9 @@ export default function FlowsPage() {
                   borderLeftWidth: 4,
                 }}
               >
-                {t.icon && <span className="text-xl">{t.icon}</span>}
+                {t.icon && (
+                  <AppIcon name={t.icon} className="size-5 text-zinc-700" />
+                )}
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-zinc-800">{t.name}</span>
@@ -799,7 +828,7 @@ export default function FlowsPage() {
                     className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-600"
                     title="Delete"
                   >
-                    ✕
+                    <X className="size-4" />
                   </button>
                 )}
               </div>
@@ -843,11 +872,10 @@ export default function FlowsPage() {
                   <label className="block text-xs font-medium text-zinc-600 mb-1">
                     Icon
                   </label>
-                  <input
+                  <IconPicker
                     value={newTypeIcon}
-                    onChange={(e) => setNewTypeIcon(e.target.value)}
-                    placeholder="💰"
-                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-center focus:border-zinc-500 focus:outline-none"
+                    onChange={setNewTypeIcon}
+                    context={`${newTypeName} ${newTypeDescription}`}
                   />
                 </div>
                 <div className="w-20">
@@ -914,7 +942,6 @@ export default function FlowsPage() {
                     <option value="">Select type...</option>
                     {types.map((t) => (
                       <option key={t.id} value={t.id}>
-                        {t.icon ? `${t.icon} ` : ''}
                         {t.name} ({t.unit})
                       </option>
                     ))}
@@ -1073,7 +1100,6 @@ export default function FlowsPage() {
                     <option value="">Select type...</option>
                     {types.map((t) => (
                       <option key={t.id} value={t.id}>
-                        {t.icon ? `${t.icon} ` : ''}
                         {t.name} ({t.unit})
                       </option>
                     ))}

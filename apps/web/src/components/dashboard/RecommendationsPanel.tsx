@@ -2,6 +2,7 @@
 
 import { Card, CardTitle } from '@goalos/ui/components/Card'
 import { PriorityBadge } from '@goalos/ui/components/StatusBadge'
+import { ArrowRight } from 'lucide-react'
 import { useState } from 'react'
 import type { ReasoningOutput } from '@/lib/reasoning/types'
 
@@ -112,8 +113,9 @@ export function RecommendationsPanel({
                   {ur.question}
                 </p>
                 <p className="text-xs text-amber-700 mt-0.5">{ur.reason}</p>
-                <p className="text-xs text-amber-600 mt-1 font-medium">
-                  → {ur.suggestedAction}
+                <p className="flex items-start gap-1 text-xs text-amber-600 mt-1 font-medium">
+                  <ArrowRight className="size-3 shrink-0 mt-0.5" />
+                  <span>{ur.suggestedAction}</span>
                 </p>
               </div>
             ))}

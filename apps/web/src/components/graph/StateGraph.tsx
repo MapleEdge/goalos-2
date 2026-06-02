@@ -518,8 +518,9 @@ export function StateGraph() {
             type: 'graphNode',
             position: { x: vehicleStartX - 280, y: dimY },
             data: {
-              label: `${dim.icon || '📊'} ${dim.name}: ${Math.round(dim.value)}%`,
+              label: `${dim.name}: ${Math.round(dim.value)}%`,
               nodeType: 'CONTROL',
+              icon: dim.icon || 'BarChart3',
               color: dim.color || typeColors.CONTROL_DIM,
             },
           })
@@ -614,8 +615,9 @@ export function StateGraph() {
         type: 'graphNode',
         position: { x: rtX, y: rtStartY },
         data: {
-          label: `${rt.icon || '💎'} ${rt.name}`,
+          label: rt.name,
           nodeType: 'RESOURCE',
+          icon: rt.icon || 'Gem',
           color: rt.color || typeColors.RESOURCE_TYPE,
         },
       })

@@ -1,9 +1,12 @@
 'use client'
 
 import { ValuePills } from '@goalos/ui/components/ValuePills'
+import { ArrowLeft, Check, Circle, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+import { IconPicker } from '@/components/ui/IconPicker'
+import { AppIcon, VehicleTypeIcon } from '@/lib/icons'
 
 interface VehicleGoalData {
   id: string
@@ -57,19 +60,6 @@ const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-emerald-50 text-emerald-700',
   DORMANT: 'bg-zinc-100 text-zinc-500',
   RETIRED: 'bg-zinc-50 text-zinc-400',
-}
-
-const TYPE_ICONS: Record<string, string> = {
-  EDUCATION: '🎓',
-  EMPLOYMENT: '💼',
-  BUSINESS: '🚀',
-  ASSET: '🏠',
-  PLATFORM: '📝',
-  NETWORK: '🤝',
-  ORGANIZATION: '🏛️',
-  EVENT_SERIES: '🎉',
-  SKILL: '🧠',
-  OTHER: '📦',
 }
 
 const STATUS_FLOW = [
@@ -193,11 +183,15 @@ export function VehicleDetail({ id }: { id: string }) {
           href="/vehicles"
           className="mb-4 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-700"
         >
-          ← Back to Vehicles
+          <ArrowLeft className="size-4" />
+          Back to Vehicles
         </Link>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">{TYPE_ICONS[vehicle.type] || '📦'}</span>
+            <VehicleTypeIcon
+              type={vehicle.type}
+              className="size-7 text-zinc-700"
+            />
             <div>
               <h1 className="text-2xl font-bold text-zinc-900">
                 {vehicle.title}
@@ -303,7 +297,10 @@ export function VehicleDetail({ id }: { id: string }) {
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
                           {dim.icon && (
-                            <span className="text-base">{dim.icon}</span>
+                            <AppIcon
+                              name={dim.icon}
+                              className="size-4 text-zinc-600"
+                            />
                           )}
                           <span className="text-sm font-medium text-zinc-800">
                             {dim.name}
@@ -419,8 +416,9 @@ export function VehicleDetail({ id }: { id: string }) {
                       </span>
                     </div>
                     {vg.leverage && (
-                      <p className="mt-1 text-xs text-zinc-500">
-                        ↗ {vg.leverage}
+                      <p className="mt-1 flex items-center gap-1 text-xs text-zinc-500">
+                        <TrendingUp className="size-3" />
+                        {vg.leverage}
                       </p>
                     )}
                   </div>
@@ -448,9 +446,13 @@ export function VehicleDetail({ id }: { id: string }) {
                     <div>
                       <div className="flex items-center gap-2">
                         <span
-                          className={`text-sm font-medium ${opp.realized ? 'text-emerald-700' : 'text-zinc-900'}`}
+                          className={`flex items-center gap-1 text-sm font-medium ${opp.realized ? 'text-emerald-700' : 'text-zinc-900'}`}
                         >
-                          {opp.realized ? '✓ ' : '○ '}
+                          {opp.realized ? (
+                            <Check className="size-3.5" />
+                          ) : (
+                            <Circle className="size-3.5" />
+                          )}
                           {opp.title}
                         </span>
                       </div>
@@ -607,11 +609,10 @@ export function VehicleDetail({ id }: { id: string }) {
                   <label className="mb-1 block text-xs font-medium text-zinc-600">
                     Icon
                   </label>
-                  <input
+                  <IconPicker
                     value={dimIcon}
-                    onChange={(e) => setDimIcon(e.target.value)}
-                    placeholder="💰"
-                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                    onChange={setDimIcon}
+                    context={`${dimName} ${dimDescription}`}
                   />
                 </div>
                 <div className="w-24">

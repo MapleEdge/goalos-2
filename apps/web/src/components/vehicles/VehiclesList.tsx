@@ -3,6 +3,7 @@
 import { Modal } from '@goalos/ui/components/Modal'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
+import { VehicleTypeIcon } from '@/lib/icons'
 import { CreateVehicleForm } from './CreateVehicleForm'
 
 interface VehicleData {
@@ -42,19 +43,6 @@ const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-emerald-50 text-emerald-700',
   DORMANT: 'bg-zinc-100 text-zinc-500',
   RETIRED: 'bg-zinc-50 text-zinc-400',
-}
-
-const TYPE_ICONS: Record<string, string> = {
-  EDUCATION: '🎓',
-  EMPLOYMENT: '💼',
-  BUSINESS: '🚀',
-  ASSET: '🏠',
-  PLATFORM: '📝',
-  NETWORK: '🤝',
-  ORGANIZATION: '🏛️',
-  EVENT_SERIES: '🎉',
-  SKILL: '🧠',
-  OTHER: '📦',
 }
 
 type FilterStatus = 'ALL' | 'ACTIVE_BUILDING' | string
@@ -201,9 +189,10 @@ export function VehiclesList() {
           >
             <div className="mb-3 flex items-start justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xl">
-                  {TYPE_ICONS[vehicle.type] || '📦'}
-                </span>
+                <VehicleTypeIcon
+                  type={vehicle.type}
+                  className="size-5 text-zinc-700"
+                />
                 <div>
                   <h3 className="font-semibold text-zinc-900 group-hover:text-zinc-700">
                     {vehicle.title}

@@ -2,6 +2,7 @@
 
 import { Card, CardTitle } from '@goalos/ui/components/Card'
 import { PriorityBadge, StatusBadge } from '@goalos/ui/components/StatusBadge'
+import { ArrowLeft, Check } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
@@ -144,9 +145,10 @@ export function GoalDetail({ id }: { id: string }) {
         <h1 className="text-lg font-semibold text-zinc-700">Goal not found</h1>
         <Link
           href="/"
-          className="mt-2 inline-block text-sm text-pink-600 hover:underline"
+          className="mt-2 inline-flex items-center gap-1 text-sm text-pink-600 hover:underline"
         >
-          ← Back to dashboard
+          <ArrowLeft className="size-4" />
+          Back to dashboard
         </Link>
       </div>
     )
@@ -170,8 +172,12 @@ export function GoalDetail({ id }: { id: string }) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-800">
-        ← Dashboard
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-800"
+      >
+        <ArrowLeft className="size-4" />
+        Dashboard
       </Link>
 
       <div className="mt-3 mb-5">
@@ -258,8 +264,12 @@ export function GoalDetail({ id }: { id: string }) {
                 {p.evidence.length > 0 && (
                   <ul className="mt-1.5 space-y-1 pl-4">
                     {p.evidence.map((ev) => (
-                      <li key={ev.id} className="text-xs text-zinc-500">
-                        ✓ {ev.title}
+                      <li
+                        key={ev.id}
+                        className="flex items-center gap-1 text-xs text-zinc-500"
+                      >
+                        <Check className="size-3 shrink-0" />
+                        {ev.title}
                         {ev.source && (
                           <span className="text-zinc-400"> · {ev.source}</span>
                         )}

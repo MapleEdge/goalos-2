@@ -1,8 +1,14 @@
 'use client'
 
 import { Modal } from '@goalos/ui/components/Modal'
+import { ArrowRight, Circle, CircleCheck, CircleDot } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { CreateGoalForm } from '@/components/dashboard/CreateGoalForm'
+import { isEmbedderReady } from '@/lib/semantic/embedder'
+import {
+  classifyIntentSemantic,
+  INTENT_CONFIDENCE,
+} from '@/lib/semantic/intent'
 import { useTokens } from '@/lib/useTokens'
 
 interface ParsedGoal {
@@ -212,6 +218,20 @@ async function detectIntent(
 ): Promise<IntentResult> {
   const trimmed = input.trim()
 
+  // 1. Offline model — preferred once it has finished installing.
+  if (isEmbedderReady()) {
+    try {
+      const sem = await classifyIntentSemantic(trimmed)
+      if (sem && sem.score >= INTENT_CONFIDENCE) {
+        return buildIntent(sem.intent, trimmed)
+      }
+    } catch {
+      // model error — fall through to regex
+    }
+    return detectIntentRegex(trimmed)
+  }
+
+  // 2. Gemini — used while the offline model is still installing.
   if (useAi) {
     try {
       const res = await fetch('/api/intent', {
@@ -229,6 +249,7 @@ async function detectIntent(
     }
   }
 
+  // 3. Regex — last-resort fallback.
   return detectIntentRegex(trimmed)
 }
 
@@ -796,11 +817,13 @@ function ProgressPanel({
                             : 'text-zinc-400'
                       }`}
                     >
-                      {p.status === 'COMPLETED'
-                        ? '●'
-                        : p.status === 'IN_PROGRESS'
-                          ? '◐'
-                          : '○'}
+                      {p.status === 'COMPLETED' ? (
+                        <CircleCheck className="size-3.5" />
+                      ) : p.status === 'IN_PROGRESS' ? (
+                        <CircleDot className="size-3.5" />
+                      ) : (
+                        <Circle className="size-3.5" />
+                      )}
                     </span>
                     <span className="text-zinc-700 truncate flex-1">
                       {p.title}
@@ -826,7 +849,7 @@ function ProgressPanel({
                   .slice(0, 3)
                   .map((a, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs">
-                      <span className="text-zinc-400">→</span>
+                      <ArrowRight className="size-3 shrink-0 text-zinc-400" />
                       <span className="text-zinc-700 truncate flex-1">
                         {a.title}
                       </span>
