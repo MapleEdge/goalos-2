@@ -687,7 +687,10 @@ export function StateGraph() {
           data: {
             label: headerLabel,
             nodeType: type,
-            color: typeColors[type] || typeColors[type.replace(/S$/, '')] || '#94a3b8',
+            color:
+              typeColors[type] ||
+              typeColors[type.replace(/S$/, '')] ||
+              '#94a3b8',
             isHeader: true,
           },
           selectable: false,
@@ -870,15 +873,35 @@ export function StateGraph() {
         >
           {layoutMode === 'freeform' ? (
             <>
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 4h6m-6 4h6m-6 4h6m-6 4h6M4 4v16" />
+              <svg
+                className="h-3.5 w-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9 4h6m-6 4h6m-6 4h6m-6 4h6M4 4v16"
+                />
               </svg>
               Column View
             </>
           ) : (
             <>
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              <svg
+                className="h-3.5 w-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
               Free-form View
             </>

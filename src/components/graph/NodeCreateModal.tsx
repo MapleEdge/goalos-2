@@ -141,9 +141,7 @@ export function NodeCreateModal({ onClose, onCreated }: NodeCreateModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
-          <h2 className="text-base font-semibold text-zinc-900">
-            Create Node
-          </h2>
+          <h2 className="text-base font-semibold text-zinc-900">Create Node</h2>
           <button
             type="button"
             onClick={onClose}

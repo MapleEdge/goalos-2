@@ -36,7 +36,10 @@ export function GraphNode({ data }: NodeProps) {
             {nodeData.label}
           </span>
         </div>
-        <div className="mt-1 h-0.5 rounded" style={{ backgroundColor: nodeData.color, opacity: 0.3 }} />
+        <div
+          className="mt-1 h-0.5 rounded"
+          style={{ backgroundColor: nodeData.color, opacity: 0.3 }}
+        />
       </div>
     )
   }
