@@ -30,10 +30,12 @@ model Goal {
   updatedAt       DateTime     @updatedAt
 
   valueId         String?
-  value           Value?       @relation(fields: [valueId], references: [id], onDelete: SetNull)
+  value           Value?       @relation("GoalPrimaryValue", fields: [valueId], references: [id], onDelete: SetNull)
+  values          Value[]      @relation("GoalValues")
 
   prerequisites   Prerequisite[]
   actions         Action[]
+  vehicleGoals    VehicleGoal[]
   relationshipsFrom Relationship[] @relation("from")
   relationshipsTo   Relationship[] @relation("to")
 
@@ -52,6 +54,7 @@ model Stakeholder {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  values             Value[]    @relation("StakeholderValues")
   evidence           Evidence[]
   relationshipsFrom  Relationship[] @relation("stakeholder_from")
   relationshipsTo    Relationship[] @relation("stakeholder_to")
@@ -77,6 +80,7 @@ model Prerequisite {
   updatedAt       DateTime           @updatedAt
 
   goal            Goal               @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  values          Value[]            @relation("PrerequisiteValues")
   evidence        Evidence[]
   relationshipsFrom Relationship[]   @relation("prereq_from")
   relationshipsTo   Relationship[]   @relation("prereq_to")
@@ -97,6 +101,7 @@ model Evidence {
 
   prerequisite    Prerequisite? @relation(fields: [prerequisiteId], references: [id], onDelete: SetNull)
   stakeholder     Stakeholder?  @relation(fields: [stakeholderId], references: [id], onDelete: SetNull)
+  values          Value[]       @relation("EvidenceValues")
   relationshipsFrom Relationship[] @relation("evidence_from")
   relationshipsTo   Relationship[] @relation("evidence_to")
 
@@ -128,6 +133,7 @@ model Action {
   updatedAt DateTime       @updatedAt
 
   goal      Goal           @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  values    Value[]        @relation("ActionValues")
   relationshipsFrom Relationship[] @relation("action_from")
   relationshipsTo   Relationship[] @relation("action_to")
 
@@ -142,6 +148,7 @@ enum NodeType {
   PREREQUISITE
   EVIDENCE
   ACTION
+  VEHICLE
 }
 
 model Relationship {
@@ -180,6 +187,11 @@ model Relationship {
   actionTo         Action?       @relation("action_to", fields: [actionToId], references: [id], onDelete: Cascade)
   actionToId       String?
 
+  vehicleFrom      Vehicle?      @relation("vehicle_from", fields: [vehicleFromId], references: [id], onDelete: Cascade)
+  vehicleFromId    String?
+  vehicleTo        Vehicle?      @relation("vehicle_to", fields: [vehicleToId], references: [id], onDelete: Cascade)
+  vehicleToId      String?
+
   @@unique([fromType, fromId, toType, toId])
   @@map("relationships")
 }
@@ -195,9 +207,102 @@ model Value {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  goals       Goal[]
+  // Primary value FK relations (backward compat)
+  goals              Goal[]          @relation("GoalPrimaryValue")
+  vehicles           Vehicle[]       @relation("VehiclePrimaryValue")
+
+  // Many-to-many: every entity connects to one or more values
+  goalValues         Goal[]          @relation("GoalValues")
+  stakeholderValues  Stakeholder[]   @relation("StakeholderValues")
+  prerequisiteValues Prerequisite[]  @relation("PrerequisiteValues")
+  evidenceValues     Evidence[]      @relation("EvidenceValues")
+  actionValues       Action[]        @relation("ActionValues")
+  vehicleValues      Vehicle[]       @relation("VehicleValues")
+  scheduleEventValues ScheduleEvent[] @relation("ScheduleEventValues")
+  opportunityValues  Opportunity[]   @relation("OpportunityValues")
 
   @@map("values")
+}
+
+// ─── Vehicles ────────────────────────────────────────────────────
+
+enum VehicleStatus {
+  IDENTIFIED    // Spotted as a potential vehicle
+  RESEARCHING   // Actively evaluating feasibility/fit
+  ACQUIRING     // In the process of obtaining (applying, purchasing, joining)
+  BUILDING      // Acquired but still setting up / not yet generating value
+  ACTIVE        // Operational and producing leverage
+  DORMANT       // Exists but not currently leveraged
+  RETIRED       // No longer providing value
+}
+
+enum VehicleType {
+  EDUCATION      // Degrees, certifications, courses
+  EMPLOYMENT     // Jobs, positions, roles
+  BUSINESS       // Companies, freelance, side projects
+  ASSET          // Real estate, investments, IP, physical vehicles (cars etc.)
+  PLATFORM       // Blog, podcast, social media, open source project
+  NETWORK        // Alumni groups, professional associations
+  ORGANIZATION   // Religious institutions, political parties, clubs, fraternities
+  EVENT_SERIES   // Hosted dinners, meetups, salons, parties
+  SKILL          // Deep expertise that compounds
+  OTHER
+}
+
+model Vehicle {
+  id              String         @id @default(uuid())
+  title           String
+  description     String?
+  type            VehicleType
+  status          VehicleStatus  @default(IDENTIFIED)
+  institution     String?        // e.g. "MIT", "Stripe", "Y Combinator"
+  startDate       DateTime?
+  endDate         DateTime?      // null = ongoing
+  investmentNotes String?        // what it costs (time, money, effort)
+  leverageScore   Int            @default(0) // computed: linked goals × priority
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  valueId         String?
+  value           Value?         @relation("VehiclePrimaryValue", fields: [valueId], references: [id], onDelete: SetNull)
+  values          Value[]        @relation("VehicleValues")
+
+  vehicleGoals    VehicleGoal[]
+  opportunities   Opportunity[]
+  relationshipsFrom Relationship[] @relation("vehicle_from")
+  relationshipsTo   Relationship[] @relation("vehicle_to")
+
+  @@map("vehicles")
+}
+
+model VehicleGoal {
+  id          String   @id @default(uuid())
+  vehicleId   String
+  goalId      String
+  leverage    String?  // how the vehicle helps: "Provides faculty recommendations"
+  createdAt   DateTime @default(now())
+
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  goal        Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, goalId])
+  @@map("vehicle_goals")
+}
+
+model Opportunity {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  vehicleId   String
+  goalId      String?   // optionally links to a goal it benefits
+  realized    Boolean   @default(false)
+  realizedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  values      Value[]   @relation("OpportunityValues")
+
+  @@map("opportunities")
 }
 
 // ─── Calendar & Schedule ─────────────────────────────────────────
@@ -253,6 +358,7 @@ model ScheduleEvent {
   updatedAt            DateTime            @updatedAt
 
   calendarConnection   CalendarConnection? @relation(fields: [calendarConnectionId], references: [id], onDelete: SetNull)
+  values               Value[]             @relation("ScheduleEventValues")
 
   @@index([startTime, endTime])
   @@index([goalId])
