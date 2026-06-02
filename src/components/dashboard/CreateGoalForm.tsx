@@ -20,6 +20,16 @@ interface Capability {
   type: 'willingness' | 'capability'
   description: string
   condition: string | null
+  capabilityScore?: number
+  willingnessScore?: number
+}
+
+interface ValueExchangeSuggestion {
+  strategy: string
+  reasoning: string
+  userAssetUsed: string | null
+  stakeholderMotivator: string
+  feasibility: 'high' | 'medium' | 'low'
 }
 
 interface SuggestedStakeholder {
@@ -29,6 +39,10 @@ interface SuggestedStakeholder {
   role: string | null
   matchingCapabilities: Capability[]
   relevanceScore: number
+  capabilityScore?: number
+  willingnessScore?: number
+  valueGap?: number
+  valueExchangeSuggestions?: ValueExchangeSuggestion[]
 }
 
 interface SelectedStakeholder {
@@ -626,32 +640,125 @@ export function CreateGoalForm({
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-1.5 space-y-1 pl-8">
-                    {s.matchingCapabilities.map((cap, i) => (
-                      <div key={i} className="text-xs">
+                  <>
+                    {/* Capability/Willingness scores bar */}
+                    {s.capabilityScore !== undefined && (
+                      <div className="mt-2 pl-8 flex items-center gap-3 text-xs">
+                        <span className="text-zinc-500">Capability</span>
+                        <div className="flex-1 h-1.5 bg-zinc-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-500 rounded-full"
+                            style={{ width: `${s.capabilityScore}%` }}
+                          />
+                        </div>
+                        <span className="font-medium text-blue-700 w-7 text-right">
+                          {s.capabilityScore}
+                        </span>
+                        <span className="text-zinc-500 ml-2">Willingness</span>
+                        <div className="flex-1 h-1.5 bg-zinc-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${(s.willingnessScore ?? 50) < 40 ? 'bg-red-400' : (s.willingnessScore ?? 50) < 70 ? 'bg-amber-400' : 'bg-green-500'}`}
+                            style={{ width: `${s.willingnessScore ?? 50}%` }}
+                          />
+                        </div>
                         <span
-                          className={`inline-block rounded px-1.5 py-0.5 font-medium ${
-                            cap.type === 'willingness'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-blue-100 text-blue-700'
-                          }`}
+                          className={`font-medium w-7 text-right ${(s.willingnessScore ?? 50) < 40 ? 'text-red-600' : (s.willingnessScore ?? 50) < 70 ? 'text-amber-600' : 'text-green-700'}`}
                         >
-                          {cap.type}
+                          {s.willingnessScore ?? '?'}
                         </span>
-                        <span className="ml-1.5 text-zinc-700">
-                          {cap.description}
-                        </span>
-                        {cap.condition && (
-                          <span className="ml-1 text-zinc-500">
-                            — given{' '}
-                            <span className="font-medium text-zinc-700">
-                              {cap.condition}
-                            </span>
-                          </span>
-                        )}
                       </div>
-                    ))}
-                  </div>
+                    )}
+
+                    {/* Matching capabilities */}
+                    <div className="mt-1.5 space-y-1 pl-8">
+                      {s.matchingCapabilities.map((cap, i) => (
+                        <div key={i} className="text-xs">
+                          <span
+                            className={`inline-block rounded px-1.5 py-0.5 font-medium ${
+                              cap.type === 'willingness'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-blue-100 text-blue-700'
+                            }`}
+                          >
+                            {cap.type}
+                          </span>
+                          <span className="ml-1.5 text-zinc-700">
+                            {cap.description}
+                          </span>
+                          {cap.condition && (
+                            <span className="ml-1 text-zinc-500">
+                              — given{' '}
+                              <span className="font-medium text-zinc-700">
+                                {cap.condition}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Value exchange suggestions (when value gap exists) */}
+                    {s.valueExchangeSuggestions &&
+                      s.valueExchangeSuggestions.length > 0 && (
+                        <div className="mt-2 ml-8 rounded-lg border border-red-200 bg-red-50 p-2.5">
+                          <p className="text-xs font-semibold text-red-700 mb-1.5">
+                            Value Gap — {s.valueGap}% willingness deficit.
+                            Suggested exchanges:
+                          </p>
+                          <div className="space-y-2">
+                            {s.valueExchangeSuggestions.map((ve, i) => (
+                              <div
+                                key={i}
+                                className="rounded border border-red-100 bg-white p-2"
+                              >
+                                <div className="flex items-start gap-1.5">
+                                  <span
+                                    className={`mt-0.5 inline-block h-4 w-4 flex-shrink-0 rounded text-center text-[10px] font-bold leading-4 ${
+                                      ve.feasibility === 'high'
+                                        ? 'bg-green-100 text-green-700'
+                                        : ve.feasibility === 'medium'
+                                          ? 'bg-amber-100 text-amber-700'
+                                          : 'bg-red-100 text-red-700'
+                                    }`}
+                                  >
+                                    {i + 1}
+                                  </span>
+                                  <div className="flex-1">
+                                    <p className="text-xs font-medium text-zinc-800">
+                                      {ve.strategy}
+                                    </p>
+                                    <p className="mt-0.5 text-[11px] text-zinc-500">
+                                      {ve.reasoning}
+                                    </p>
+                                    <div className="mt-1 flex flex-wrap gap-1.5">
+                                      {ve.userAssetUsed && (
+                                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+                                          You offer: {ve.userAssetUsed}
+                                        </span>
+                                      )}
+                                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600">
+                                        They want: {ve.stakeholderMotivator}
+                                      </span>
+                                      <span
+                                        className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                                          ve.feasibility === 'high'
+                                            ? 'bg-green-50 text-green-600'
+                                            : ve.feasibility === 'medium'
+                                              ? 'bg-amber-50 text-amber-600'
+                                              : 'bg-red-50 text-red-600'
+                                        }`}
+                                      >
+                                        {ve.feasibility} feasibility
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                  </>
                 )}
               </div>
             ))}

@@ -37,6 +37,10 @@ export async function PATCH(
       ...(body.capabilities !== undefined
         ? { capabilities: body.capabilities }
         : {}),
+      ...(body.valueExchangeAssets !== undefined
+        ? { valueExchangeAssets: body.valueExchangeAssets }
+        : {}),
+      ...(body.userAssets !== undefined ? { userAssets: body.userAssets } : {}),
     },
   })
 
