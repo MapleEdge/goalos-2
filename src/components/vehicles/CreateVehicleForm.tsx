@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { ValuePills } from '@/components/ui/ValuePills'
 
 const VEHICLE_TYPES = [
   { value: 'EDUCATION', label: 'Education', icon: '🎓' },
@@ -45,15 +46,8 @@ export function CreateVehicleForm({
   const [status, setStatus] = useState('IDENTIFIED')
   const [institution, setInstitution] = useState('')
   const [investmentNotes, setInvestmentNotes] = useState('')
-  const [valueId, setValueId] = useState('')
-  const [values, setValues] = useState<ValueOption[]>([])
+  const [selectedValues, setSelectedValues] = useState<ValueOption[]>([])
   const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    fetch('/api/values')
-      .then((r) => r.json())
-      .then((data: ValueOption[]) => setValues(data))
-  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -68,7 +62,8 @@ export function CreateVehicleForm({
         status,
         institution: institution || null,
         investmentNotes: investmentNotes || null,
-        valueId: valueId || null,
+        valueId: selectedValues[0]?.id || null,
+        valueIds: selectedValues.map((v) => v.id),
       }),
     })
     setSaving(false)
@@ -158,21 +153,8 @@ export function CreateVehicleForm({
       </div>
 
       <div>
-        <label className={labelClass}>
-          Aligned Value
-          <select
-            value={valueId}
-            onChange={(e) => setValueId(e.target.value)}
-            className={inputClass}
-          >
-            <option value="">None</option>
-            {values.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <span className={labelClass}>Aligned Values</span>
+        <ValuePills selected={selectedValues} onChange={setSelectedValues} />
       </div>
 
       <div>

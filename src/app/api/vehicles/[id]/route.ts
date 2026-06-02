@@ -10,6 +10,7 @@ export async function GET(
     where: { id },
     include: {
       value: { select: { id: true, label: true, rank: true } },
+      values: { select: { id: true, label: true } },
       vehicleGoals: {
         include: { goal: { select: { id: true, title: true, status: true } } },
       },
@@ -47,9 +48,13 @@ export async function PATCH(
       endDate: body.endDate ? new Date(body.endDate) : undefined,
       investmentNotes: body.investmentNotes,
       valueId: body.valueId,
+      ...(body.valueIds !== undefined
+        ? { values: { set: body.valueIds.map((vid: string) => ({ id: vid })) } }
+        : {}),
     },
     include: {
       value: { select: { id: true, label: true, rank: true } },
+      values: { select: { id: true, label: true } },
       vehicleGoals: {
         include: { goal: { select: { id: true, title: true, status: true } } },
       },

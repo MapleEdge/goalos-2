@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     where: status ? { status: status as never } : undefined,
     include: {
       value: { select: { id: true, label: true, rank: true } },
+      values: { select: { id: true, label: true } },
       vehicleGoals: {
         include: { goal: { select: { id: true, title: true, status: true } } },
       },
@@ -32,9 +33,13 @@ export async function POST(request: Request) {
       endDate: body.endDate ? new Date(body.endDate) : null,
       investmentNotes: body.investmentNotes,
       valueId: body.valueId || null,
+      ...(body.valueIds?.length
+        ? { values: { connect: body.valueIds.map((id: string) => ({ id })) } }
+        : {}),
     },
     include: {
       value: { select: { id: true, label: true, rank: true } },
+      values: { select: { id: true, label: true } },
       vehicleGoals: {
         include: { goal: { select: { id: true, title: true, status: true } } },
       },

@@ -20,6 +20,7 @@ interface GoalData {
   updatedAt: string
   completedAt: string | null
   value: { id: string; label: string; rank: number } | null
+  values: { id: string; label: string }[]
   prerequisites: {
     id: string
     title: string
