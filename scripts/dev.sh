@@ -26,7 +26,7 @@ cd "$PROJECT_ROOT"
 
 # ── Ensure Docker is running ─────────────────────────────────────────────────
 
-if ! docker info &>/dev/null 2>&1; then
+if ! docker info &>/dev/null; then
   fail "Docker is not running. Start Docker Desktop or the Docker service first."
 fi
 
@@ -37,7 +37,7 @@ if ! docker compose ps --status running 2>/dev/null | grep -q db; then
   docker compose up -d
   # Wait for readiness (with timeout)
   RETRIES=0
-  until docker compose exec -T db pg_isready -U goalos -d goalos &>/dev/null 2>&1; do
+  until docker compose exec -T db pg_isready -U goalos -d goalos &>/dev/null; do
     RETRIES=$((RETRIES + 1))
     if [[ $RETRIES -ge 30 ]]; then
       fail "PostgreSQL did not become ready within 30 seconds"

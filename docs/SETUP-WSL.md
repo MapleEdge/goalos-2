@@ -70,7 +70,7 @@ This installs:
 - **Docker Engine** + Docker Compose plugin
 - **build-essential** and **git**
 
-If you were added to the `docker` group, log out and back in (or run `newgrp docker`) before proceeding.
+If the script warns you are not in the `docker` group, run `sudo usermod -aG docker $USER`, then log out and back in (or run `newgrp docker`) before proceeding.
 
 ---
 

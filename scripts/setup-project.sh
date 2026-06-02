@@ -56,7 +56,7 @@ if ! command -v docker &>/dev/null; then
   fail "Docker not found. Run ./scripts/setup-wsl.sh first."
 fi
 
-if ! docker info &>/dev/null 2>&1; then
+if ! docker info &>/dev/null; then
   fail "Docker daemon is not running. Start Docker Desktop or the Docker service first."
 fi
 
@@ -65,9 +65,13 @@ ok "Prerequisites verified — Node $(node -v), Yarn $(yarn -v), Docker running"
 # ── 1. Environment file ──────────────────────────────────────────────────────
 
 if [[ ! -f .env ]]; then
-  info "Creating .env from .env.example..."
-  cp .env.example .env
-  ok ".env created — edit it to add your GEMINI_API_KEY if you want AI features"
+  if [[ -f .env.example ]]; then
+    info "Creating .env from .env.example..."
+    cp .env.example .env
+    ok ".env created — edit it to add your GEMINI_API_KEY if you want AI features"
+  else
+    warn ".env.example not found — create .env manually (see docs/SETUP-WSL.md)"
+  fi
 else
   ok ".env already exists"
 fi
@@ -84,7 +88,7 @@ info "Starting PostgreSQL via Docker Compose..."
 
 # Check if port 5432 is already in use
 PORT_IN_USE=false
-if lsof -i :5432 &>/dev/null 2>&1 || ss -tlnp 2>/dev/null | grep -q ':5432 '; then
+if lsof -i :5432 &>/dev/null || ss -tlnp 2>/dev/null | grep -q ':5432 '; then
   PORT_IN_USE=true
 fi
 
@@ -109,13 +113,13 @@ RETRY_COUNT=0
 DB_READY=false
 until [[ "$DB_READY" == "true" ]]; do
   # Try docker compose exec first (our own container)
-  if docker compose exec -T db pg_isready -U goalos -d goalos &>/dev/null 2>&1; then
+  if docker compose exec -T db pg_isready -U goalos -d goalos &>/dev/null; then
     DB_READY=true
   # Fall back to checking the port directly (external postgres)
-  elif pg_isready -h localhost -p 5432 &>/dev/null 2>&1; then
+  elif pg_isready -h localhost -p 5432 &>/dev/null; then
     DB_READY=true
   # Fall back to a raw TCP check
-  elif (echo >/dev/tcp/localhost/5432) &>/dev/null 2>&1; then
+  elif (echo >/dev/tcp/localhost/5432) &>/dev/null; then
     DB_READY=true
   fi
 
@@ -132,11 +136,11 @@ ok "PostgreSQL is ready"
 # ── 4. Prisma generate + push schema ────────────────────────────────────────
 
 info "Generating Prisma client..."
-npx prisma generate
+yarn db:generate
 ok "Prisma client generated"
 
 info "Pushing schema to database..."
-npx prisma db push
+yarn prisma db push
 ok "Database schema applied"
 
 # ── 5. Seed the database ────────────────────────────────────────────────────
