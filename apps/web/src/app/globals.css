@@ -1,0 +1,358 @@
+@import "tailwindcss";
+
+/* Scan the shared UI package so its Tailwind classes are generated */
+@source "../../../../packages/ui/src";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* ─── FullCalendar — match GoalOS zinc design system ─────────────── */
+
+.fc {
+  /* Palette: mirrors tailwind zinc-200/50/900 used across the app */
+  --fc-border-color: #e4e4e7; /* zinc-200 */
+  --fc-button-bg-color: #fff;
+  --fc-button-border-color: #e4e4e7; /* zinc-200, same as page buttons */
+  --fc-button-text-color: #3f3f46; /* zinc-700 */
+  --fc-button-hover-bg-color: #fafafa; /* zinc-50 — matches hover:bg-zinc-50 */
+  --fc-button-hover-border-color: #d4d4d8; /* zinc-300 */
+  --fc-button-active-bg-color: #18181b; /* zinc-900 — matches nav active */
+  --fc-button-active-border-color: #18181b;
+  --fc-button-active-text-color: #fff;
+  --fc-today-bg-color: #fafaf9; /* subtle warm tint instead of blue */
+  --fc-now-indicator-color: #18181b; /* zinc-900 */
+  --fc-event-border-color: transparent;
+  --fc-page-bg-color: #fff;
+  --fc-neutral-bg-color: #fafafa; /* zinc-50 */
+  --fc-non-business-color: #fafafa; /* zinc-50 */
+  font-family: inherit;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────── */
+
+.fc .fc-toolbar {
+  margin-bottom: 1rem;
+  gap: 0.75rem;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #18181b; /* zinc-900 */
+  letter-spacing: -0.01em;
+}
+
+/* All buttons: match app's rounded-lg border-zinc-200 style */
+.fc .fc-button {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  box-shadow: none;
+  text-transform: capitalize;
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    color 150ms;
+  line-height: 1.25rem;
+}
+
+.fc .fc-button:focus {
+  box-shadow: none;
+  outline: 2px solid #a1a1aa; /* zinc-400 focus ring */
+  outline-offset: 2px;
+}
+
+.fc .fc-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Prev / Next arrows — keep outlined */
+.fc .fc-prev-button,
+.fc .fc-next-button {
+  padding: 0.375rem 0.5rem;
+}
+
+/* Today button when not active — outlined style */
+.fc .fc-today-button {
+  background-color: #fff;
+  border-color: #e4e4e7;
+  color: #3f3f46;
+}
+
+.fc .fc-today-button:hover:not(:disabled) {
+  background-color: #fafafa;
+  border-color: #d4d4d8;
+}
+
+.fc .fc-today-button:disabled {
+  background-color: #f4f4f5;
+  border-color: #e4e4e7;
+  color: #a1a1aa;
+  opacity: 1;
+}
+
+/* Button group (view switches): rounded ends */
+.fc .fc-button-group > .fc-button {
+  border-radius: 0;
+}
+
+.fc .fc-button-group > .fc-button:first-child {
+  border-top-left-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+}
+
+.fc .fc-button-group > .fc-button:last-child {
+  border-top-right-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+/* Active view button — force white text over FC's own variable-based rules */
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  --fc-button-text-color: #fff;
+  background-color: #18181b; /* zinc-900 */
+  border-color: #18181b;
+  color: #fff !important;
+}
+
+/* ── Column headers (day labels) ─────────────────────────────────── */
+
+.fc .fc-col-header-cell {
+  padding: 0.625rem 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #71717a; /* zinc-500 */
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  background-color: #fafafa; /* zinc-50 — subtle header band */
+}
+
+.fc .fc-col-header-cell a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ── Time labels ─────────────────────────────────────────────────── */
+
+.fc .fc-timegrid-slot-label {
+  font-size: 0.6875rem;
+  color: #a1a1aa; /* zinc-400 */
+  font-weight: 400;
+  padding-right: 0.5rem;
+}
+
+.fc .fc-timegrid-slot {
+  height: 2.5rem; /* slightly taller rows for readability */
+}
+
+/* ── Grid borders ────────────────────────────────────────────────── */
+
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-color: #e4e4e7; /* zinc-200 */
+}
+
+.fc .fc-scrollgrid {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border-color: #e4e4e7;
+}
+
+.fc .fc-scrollgrid-section > * {
+  border-color: #e4e4e7;
+}
+
+/* ── Today column highlight ──────────────────────────────────────── */
+
+.fc .fc-day-today {
+  background-color: #fafaf9; /* very subtle warm highlight */
+}
+
+/* Today's day number badge in month view */
+.fc .fc-daygrid-day-number {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #3f3f46; /* zinc-700 */
+  padding: 0.375rem 0.5rem;
+}
+
+.fc .fc-day-today .fc-daygrid-day-number {
+  background-color: #18181b; /* zinc-900 — matches nav active pill */
+  color: #fff;
+  border-radius: 9999px;
+  width: 1.625rem;
+  height: 1.625rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* ── Events ──────────────────────────────────────────────────────── */
+
+.fc .fc-event {
+  border-radius: 0.375rem;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  border: none;
+  transition:
+    opacity 150ms,
+    box-shadow 150ms;
+}
+
+.fc .fc-event:hover {
+  opacity: 0.9;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.fc .fc-event:focus {
+  outline: 2px solid #18181b;
+  outline-offset: 1px;
+}
+
+.fc .fc-timegrid-event {
+  border-radius: 0.375rem;
+  border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.fc .fc-timegrid-event .fc-event-main {
+  padding: 2px 4px;
+}
+
+.fc .fc-timegrid-event .fc-event-time {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+.fc .fc-timegrid-event .fc-event-title {
+  font-weight: 500;
+}
+
+.fc .fc-daygrid-event {
+  border-radius: 0.375rem;
+  padding: 1px 4px;
+}
+
+.fc .fc-daygrid-dot-event {
+  padding: 2px 4px;
+}
+
+.fc .fc-daygrid-more-link {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #3f3f46; /* zinc-700 */
+  padding: 1px 4px;
+}
+
+.fc .fc-daygrid-more-link:hover {
+  color: #18181b;
+  background-color: #f4f4f5; /* zinc-100 */
+  border-radius: 0.25rem;
+}
+
+/* ── Selection highlight ─────────────────────────────────────────── */
+
+.fc .fc-highlight {
+  background-color: rgba(24, 24, 27, 0.06); /* zinc-900 at 6% */
+}
+
+/* ── Now indicator ───────────────────────────────────────────────── */
+
+.fc .fc-now-indicator-line {
+  border-color: #ef4444; /* red-500 — stands out clearly */
+  border-width: 2px;
+}
+
+.fc .fc-now-indicator-arrow {
+  border-color: #ef4444;
+  border-top-color: #ef4444;
+}
+
+/* ── List view ───────────────────────────────────────────────────── */
+
+.fc .fc-list {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.fc .fc-list-event:hover td {
+  background-color: #fafafa; /* zinc-50 */
+}
+
+.fc .fc-list-day-cushion {
+  background-color: #f4f4f5; /* zinc-100 */
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: #18181b;
+}
+
+.fc .fc-list-event-time {
+  font-size: 0.75rem;
+  color: #71717a; /* zinc-500 */
+}
+
+.fc .fc-list-event-title a {
+  color: #18181b;
+  font-weight: 500;
+}
+
+/* ── All-day section ─────────────────────────────────────────────── */
+
+.fc .fc-timegrid-divider {
+  padding: 0;
+  border-color: #e4e4e7;
+}
+
+.fc .fc-daygrid-body {
+  border-bottom: 1px solid #e4e4e7;
+}
+
+/* ── Popover (when "+N more" is clicked in month view) ───────────── */
+
+.fc .fc-popover {
+  border-radius: 0.75rem;
+  border: 1px solid #e4e4e7;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.fc .fc-popover-header {
+  background-color: #fafafa;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #18181b;
+  padding: 0.5rem 0.75rem;
+}
+
+.fc .fc-popover-body {
+  padding: 0.25rem;
+}

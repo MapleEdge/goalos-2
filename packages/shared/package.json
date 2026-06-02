@@ -1,0 +1,37 @@
+{
+  "name": "@goalos/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./lib/gemini": "./src/lib/gemini.ts",
+    "./lib/sanitize": "./src/lib/sanitize.ts",
+    "./lib/logger": "./src/lib/logger.ts",
+    "./lib/prisma": "./src/lib/prisma.ts",
+    "./lib/resilience": "./src/lib/resilience/index.ts",
+    "./types": "./src/types/index.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "test": "vitest --run",
+    "test:unit": "vitest --run"
+  },
+  "dependencies": {
+    "@google/genai": "^2.7.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "cockatiel": "^3.1.2",
+    "pg": "^8.21.0",
+    "pino": "^10.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8.20.0",
+    "typescript": "^5",
+    "vitest": "^4.1.2"
+  }
+}
