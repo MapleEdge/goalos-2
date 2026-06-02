@@ -127,14 +127,13 @@ body {
   border-bottom-right-radius: 0.5rem;
 }
 
-/* Active view button — override the custom-property so FC's own rule picks up white */
-.fc .fc-button-active {
+/* Active view button — force white text over FC's own variable-based rules */
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
   --fc-button-text-color: #fff;
-  --fc-button-bg-color: #18181b;
-  --fc-button-border-color: #18181b;
   background-color: #18181b; /* zinc-900 */
   border-color: #18181b;
-  color: #fff;
+  color: #fff !important;
 }
 
 /* ── Column headers (day labels) ─────────────────────────────────── */
