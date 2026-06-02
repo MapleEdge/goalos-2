@@ -55,9 +55,7 @@ export async function withIdempotency<T>(
     return { cached: false, response }
   } catch (err) {
     // Clean up the reserved row so the operation can be retried.
-    await prisma.idempotencyKey
-      .delete({ where: { key } })
-      .catch(() => {})
+    await prisma.idempotencyKey.delete({ where: { key } }).catch(() => {})
     throw err
   }
 }
