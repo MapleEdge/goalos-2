@@ -532,7 +532,7 @@ export function GoalPrompt() {
 
   return (
     <>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
         <form onSubmit={handleSubmit} className="relative">
           <input
             type="text"
