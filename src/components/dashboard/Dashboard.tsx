@@ -145,7 +145,9 @@ export function Dashboard() {
         </div>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 cursor-pointer select-none">
-            <span className="text-xs font-medium text-zinc-500">Use Tokens</span>
+            <span className="text-xs font-medium text-zinc-500">
+              Use Tokens
+            </span>
             <button
               type="button"
               role="switch"

@@ -2,11 +2,11 @@
 
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useState,
-  type ReactNode,
 } from 'react'
 
 const STORAGE_KEY = 'goalos-use-tokens'

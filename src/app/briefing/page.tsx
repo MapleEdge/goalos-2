@@ -70,7 +70,9 @@ export default function BriefingPage() {
 
   const handleParse = useCallback(async () => {
     if (!tokensEnabled) {
-      setError('Token usage is disabled. Enable "Use Tokens" on the dashboard to use briefing analysis.')
+      setError(
+        'Token usage is disabled. Enable "Use Tokens" on the dashboard to use briefing analysis.'
+      )
       return
     }
     setError(null)

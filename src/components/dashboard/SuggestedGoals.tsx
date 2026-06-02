@@ -75,7 +75,10 @@ export function SuggestedGoals({
         <h3 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider mb-2">
           Suggested Next Goals
         </h3>
-        <p className="text-xs text-zinc-400">Token usage is disabled. Enable &quot;Use Tokens&quot; to get AI-powered suggestions.</p>
+        <p className="text-xs text-zinc-400">
+          Token usage is disabled. Enable &quot;Use Tokens&quot; to get
+          AI-powered suggestions.
+        </p>
       </div>
     )
   }
