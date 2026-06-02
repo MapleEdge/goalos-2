@@ -5,6 +5,7 @@ import { ArrowLeft, Check, Circle, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+import { ColorPicker } from '@/components/ui/ColorPicker'
 import { IconPicker } from '@/components/ui/IconPicker'
 import { AppIcon, VehicleTypeIcon } from '@/lib/icons'
 
@@ -619,12 +620,7 @@ export function VehicleDetail({ id }: { id: string }) {
                   <label className="mb-1 block text-xs font-medium text-zinc-600">
                     Color
                   </label>
-                  <input
-                    type="color"
-                    value={dimColor}
-                    onChange={(e) => setDimColor(e.target.value)}
-                    className="h-[38px] w-full cursor-pointer rounded-lg border border-zinc-300"
-                  />
+                  <ColorPicker value={dimColor} onChange={setDimColor} />
                 </div>
               </div>
             </div>

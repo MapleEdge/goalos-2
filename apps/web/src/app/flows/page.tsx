@@ -2,6 +2,7 @@
 
 import { ArrowDown, ArrowUp, Pause, Pencil, Play, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ColorPicker } from '@/components/ui/ColorPicker'
 import { IconPicker } from '@/components/ui/IconPicker'
 import { AppIcon } from '@/lib/icons'
 
@@ -882,11 +883,9 @@ export default function FlowsPage() {
                   <label className="block text-xs font-medium text-zinc-600 mb-1">
                     Color
                   </label>
-                  <input
-                    type="color"
+                  <ColorPicker
                     value={newTypeColor}
-                    onChange={(e) => setNewTypeColor(e.target.value)}
-                    className="w-full h-9 rounded-lg border border-zinc-300 cursor-pointer"
+                    onChange={setNewTypeColor}
                   />
                 </div>
               </div>
