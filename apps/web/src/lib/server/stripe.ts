@@ -18,8 +18,8 @@ export function isStripeConfigured(): boolean {
 
 /** Stripe Price id configured for a paid plan, or null when unset. */
 export function priceIdForPlan(plan: PlanId): string | null {
-  if (plan === 'pro') return process.env.STRIPE_PRICE_PRO ?? null
-  if (plan === 'max') return process.env.STRIPE_PRICE_MAX ?? null
+  if (plan === 'pro') return process.env.STRIPE_PRICE_PRO_ID ?? null
+  if (plan === 'max') return process.env.STRIPE_PRICE_MAX_ID ?? null
   return null
 }
 
@@ -28,8 +28,8 @@ export function planForPriceId(
   priceId: string | null | undefined
 ): PlanId | null {
   if (!priceId) return null
-  if (priceId === process.env.STRIPE_PRICE_PRO) return 'pro'
-  if (priceId === process.env.STRIPE_PRICE_MAX) return 'max'
+  if (priceId === process.env.STRIPE_PRICE_PRO_ID) return 'pro'
+  if (priceId === process.env.STRIPE_PRICE_MAX_ID) return 'max'
   return null
 }
 
