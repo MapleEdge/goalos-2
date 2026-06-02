@@ -15,6 +15,7 @@ interface VehicleData {
   startDate: string | null
   leverageScore: number
   value: { id: string; label: string; rank: number } | null
+  values: { id: string; label: string }[]
   vehicleGoals: {
     id: string
     leverage: string | null
@@ -232,11 +233,16 @@ export function VehiclesList() {
               <span>{vehicle.opportunities.length} opportunities</span>
             </div>
 
-            {vehicle.value && (
-              <div className="mt-2">
-                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
-                  {vehicle.value.label}
-                </span>
+            {vehicle.values.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {vehicle.values.map((v) => (
+                  <span
+                    key={v.id}
+                    className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600"
+                  >
+                    {v.label}
+                  </span>
+                ))}
               </div>
             )}
           </Link>

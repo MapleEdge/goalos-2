@@ -12,6 +12,7 @@ export async function GET(
     include: {
       prerequisites: { include: { evidence: true } },
       actions: true,
+      values: { select: { id: true, label: true } },
       relationshipsFrom: true,
       relationshipsTo: true,
     },
@@ -51,6 +52,12 @@ export async function PATCH(
       existing.status === 'COMPLETED'
         ? { completedAt: null }
         : {}),
+      ...(body.valueIds !== undefined
+        ? { values: { set: body.valueIds.map((vid: string) => ({ id: vid })) } }
+        : {}),
+    },
+    include: {
+      values: { select: { id: true, label: true } },
     },
   })
 

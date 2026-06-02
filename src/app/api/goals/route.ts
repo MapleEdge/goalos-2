@@ -8,6 +8,7 @@ export async function GET() {
       prerequisites: { include: { evidence: true } },
       actions: true,
       value: { select: { id: true, label: true, rank: true } },
+      values: { select: { id: true, label: true } },
     },
     orderBy: { createdAt: 'desc' },
   })
@@ -24,6 +25,9 @@ export async function POST(request: Request) {
       successCriteria: body.successCriteria,
       status: body.status || 'ACTIVE',
       valueId: body.valueId || null,
+      ...(body.valueIds?.length
+        ? { values: { connect: body.valueIds.map((id: string) => ({ id })) } }
+        : {}),
     },
   })
 

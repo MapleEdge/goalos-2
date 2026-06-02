@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+import { ValuePills } from '@/components/ui/ValuePills'
 
 interface VehicleGoalData {
   id: string
@@ -33,6 +34,7 @@ interface VehicleData {
   leverageScore: number
   createdAt: string
   value: { id: string; label: string; rank: number } | null
+  values: { id: string; label: string }[]
   vehicleGoals: VehicleGoalData[]
   opportunities: OpportunityData[]
 }
@@ -358,17 +360,25 @@ export function VehicleDetail({ id }: { id: string }) {
             </div>
           )}
 
-          {/* Aligned Value */}
-          {vehicle.value && (
-            <div className="rounded-xl border border-zinc-200 bg-white p-4">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Aligned Value
-              </h3>
-              <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700">
-                {vehicle.value.label}
-              </span>
-            </div>
-          )}
+          {/* Aligned Values */}
+          <div className="rounded-xl border border-zinc-200 bg-white p-4">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              Aligned Values
+            </h3>
+            <ValuePills
+              selected={vehicle.values}
+              onChange={async (newValues) => {
+                await fetch(`/api/vehicles/${vehicle.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    valueIds: newValues.map((v) => v.id),
+                  }),
+                })
+                load()
+              }}
+            />
+          </div>
         </div>
       </div>
     </div>
