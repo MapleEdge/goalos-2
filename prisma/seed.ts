@@ -10,6 +10,7 @@ const prisma = new PrismaClient({ adapter })
 
 async function main() {
   // Clean existing data
+  await prisma.idempotencyKey.deleteMany()
   await prisma.resourceFlow.deleteMany()
   await prisma.resourceType.deleteMany()
   await prisma.controlDimension.deleteMany()
