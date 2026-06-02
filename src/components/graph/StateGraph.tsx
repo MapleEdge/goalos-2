@@ -679,7 +679,7 @@ export function StateGraph() {
             ? 'Control Dimensions'
             : type === 'RESOURCE'
               ? 'Resource Types'
-              : type.charAt(0) + type.slice(1).toLowerCase() + 's'
+              : `${type.charAt(0)}${type.slice(1).toLowerCase()}s`
         nodes.push({
           id: `__col_header_${type}`,
           type: 'graphNode',
