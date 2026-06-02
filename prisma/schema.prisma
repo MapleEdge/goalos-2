@@ -370,6 +370,63 @@ model ScheduleEvent {
   @@map("schedule_events")
 }
 
+// ─── Resource flow engine ─────────────────────────────────────────
+
+enum FlowDirection {
+  INFLOW
+  OUTFLOW
+}
+
+enum FlowFrequency {
+  ONE_TIME
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+model ResourceType {
+  id          String   @id @default(uuid())
+  name        String   @unique // e.g. "Financial", "Emotional Energy", "Social Capital"
+  unit        String   // e.g. "USD", "points", "hours", "connections"
+  icon        String?  // emoji or icon identifier
+  color       String?  // hex color for charts
+  description String?
+  isDefault   Boolean  @default(false) // system-provided types
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  flows       ResourceFlow[]
+
+  @@map("resource_types")
+}
+
+model ResourceFlow {
+  id              String        @id @default(uuid())
+  resourceTypeId  String
+  entityType      NodeType      // GOAL, VEHICLE, STAKEHOLDER, etc.
+  entityId        String
+  direction       FlowDirection
+  amount          Float
+  frequency       FlowFrequency @default(ONE_TIME)
+  label           String        // user-defined description: "Monthly salary", "Emotional drain from conflict"
+  notes           String?
+  startDate       DateTime?     // when this flow begins (null = already active)
+  endDate         DateTime?     // when this flow ends (null = ongoing)
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  resourceType    ResourceType  @relation(fields: [resourceTypeId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([resourceTypeId])
+  @@index([direction])
+  @@map("resource_flows")
+}
+
 // ─── Event sourcing ──────────────────────────────────────────────
 
 model Event {

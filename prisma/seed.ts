@@ -10,6 +10,8 @@ const prisma = new PrismaClient({ adapter })
 
 async function main() {
   // Clean existing data
+  await prisma.resourceFlow.deleteMany()
+  await prisma.resourceType.deleteMany()
   await prisma.opportunity.deleteMany()
   await prisma.vehicleGoal.deleteMany()
   await prisma.vehicle.deleteMany()
@@ -2139,6 +2141,317 @@ async function main() {
     }
   }
 
+  // ─── Resource Types (default + examples) ────────────────────────
+
+  const financialType = await prisma.resourceType.create({
+    data: {
+      name: 'Financial',
+      unit: 'USD',
+      icon: '💰',
+      color: '#22c55e',
+      description: 'Cash flow — income, expenses, investments',
+      isDefault: true,
+    },
+  })
+
+  const emotionalType = await prisma.resourceType.create({
+    data: {
+      name: 'Emotional Energy',
+      unit: 'points',
+      icon: '❤️',
+      color: '#ef4444',
+      description: 'Emotional bandwidth — stress, fulfillment, motivation',
+      isDefault: true,
+    },
+  })
+
+  const socialType = await prisma.resourceType.create({
+    data: {
+      name: 'Social Capital',
+      unit: 'connections',
+      icon: '🤝',
+      color: '#8b5cf6',
+      description: 'Network value — introductions, reputation, trust',
+      isDefault: true,
+    },
+  })
+
+  const timeType = await prisma.resourceType.create({
+    data: {
+      name: 'Time',
+      unit: 'hours',
+      icon: '⏱️',
+      color: '#f59e0b',
+      description: 'Hours invested or saved',
+      isDefault: true,
+    },
+  })
+
+  const knowledgeType = await prisma.resourceType.create({
+    data: {
+      name: 'Knowledge',
+      unit: 'skills',
+      icon: '🧠',
+      color: '#3b82f6',
+      description: 'Intellectual capital — skills learned, expertise gained',
+      isDefault: true,
+    },
+  })
+
+  // ─── Resource Flows (attached to vehicles, stakeholders, goals) ─
+
+  // Consulting Vehicle — main cash flow generator
+  await prisma.resourceFlow.createMany({
+    data: [
+      {
+        resourceTypeId: financialType.id,
+        entityType: 'VEHICLE',
+        entityId: consultingVehicle.id,
+        direction: 'INFLOW',
+        amount: 8000,
+        frequency: 'MONTHLY',
+        label: 'Consulting revenue',
+        notes: 'Average monthly billing from 2 active clients',
+      },
+      {
+        resourceTypeId: financialType.id,
+        entityType: 'VEHICLE',
+        entityId: consultingVehicle.id,
+        direction: 'OUTFLOW',
+        amount: 200,
+        frequency: 'MONTHLY',
+        label: 'Software subscriptions',
+        notes: 'Figma, AWS, GitHub Teams',
+      },
+      {
+        resourceTypeId: timeType.id,
+        entityType: 'VEHICLE',
+        entityId: consultingVehicle.id,
+        direction: 'OUTFLOW',
+        amount: 20,
+        frequency: 'WEEKLY',
+        label: 'Client work hours',
+      },
+      {
+        resourceTypeId: socialType.id,
+        entityType: 'VEHICLE',
+        entityId: consultingVehicle.id,
+        direction: 'INFLOW',
+        amount: 2,
+        frequency: 'MONTHLY',
+        label: 'Client referrals and introductions',
+      },
+    ],
+  })
+
+  // Startup Vehicle — cash burn but high knowledge/social gains
+  await prisma.resourceFlow.createMany({
+    data: [
+      {
+        resourceTypeId: financialType.id,
+        entityType: 'VEHICLE',
+        entityId: startupVehicle.id,
+        direction: 'OUTFLOW',
+        amount: 3000,
+        frequency: 'MONTHLY',
+        label: 'Startup operating costs',
+        notes: 'Servers, tools, marketing spend',
+      },
+      {
+        resourceTypeId: knowledgeType.id,
+        entityType: 'VEHICLE',
+        entityId: startupVehicle.id,
+        direction: 'INFLOW',
+        amount: 3,
+        frequency: 'MONTHLY',
+        label: 'Technical skills from building product',
+      },
+      {
+        resourceTypeId: socialType.id,
+        entityType: 'VEHICLE',
+        entityId: startupVehicle.id,
+        direction: 'INFLOW',
+        amount: 5,
+        frequency: 'MONTHLY',
+        label: 'Founder network connections',
+      },
+    ],
+  })
+
+  // Open Source Vehicle
+  await prisma.resourceFlow.createMany({
+    data: [
+      {
+        resourceTypeId: socialType.id,
+        entityType: 'VEHICLE',
+        entityId: ossVehicle.id,
+        direction: 'INFLOW',
+        amount: 3,
+        frequency: 'MONTHLY',
+        label: 'GitHub stars and community recognition',
+      },
+      {
+        resourceTypeId: timeType.id,
+        entityType: 'VEHICLE',
+        entityId: ossVehicle.id,
+        direction: 'OUTFLOW',
+        amount: 5,
+        frequency: 'WEEKLY',
+        label: 'OSS maintenance hours',
+      },
+    ],
+  })
+
+  // Blog Vehicle
+  await prisma.resourceFlow.createMany({
+    data: [
+      {
+        resourceTypeId: socialType.id,
+        entityType: 'VEHICLE',
+        entityId: blogVehicle.id,
+        direction: 'INFLOW',
+        amount: 2,
+        frequency: 'MONTHLY',
+        label: 'Newsletter subscribers and thought leadership',
+      },
+      {
+        resourceTypeId: financialType.id,
+        entityType: 'VEHICLE',
+        entityId: blogVehicle.id,
+        direction: 'INFLOW',
+        amount: 500,
+        frequency: 'MONTHLY',
+        label: 'Sponsorship and affiliate revenue',
+      },
+      {
+        resourceTypeId: timeType.id,
+        entityType: 'VEHICLE',
+        entityId: blogVehicle.id,
+        direction: 'OUTFLOW',
+        amount: 4,
+        frequency: 'WEEKLY',
+        label: 'Content creation time',
+      },
+    ],
+  })
+
+  // Church Vehicle — social and emotional gains
+  await prisma.resourceFlow.createMany({
+    data: [
+      {
+        resourceTypeId: emotionalType.id,
+        entityType: 'VEHICLE',
+        entityId: churchVehicle.id,
+        direction: 'INFLOW',
+        amount: 15,
+        frequency: 'WEEKLY',
+        label: 'Community support and spiritual renewal',
+      },
+      {
+        resourceTypeId: socialType.id,
+        entityType: 'VEHICLE',
+        entityId: churchVehicle.id,
+        direction: 'INFLOW',
+        amount: 3,
+        frequency: 'MONTHLY',
+        label: 'New community connections',
+      },
+      {
+        resourceTypeId: financialType.id,
+        entityType: 'VEHICLE',
+        entityId: churchVehicle.id,
+        direction: 'OUTFLOW',
+        amount: 200,
+        frequency: 'MONTHLY',
+        label: 'Tithes and donations',
+      },
+    ],
+  })
+
+  // Dad stakeholder — financial inflow
+  await prisma.resourceFlow.createMany({
+    data: [
+      {
+        resourceTypeId: financialType.id,
+        entityType: 'STAKEHOLDER',
+        entityId: dad.id,
+        direction: 'INFLOW',
+        amount: 2000,
+        frequency: 'MONTHLY',
+        label: 'Tuition support from Dad',
+      },
+      {
+        resourceTypeId: emotionalType.id,
+        entityType: 'STAKEHOLDER',
+        entityId: dad.id,
+        direction: 'INFLOW',
+        amount: 5,
+        frequency: 'WEEKLY',
+        label: 'Parental encouragement',
+      },
+      {
+        resourceTypeId: emotionalType.id,
+        entityType: 'STAKEHOLDER',
+        entityId: dad.id,
+        direction: 'OUTFLOW',
+        amount: 3,
+        frequency: 'MONTHLY',
+        label: 'Pressure to maintain GPA',
+      },
+    ],
+  })
+
+  // Mom stakeholder
+  await prisma.resourceFlow.createMany({
+    data: [
+      {
+        resourceTypeId: emotionalType.id,
+        entityType: 'STAKEHOLDER',
+        entityId: mom.id,
+        direction: 'INFLOW',
+        amount: 10,
+        frequency: 'WEEKLY',
+        label: 'Unconditional emotional support',
+      },
+      {
+        resourceTypeId: socialType.id,
+        entityType: 'STAKEHOLDER',
+        entityId: mom.id,
+        direction: 'INFLOW',
+        amount: 1,
+        frequency: 'QUARTERLY',
+        label: 'Healthcare industry introductions',
+      },
+    ],
+  })
+
+  // Sarah Kim stakeholder — potential inflow, current outflow
+  await prisma.resourceFlow.createMany({
+    data: [
+      {
+        resourceTypeId: timeType.id,
+        entityType: 'STAKEHOLDER',
+        entityId: sarahKim.id,
+        direction: 'OUTFLOW',
+        amount: 2,
+        frequency: 'MONTHLY',
+        label: 'Investor update emails and meetings',
+      },
+      {
+        resourceTypeId: socialType.id,
+        entityType: 'STAKEHOLDER',
+        entityId: sarahKim.id,
+        direction: 'INFLOW',
+        amount: 1,
+        frequency: 'QUARTERLY',
+        label: 'VC network introductions',
+      },
+    ],
+  })
+
+  const flowCount = await prisma.resourceFlow.count()
+  const typeCount = await prisma.resourceType.count()
+
   console.log('Seed data created successfully')
   console.log('  - 7 values')
   console.log('  - 10 completed goals')
@@ -2146,6 +2459,8 @@ async function main() {
   console.log('  - 12 vehicles')
   console.log('  - 22 vehicle-goal links')
   console.log('  - 7 opportunities')
+  console.log(`  - ${typeCount} resource types`)
+  console.log(`  - ${flowCount} resource flows`)
   console.log('  - All entities connected to logical values (many-to-many)')
 }
 
