@@ -128,8 +128,10 @@ export async function GET(request: Request) {
   // Build per-entity summaries
   const entities: EntitySummary[] = []
   for (const [key, entityFlows] of entityGroups) {
-    const [eType, eId] = key.split('::')
-    const entityName = await resolveEntityName(eType as NodeType, eId)
+    const parts = key.split('::')
+    const eType = parts[0] as NodeType
+    const eId = parts[1] as string
+    const entityName = await resolveEntityName(eType, eId)
 
     const byTypeMap = new Map<string, TypeSummary>()
     for (const f of entityFlows) {
