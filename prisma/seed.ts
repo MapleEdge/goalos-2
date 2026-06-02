@@ -10,6 +10,9 @@ const prisma = new PrismaClient({ adapter })
 
 async function main() {
   // Clean existing data
+  await prisma.opportunity.deleteMany()
+  await prisma.vehicleGoal.deleteMany()
+  await prisma.vehicle.deleteMany()
   await prisma.scheduleEvent.deleteMany()
   await prisma.calendarConnection.deleteMany()
   await prisma.event.deleteMany()
@@ -625,8 +628,7 @@ async function main() {
     },
   })
 
-  void dad
-  void mom
+  // dad and mom used below in value connections
 
   const additionalStakeholders = [
     {
@@ -1237,28 +1239,653 @@ async function main() {
     },
   })
 
-  // Suppress unused variable warnings
-  void freelanceGoal
-  void budgetGoal
-  void leadershipGoal
-  void rustGoal
-  void philosophyGoal
-  void nutritionGoal
-  void sleepGoal
-  void dadGoal
-  void siblingGoal
-  void familyFinanceGoal
-  void ossGoal
-  void workshopGoal
-  void blogGoal
-  void socialGoal
-  void boundariesGoal
-  void dateGoal
+  // ─── Vehicles ───────────────────────────────────────────────────
+
+  // EDUCATION: CS Degree (active, linked to research & TA goals)
+  const csDegree = await prisma.vehicle.create({
+    data: {
+      title: 'CS Degree at MIT',
+      description:
+        'Computer Science undergraduate degree — provides lab access, faculty network, research opportunities, and academic credentials',
+      type: 'EDUCATION',
+      status: 'ACTIVE',
+      institution: 'MIT',
+      startDate: new Date('2024-09-01'),
+      investmentNotes: '~$60K/year tuition, 40h/week commitment',
+      leverageScore: 5,
+      valueId: values[2].id, // Knowledge & Learning
+    },
+  })
+
+  // EMPLOYMENT: Freelance Consulting (building)
+  const consultingVehicle = await prisma.vehicle.create({
+    data: {
+      title: 'AI/ML Freelance Consulting',
+      description:
+        'Side consulting practice — generates income, builds industry reputation, creates client network',
+      type: 'EMPLOYMENT',
+      status: 'BUILDING',
+      investmentNotes: '10h/week, initial portfolio setup',
+      leverageScore: 3,
+      valueId: values[0].id, // Financial Security
+    },
+  })
+
+  // BUSINESS: Startup (acquiring — fundraising)
+  const startupVehicle = await prisma.vehicle.create({
+    data: {
+      title: 'AI Productivity Startup',
+      description:
+        'GoalOS — an AI productivity company. Vehicle for wealth creation, reputation building, and attracting talent',
+      type: 'BUSINESS',
+      status: 'ACQUIRING',
+      institution: 'GoalOS Inc',
+      startDate: new Date('2026-01-15'),
+      investmentNotes: '$500K pre-seed target, 60h/week',
+      leverageScore: 6,
+      valueId: values[1].id, // Career Growth
+    },
+  })
+
+  // PLATFORM: Open Source Project (building)
+  const ossVehicle = await prisma.vehicle.create({
+    data: {
+      title: 'Graph-Reasoning OSS Project',
+      description:
+        'Open source project on graph-based reasoning — builds reputation, attracts contributors, demonstrates technical leadership',
+      type: 'PLATFORM',
+      status: 'BUILDING',
+      investmentNotes: '5h/week maintenance + community management',
+      leverageScore: 3,
+      valueId: values[5].id, // Impact & Giving Back
+    },
+  })
+
+  // PLATFORM: Tech Blog (identified, not yet started)
+  const blogVehicle = await prisma.vehicle.create({
+    data: {
+      title: 'Technical Blog on Medium',
+      description:
+        'Content platform for sharing ML/systems insights — builds thought leadership, attracts speaking invites and consulting leads',
+      type: 'PLATFORM',
+      status: 'IDENTIFIED',
+      institution: 'Medium',
+      investmentNotes: '3-4h per post, 2 posts/month target',
+      leverageScore: 2,
+      valueId: values[5].id, // Impact & Giving Back
+    },
+  })
+
+  // NETWORK: University Alumni Network (active)
+  const alumniNetwork = await prisma.vehicle.create({
+    data: {
+      title: 'MIT Alumni Network',
+      description:
+        'Access to alumni connections across tech, finance, and academia — warm intros, mentorship, job referrals',
+      type: 'NETWORK',
+      status: 'ACTIVE',
+      institution: 'MIT',
+      startDate: new Date('2024-09-01'),
+      investmentNotes: 'Attend 2 events/month, maintain relationships',
+      leverageScore: 4,
+      valueId: values[1].id, // Career Growth
+    },
+  })
+
+  // ORGANIZATION: Church community (active)
+  const churchVehicle = await prisma.vehicle.create({
+    data: {
+      title: 'Grace Community Church',
+      description:
+        'Religious community providing deep social bonds, mentorship from elders, service opportunities, and a grounding support system',
+      type: 'ORGANIZATION',
+      status: 'ACTIVE',
+      institution: 'Grace Community Church',
+      startDate: new Date('2023-06-01'),
+      investmentNotes: 'Sunday service + Wednesday small group, ~5h/week',
+      leverageScore: 3,
+      valueId: values[4].id, // Family
+    },
+  })
+
+  // EVENT_SERIES: Monthly dinner party (building)
+  const dinnerParty = await prisma.vehicle.create({
+    data: {
+      title: 'Monthly Founder Dinner',
+      description:
+        'Hosted dinner for 8-12 founders and investors each month — creates high-trust connections, deal flow, and cross-pollination of ideas',
+      type: 'EVENT_SERIES',
+      status: 'BUILDING',
+      startDate: new Date('2026-04-01'),
+      investmentNotes: '$200-300/month for food + venue, 6h planning per event',
+      leverageScore: 4,
+      valueId: values[1].id, // Career Growth
+    },
+  })
+
+  // NETWORK: Running Club (active)
+  const runningClub = await prisma.vehicle.create({
+    data: {
+      title: 'Boston Running Club',
+      description:
+        'Local running group — training accountability, social connections outside tech, mental health benefits',
+      type: 'NETWORK',
+      status: 'ACTIVE',
+      institution: 'Boston Running Club',
+      startDate: new Date('2025-11-01'),
+      investmentNotes: '$50/year membership, 3 runs/week',
+      leverageScore: 2,
+      valueId: values[3].id, // Health & Fitness
+    },
+  })
+
+  // ASSET: Honda Civic (the fun physical car)
+  const hondaCivic = await prisma.vehicle.create({
+    data: {
+      title: '2019 Honda Civic',
+      description:
+        'Reliable daily driver — enables commute to campus, road trips with family, and client meetings across the city',
+      type: 'ASSET',
+      status: 'ACTIVE',
+      startDate: new Date('2023-03-15'),
+      investmentNotes: '$22K purchase, $150/month insurance + gas',
+      leverageScore: 2,
+    },
+  })
+
+  // ASSET: Dream car (identified)
+  const dreamCar = await prisma.vehicle.create({
+    data: {
+      title: 'Tesla Model 3',
+      description:
+        'Aspirational upgrade — lower operating costs, tech-forward image for client meetings, long-range road trips',
+      type: 'ASSET',
+      status: 'IDENTIFIED',
+      investmentNotes: '~$35K purchase price, target after pre-seed closes',
+      leverageScore: 1,
+    },
+  })
+
+  // SKILL: Rust expertise (researching)
+  const rustSkill = await prisma.vehicle.create({
+    data: {
+      title: 'Rust Systems Programming',
+      description:
+        'Deep Rust expertise — opens doors to high-performance systems roles, OSS credibility, and safety-critical domains',
+      type: 'SKILL',
+      status: 'RESEARCHING',
+      investmentNotes: '10h/week study time for 6 months',
+      leverageScore: 2,
+      valueId: values[2].id, // Knowledge & Learning
+    },
+  })
+
+  // ─── Vehicle-Goal Links ─────────────────────────────────────────
+
+  await Promise.all([
+    // CS Degree → multiple goals
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: csDegree.id,
+        goalId: researchGoal.id,
+        leverage: 'Lab access, faculty co-authors, conference funding',
+      },
+    }),
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: csDegree.id,
+        goalId: taGoal.id,
+        leverage: 'Faculty recommendations and departmental hiring pipeline',
+      },
+    }),
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: csDegree.id,
+        goalId: rustGoal.id,
+        leverage: 'Systems programming coursework and study groups',
+      },
+    }),
+    // Consulting → financial goals
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: consultingVehicle.id,
+        goalId: freelanceGoal.id,
+        leverage: 'Direct path to landing 3 paying clients',
+      },
+    }),
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: consultingVehicle.id,
+        goalId: investGoal.id,
+        leverage: 'Side income funds index fund contributions',
+      },
+    }),
+    // Startup → career + financial goals
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: startupVehicle.id,
+        goalId: startupGoal.id,
+        leverage: 'The startup IS the fundraising vehicle',
+      },
+    }),
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: startupVehicle.id,
+        goalId: leadershipGoal.id,
+        leverage: 'OSS project serves as startup credibility + talent pipeline',
+      },
+    }),
+    // OSS Project → impact goals
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: ossVehicle.id,
+        goalId: leadershipGoal.id,
+        leverage: 'Direct path to 500 stars',
+      },
+    }),
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: ossVehicle.id,
+        goalId: ossGoal.id,
+        leverage:
+          'Contributing to own project counts + attracts reciprocal contributions',
+      },
+    }),
+    // Blog → impact goals
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: blogVehicle.id,
+        goalId: blogGoal.id,
+        leverage: 'Blog IS the vehicle for the 10-post goal',
+      },
+    }),
+    // Alumni network → startup + career
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: alumniNetwork.id,
+        goalId: startupGoal.id,
+        leverage: 'Warm intros to investors and early hires',
+      },
+    }),
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: alumniNetwork.id,
+        goalId: taGoal.id,
+        leverage: 'Inside knowledge on TA selection process',
+      },
+    }),
+    // Church → family + social goals
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: churchVehicle.id,
+        goalId: dadGoal.id,
+        leverage: 'Shared spiritual practice strengthens family bonds',
+      },
+    }),
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: churchVehicle.id,
+        goalId: socialGoal.id,
+        leverage: 'Small groups and service teams expand social circle',
+      },
+    }),
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: churchVehicle.id,
+        goalId: boundariesGoal.id,
+        leverage: 'Counseling and mentorship from church elders',
+      },
+    }),
+    // Dinner party → startup + social
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: dinnerParty.id,
+        goalId: startupGoal.id,
+        leverage: 'Direct access to investors in relaxed setting',
+      },
+    }),
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: dinnerParty.id,
+        goalId: dateGoal.id,
+        leverage: 'Meet interesting people through curated guest lists',
+      },
+    }),
+    // Running club → health goals
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: runningClub.id,
+        goalId: marathonGoal.id,
+        leverage: 'Training partners and structured group runs',
+      },
+    }),
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: runningClub.id,
+        goalId: sleepGoal.id,
+        leverage: 'Morning runs enforce consistent sleep schedule',
+      },
+    }),
+    // Honda Civic → road trip + commuting
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: hondaCivic.id,
+        goalId: siblingGoal.id,
+        leverage: 'Transportation for the West Coast road trip',
+      },
+    }),
+    // Rust skill → multiple goals
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: rustSkill.id,
+        goalId: rustGoal.id,
+        leverage: 'Direct skill acquisition path',
+      },
+    }),
+    prisma.vehicleGoal.create({
+      data: {
+        vehicleId: rustSkill.id,
+        goalId: leadershipGoal.id,
+        leverage: 'Rust OSS contributions build systems credibility',
+      },
+    }),
+  ])
+
+  // ─── Opportunities (unlocked by vehicles) ───────────────────────
+
+  await Promise.all([
+    prisma.opportunity.create({
+      data: {
+        title: 'Intro to Prof. Chen via office hours',
+        description:
+          'CS Degree gave direct access to Prof. Chen who can provide TA recommendation',
+        vehicleId: csDegree.id,
+        goalId: taGoal.id,
+        realized: true,
+        realizedAt: new Date('2026-04-20'),
+      },
+    }),
+    prisma.opportunity.create({
+      data: {
+        title: 'Research lab access for graph reasoning paper',
+        description:
+          'Department membership includes access to GPU cluster and research datasets',
+        vehicleId: csDegree.id,
+        goalId: researchGoal.id,
+        realized: true,
+        realizedAt: new Date('2026-01-15'),
+      },
+    }),
+    prisma.opportunity.create({
+      data: {
+        title: 'Conference travel grant from department',
+        description: 'Up to $2K travel funding for NeurIPS if paper accepted',
+        vehicleId: csDegree.id,
+        goalId: researchGoal.id,
+        realized: false,
+      },
+    }),
+    prisma.opportunity.create({
+      data: {
+        title: 'Warm intro to Sarah Kim via alumni meetup',
+        description:
+          'Alumni event led to conversation with Sequoia partner about AI tools',
+        vehicleId: alumniNetwork.id,
+        goalId: startupGoal.id,
+        realized: true,
+        realizedAt: new Date('2026-02-15'),
+      },
+    }),
+    prisma.opportunity.create({
+      data: {
+        title: 'Investor pitch at founder dinner #2',
+        description:
+          'Seated next to angel investor at second dinner, pitched GoalOS concept',
+        vehicleId: dinnerParty.id,
+        goalId: startupGoal.id,
+        realized: false,
+      },
+    }),
+    prisma.opportunity.create({
+      data: {
+        title: 'Marriage counselor recommendation from Pastor Dave',
+        description:
+          'Church elder recommended a counselor for relationship skills development',
+        vehicleId: churchVehicle.id,
+        goalId: boundariesGoal.id,
+        realized: true,
+        realizedAt: new Date('2026-03-01'),
+      },
+    }),
+    prisma.opportunity.create({
+      data: {
+        title: 'Training partner for half marathon',
+        description:
+          'Met experienced runner at club who offered to be pace partner for race day',
+        vehicleId: runningClub.id,
+        goalId: marathonGoal.id,
+        realized: true,
+        realizedAt: new Date('2026-05-10'),
+      },
+    }),
+  ])
+
+  // ─── Value connections (many-to-many) ───────────────────────────
+  // Every entity is connected to one or more values that it relates to.
+  // values[0] = Financial Security, values[1] = Career Growth,
+  // values[2] = Knowledge & Learning, values[3] = Health & Fitness,
+  // values[4] = Family, values[5] = Impact & Giving Back,
+  // values[6] = Romantic Relationships
+
+  const v = {
+    financial: values[0].id,
+    career: values[1].id,
+    knowledge: values[2].id,
+    health: values[3].id,
+    family: values[4].id,
+    impact: values[5].id,
+    romantic: values[6].id,
+  }
+
+  // --- Goals: connect to all relevant values (beyond just primary) ---
+  const goalValueMap: Record<string, string[]> = {
+    [investGoal.id]: [v.financial],
+    [freelanceGoal.id]: [v.financial, v.career],
+    [budgetGoal.id]: [v.financial],
+    [taGoal.id]: [v.career, v.knowledge],
+    [startupGoal.id]: [v.career, v.financial],
+    [leadershipGoal.id]: [v.career, v.impact, v.knowledge],
+    [researchGoal.id]: [v.knowledge, v.career],
+    [rustGoal.id]: [v.knowledge, v.career],
+    [philosophyGoal.id]: [v.knowledge],
+    [marathonGoal.id]: [v.health],
+    [nutritionGoal.id]: [v.health],
+    [sleepGoal.id]: [v.health],
+    [dadGoal.id]: [v.family],
+    [siblingGoal.id]: [v.family],
+    [familyFinanceGoal.id]: [v.family, v.financial],
+    [ossGoal.id]: [v.impact, v.knowledge],
+    [workshopGoal.id]: [v.impact, v.knowledge],
+    [blogGoal.id]: [v.impact, v.career],
+    [socialGoal.id]: [v.romantic, v.family],
+    [boundariesGoal.id]: [v.romantic, v.health],
+    [dateGoal.id]: [v.romantic],
+  }
+
+  for (const [goalId, valueIds] of Object.entries(goalValueMap)) {
+    await prisma.goal.update({
+      where: { id: goalId },
+      data: { values: { connect: valueIds.map((id) => ({ id })) } },
+    })
+  }
+
+  // --- Stakeholders ---
+  // Prof. Chen → Career Growth, Knowledge & Learning
+  await prisma.stakeholder.update({
+    where: { id: profChen.id },
+    data: {
+      values: { connect: [{ id: v.career }, { id: v.knowledge }] },
+    },
+  })
+  // Sarah Kim → Financial Security, Career Growth
+  await prisma.stakeholder.update({
+    where: { id: sarahKim.id },
+    data: {
+      values: { connect: [{ id: v.financial }, { id: v.career }] },
+    },
+  })
+  // Dr. Patel → Knowledge & Learning, Career Growth
+  await prisma.stakeholder.update({
+    where: { id: drPatel.id },
+    data: {
+      values: { connect: [{ id: v.knowledge }, { id: v.career }] },
+    },
+  })
+  // Dad → Family, Financial Security
+  await prisma.stakeholder.update({
+    where: { id: dad.id },
+    data: {
+      values: { connect: [{ id: v.family }, { id: v.financial }] },
+    },
+  })
+  // Mom → Family, Health & Fitness
+  await prisma.stakeholder.update({
+    where: { id: mom.id },
+    data: {
+      values: { connect: [{ id: v.family }, { id: v.health }] },
+    },
+  })
+
+  // Additional stakeholders — connect by querying them
+  const allStakeholders = await prisma.stakeholder.findMany()
+  const stakeholderValueMap: Record<string, string[]> = {
+    'Lisa Wang': [v.financial, v.career],
+    'James Rodriguez': [v.knowledge, v.career],
+    'Emily Zhang': [v.knowledge, v.career],
+    'Michael Torres': [v.knowledge],
+    'Anna Kowalski': [v.career, v.financial],
+    'Diana Wu': [v.knowledge, v.career],
+  }
+  for (const s of allStakeholders) {
+    const vals = stakeholderValueMap[s.name]
+    if (vals) {
+      await prisma.stakeholder.update({
+        where: { id: s.id },
+        data: { values: { connect: vals.map((id) => ({ id })) } },
+      })
+    }
+  }
+
+  // --- Prerequisites: inherit goal's values ---
+  const allPrereqs = await prisma.prerequisite.findMany({
+    include: { goal: true },
+  })
+  for (const p of allPrereqs) {
+    const vals = goalValueMap[p.goalId]
+    if (vals) {
+      await prisma.prerequisite.update({
+        where: { id: p.id },
+        data: { values: { connect: vals.map((id) => ({ id })) } },
+      })
+    }
+  }
+
+  // --- Evidence: inherit from parent prerequisite/stakeholder values ---
+  const allEvidence = await prisma.evidence.findMany()
+  for (const e of allEvidence) {
+    const connectedValues: string[] = []
+    if (e.prerequisiteId) {
+      const prereq = allPrereqs.find((p) => p.id === e.prerequisiteId)
+      if (prereq) {
+        const vals = goalValueMap[prereq.goalId]
+        if (vals) connectedValues.push(...vals)
+      }
+    }
+    if (e.stakeholderId) {
+      const s = allStakeholders.find((s) => s.id === e.stakeholderId)
+      if (s) {
+        const vals = stakeholderValueMap[s.name]
+        if (vals) connectedValues.push(...vals)
+      }
+    }
+    if (connectedValues.length > 0) {
+      const unique = [...new Set(connectedValues)]
+      await prisma.evidence.update({
+        where: { id: e.id },
+        data: { values: { connect: unique.map((id) => ({ id })) } },
+      })
+    }
+  }
+
+  // --- Actions: inherit goal's values ---
+  const allActions = await prisma.action.findMany()
+  for (const a of allActions) {
+    const vals = goalValueMap[a.goalId]
+    if (vals) {
+      await prisma.action.update({
+        where: { id: a.id },
+        data: { values: { connect: vals.map((id) => ({ id })) } },
+      })
+    }
+  }
+
+  // --- Schedule Events: inherit goal's values ---
+  const allScheduleEvents = await prisma.scheduleEvent.findMany()
+  for (const se of allScheduleEvents) {
+    if (se.goalId) {
+      const vals = goalValueMap[se.goalId]
+      if (vals) {
+        await prisma.scheduleEvent.update({
+          where: { id: se.id },
+          data: { values: { connect: vals.map((id) => ({ id })) } },
+        })
+      }
+    }
+  }
+
+  // --- Vehicles: connect to relevant values (many-to-many) ---
+  const vehicleValueMap: Record<string, string[]> = {
+    [csDegree.id]: [v.knowledge, v.career],
+    [consultingVehicle.id]: [v.financial, v.career],
+    [startupVehicle.id]: [v.career, v.financial, v.impact],
+    [ossVehicle.id]: [v.impact, v.career, v.knowledge],
+    [blogVehicle.id]: [v.impact, v.career],
+    [alumniNetwork.id]: [v.career, v.financial],
+    [churchVehicle.id]: [v.family, v.romantic, v.impact],
+    [dinnerParty.id]: [v.career, v.romantic, v.financial],
+    [runningClub.id]: [v.health],
+    [hondaCivic.id]: [v.family, v.career],
+    [dreamCar.id]: [v.career, v.financial],
+    [rustSkill.id]: [v.knowledge, v.career],
+  }
+
+  for (const [vehicleId, valueIds] of Object.entries(vehicleValueMap)) {
+    await prisma.vehicle.update({
+      where: { id: vehicleId },
+      data: { values: { connect: valueIds.map((id) => ({ id })) } },
+    })
+  }
+
+  // --- Opportunities: inherit vehicle's values ---
+  const allOpportunities = await prisma.opportunity.findMany()
+  for (const opp of allOpportunities) {
+    const vals = vehicleValueMap[opp.vehicleId]
+    if (vals) {
+      await prisma.opportunity.update({
+        where: { id: opp.id },
+        data: { values: { connect: vals.map((id) => ({ id })) } },
+      })
+    }
+  }
 
   console.log('Seed data created successfully')
   console.log('  - 7 values')
   console.log('  - 10 completed goals')
   console.log('  - 21 active goals (3 per value)')
+  console.log('  - 12 vehicles')
+  console.log('  - 22 vehicle-goal links')
+  console.log('  - 7 opportunities')
+  console.log('  - All entities connected to logical values (many-to-many)')
 }
 
 main()
