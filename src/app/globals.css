@@ -127,8 +127,11 @@ body {
   border-bottom-right-radius: 0.5rem;
 }
 
-/* Active view button */
+/* Active view button — override the custom-property so FC's own rule picks up white */
 .fc .fc-button-active {
+  --fc-button-text-color: #fff;
+  --fc-button-bg-color: #18181b;
+  --fc-button-border-color: #18181b;
   background-color: #18181b; /* zinc-900 */
   border-color: #18181b;
   color: #fff;
