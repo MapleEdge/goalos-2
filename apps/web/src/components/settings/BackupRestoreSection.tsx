@@ -212,10 +212,24 @@ function getMsalInstance(): PublicClientApplication {
 
 const MS_SCOPES = ['User.Read', 'Files.ReadWrite']
 
-async function signInWithMicrosoft(): Promise<void> {
+async function signInWithMicrosoft(): Promise<MsUser | null> {
   const msal = getMsalInstance()
   await msal.initialize()
-  await msal.loginRedirect({ scopes: MS_SCOPES })
+  try {
+    const result = await msal.loginPopup({ scopes: MS_SCOPES })
+    return {
+      email: result.account.username,
+      name: result.account.name ?? result.account.username,
+      account: result.account,
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : ''
+    if (msg.includes('popup_window_error') || msg.includes('popup_blocked')) {
+      await msal.loginRedirect({ scopes: MS_SCOPES })
+      return null
+    }
+    throw err
+  }
 }
 
 async function getMsToken(account: AccountInfo): Promise<string> {
@@ -227,11 +241,19 @@ async function getMsToken(account: AccountInfo): Promise<string> {
     })
     return result.accessToken
   } catch {
-    await msal.acquireTokenRedirect({
-      scopes: MS_SCOPES,
-      account,
-    })
-    throw new Error('Redirecting for token...')
+    try {
+      const result = await msal.acquireTokenPopup({
+        scopes: MS_SCOPES,
+        account,
+      })
+      return result.accessToken
+    } catch {
+      await msal.acquireTokenRedirect({
+        scopes: MS_SCOPES,
+        account,
+      })
+      throw new Error('Redirecting for token...')
+    }
   }
 }
 
@@ -359,11 +381,13 @@ export function BackupRestoreSection() {
     setAuthLoading('microsoft')
     setAuthError('')
     try {
-      await signInWithMicrosoft()
+      const user = await signInWithMicrosoft()
+      if (user) setMsUser(user)
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : 'Microsoft sign-in failed'
       if (!msg.includes('user_cancelled')) setAuthError(msg)
+    } finally {
       setAuthLoading(null)
     }
   }, [])
@@ -381,9 +405,13 @@ export function BackupRestoreSection() {
     if (account) {
       const msal = getMsalInstance()
       try {
-        await msal.logoutRedirect({ account })
+        await msal.logoutPopup({ account })
       } catch {
-        // Silent logout failure is OK
+        try {
+          await msal.logoutRedirect({ account })
+        } catch {
+          // Silent logout failure is OK
+        }
       }
     }
   }, [msUser])
