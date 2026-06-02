@@ -70,16 +70,40 @@ AI consumes graph state and produces natural-language strategic advice. The grap
 
 - Node.js 22+
 - Docker & Docker Compose
-- npm
+- Yarn 4.9.2 (via corepack)
 
-### Setup
+### Quick Setup (Windows / WSL)
+
+Automated scripts handle the full setup on a Windows machine with WSL or WSL2. See [docs/SETUP-WSL.md](docs/SETUP-WSL.md) for detailed instructions, or follow the quick start below:
+
+```powershell
+# 1. (Windows PowerShell, run as Administrator) Install WSL2 + Ubuntu
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\scripts\install-wsl.ps1
+```
+
+```bash
+# 2. (Inside WSL Ubuntu terminal) Install system dependencies
+chmod +x scripts/*.sh
+./scripts/setup-wsl.sh
+
+# 3. Set up the project (deps, database, seed data)
+./scripts/setup-project.sh
+
+# 4. Start developing
+./scripts/dev.sh
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Manual Setup
 
 ```bash
 # Clone the repo
 git clone <repo-url> && cd goalos
 
 # Install dependencies
-npm install
+yarn install
 
 # Start PostgreSQL
 docker compose up -d
@@ -89,10 +113,10 @@ npx prisma generate
 npx prisma db push
 
 # Seed with example data
-npm run db:seed
+yarn db:seed
 
 # Start dev server
-npm run dev
+yarn dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
