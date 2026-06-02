@@ -443,7 +443,10 @@ function generateTemplateSuggestions(
 export async function GET() {
   const session = await requireSession()
   const [values, goals] = await Promise.all([
-    prisma.value.findMany({ where: { userId: session.user.id }, orderBy: { rank: 'asc' } }),
+    prisma.value.findMany({
+      where: { userId: session.user.id },
+      orderBy: { rank: 'asc' },
+    }),
     prisma.goal.findMany({
       where: { userId: session.user.id },
       select: {

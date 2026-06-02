@@ -345,7 +345,9 @@ export async function POST(request: Request) {
     return NextResponse.json([])
   }
 
-  const stakeholders = await prisma.stakeholder.findMany({ where: { userId: session.user.id } })
+  const stakeholders = await prisma.stakeholder.findMany({
+    where: { userId: session.user.id },
+  })
   const suggestions: SuggestedStakeholder[] = []
 
   for (const s of stakeholders) {

@@ -27,7 +27,9 @@ export async function PATCH(
   const { id } = await params
   const body = await request.json()
 
-  const existing = await prisma.scheduleEvent.findUnique({ where: { id, userId: session.user.id } })
+  const existing = await prisma.scheduleEvent.findUnique({
+    where: { id, userId: session.user.id },
+  })
   if (!existing) {
     return NextResponse.json({ error: 'Event not found' }, { status: 404 })
   }
@@ -122,7 +124,9 @@ export async function DELETE(
   const session = await requireSession()
   const { id } = await params
 
-  const existing = await prisma.scheduleEvent.findUnique({ where: { id, userId: session.user.id } })
+  const existing = await prisma.scheduleEvent.findUnique({
+    where: { id, userId: session.user.id },
+  })
   if (!existing) {
     return NextResponse.json({ error: 'Event not found' }, { status: 404 })
   }

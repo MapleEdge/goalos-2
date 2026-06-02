@@ -34,7 +34,9 @@ export async function PATCH(
   const { id } = await params
   const body = await request.json()
 
-  const existing = await prisma.goal.findUnique({ where: { id, userId: session.user.id } })
+  const existing = await prisma.goal.findUnique({
+    where: { id, userId: session.user.id },
+  })
   if (!existing) {
     return NextResponse.json({ error: 'Goal not found' }, { status: 404 })
   }

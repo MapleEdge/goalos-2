@@ -229,7 +229,12 @@ export async function POST(request: Request) {
       } else if (op.entity === 'value') {
         if (op.type === 'create') {
           const existing = await prisma.value.findUnique({
-            where: { userId_label: { userId: session.user.id, label: String(op.data.label || '') } },
+            where: {
+              userId_label: {
+                userId: session.user.id,
+                label: String(op.data.label || ''),
+              },
+            },
           })
           if (existing) {
             results.push({

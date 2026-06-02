@@ -8,7 +8,10 @@ export async function GET(request: Request) {
   const status = searchParams.get('status')
 
   const vehicles = await prisma.vehicle.findMany({
-    where: { userId: session.user.id, ...(status ? { status: status as never } : {}) },
+    where: {
+      userId: session.user.id,
+      ...(status ? { status: status as never } : {}),
+    },
     include: {
       value: { select: { id: true, label: true, rank: true } },
       values: { select: { id: true, label: true } },

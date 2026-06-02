@@ -12,7 +12,9 @@ export async function POST(
     const { id } = await params
     const body = await request.json()
 
-    const goal = await prisma.goal.findUnique({ where: { id, userId: session.user.id } })
+    const goal = await prisma.goal.findUnique({
+      where: { id, userId: session.user.id },
+    })
     if (!goal) {
       return NextResponse.json({ error: 'Goal not found' }, { status: 404 })
     }

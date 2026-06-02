@@ -7,7 +7,10 @@ import { requireSession } from '@/lib/session'
 export async function GET() {
   const session = await requireSession()
   const [stakeholders, goals, relationships] = await Promise.all([
-    prisma.stakeholder.findMany({ where: { userId: session.user.id }, orderBy: { createdAt: 'desc' } }),
+    prisma.stakeholder.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: 'desc' },
+    }),
     prisma.goal.findMany({
       where: { status: 'ACTIVE', userId: session.user.id },
       select: { id: true, title: true, status: true },

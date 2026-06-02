@@ -35,7 +35,9 @@ export async function PATCH(
   const { id } = await params
   const body = await request.json()
 
-  const existing = await prisma.vehicle.findUnique({ where: { id, userId: session.user.id } })
+  const existing = await prisma.vehicle.findUnique({
+    where: { id, userId: session.user.id },
+  })
   if (!existing) {
     return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 })
   }
