@@ -90,7 +90,7 @@ export default function BriefingPage() {
       })
       if (res.status === 402) {
         throw new Error(
-          'You have used all your free AI credits this month. Upgrade to Pro or Max for unlimited AI.'
+          'You have used all your free credits this month. Upgrade to Pro or Max for unlimited usage.'
         )
       }
       if (!res.ok) {
@@ -157,7 +157,7 @@ export default function BriefingPage() {
     <div className="mx-auto max-w-4xl px-4 py-8 pb-32">
       <h1 className="mb-1 text-2xl font-bold text-zinc-900">Briefing</h1>
       <p className="mb-6 text-sm text-zinc-500">
-        Paste any information about your situation. The AI will extract goals,
+        Paste any information about your situation. GoalOS will extract goals,
         vehicles, stakeholders, and other entities — then you review and approve
         each change before it&apos;s applied.
       </p>
@@ -201,7 +201,7 @@ export default function BriefingPage() {
           {/* Summary */}
           <div className="mb-6 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
             <h2 className="mb-1 text-sm font-semibold text-zinc-700">
-              AI Summary
+              Summary
             </h2>
             <p className="text-sm leading-relaxed text-zinc-600">
               {parseResult.summary}

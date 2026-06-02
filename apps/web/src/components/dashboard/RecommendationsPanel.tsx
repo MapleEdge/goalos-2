@@ -125,7 +125,7 @@ export function RecommendationsPanel({
 
       {reasoning.aiInsight && (
         <Card>
-          <CardTitle className="mb-3">AI Insight</CardTitle>
+          <CardTitle className="mb-3">Insight</CardTitle>
           <div className="prose prose-sm prose-zinc max-w-none">
             <p className="text-sm text-zinc-700 whitespace-pre-wrap">
               {reasoning.aiInsight}

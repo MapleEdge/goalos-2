@@ -80,8 +80,8 @@ export function SuggestedGoals({
           Suggested Next Goals
         </h3>
         <p className="text-xs text-zinc-400">
-          Token usage is disabled. Enable &quot;Use Tokens&quot; to get
-          AI-powered suggestions.
+          Suggestions are disabled. Enable &quot;Smart Suggestions&quot; in
+          Settings to get recommendations.
         </p>
       </div>
     )

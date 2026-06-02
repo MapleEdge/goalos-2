@@ -91,16 +91,16 @@ export default function SettingsPage() {
 
         <section className="rounded-xl border border-zinc-200 bg-white p-6">
           <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider mb-4">
-            AI & Tokens
+            Smart Suggestions
           </h2>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-zinc-700">
-                Use Gemini Tokens
+                Use Smart Suggestions
               </p>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Enable AI-powered suggestions, intent detection, and briefing
-                analysis.
+                Enable model-powered suggestions, command detection, and
+                briefing analysis.
               </p>
             </div>
             <button

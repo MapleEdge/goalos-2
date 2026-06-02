@@ -77,7 +77,7 @@ export function BillingSection() {
   return (
     <section className="rounded-xl border border-zinc-200 bg-white p-6">
       <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider mb-4">
-        Billing & AI Usage
+        Billing & Usage
       </h2>
 
       <div className="flex items-start justify-between gap-4">
@@ -97,7 +97,7 @@ export function BillingSection() {
           </div>
           <p className="text-xs text-zinc-500 mt-0.5">
             {isLocked
-              ? 'Start your 2-month free trial to unlock AI features.'
+              ? 'Start your 2-month free trial to unlock premium models.'
               : plan.tagline}
           </p>
         </div>
@@ -111,7 +111,7 @@ export function BillingSection() {
           <div className="flex items-center gap-2 text-sm text-zinc-700">
             <InfinityIcon className="h-4 w-4 text-emerald-600" aria-hidden />
             <span>
-              Unlimited {plan.aiModelLabel}.
+              Unlimited use of the {plan.aiModelLabel}.
               {trialEndsAt
                 ? ` Free for ${daysLeft(trialEndsAt)} more days — renews ${formatDate(
                     trialEndsAt
@@ -123,14 +123,15 @@ export function BillingSection() {
         {isActive && (
           <div className="flex items-center gap-2 text-sm text-zinc-700">
             <InfinityIcon className="h-4 w-4 text-emerald-600" aria-hidden />
-            Unlimited {plan.aiModelLabel}. Renews monthly at ${plan.price}/mo.
+            Unlimited use of the {plan.aiModelLabel}. Renews monthly at $
+            {plan.price}/mo.
           </div>
         )}
         {isFallback && (
           <div>
             <div className="flex items-center justify-between text-xs text-zinc-600 mb-1.5">
               <span>
-                {usage.used} / {usage.limit} AI credits used
+                {usage.used} / {usage.limit} credits used
               </span>
               <span>{usage.remaining} left</span>
             </div>
@@ -144,13 +145,13 @@ export function BillingSection() {
             </div>
             <p className="text-xs text-zinc-400 mt-1.5">
               Free fallback after cancellation. Resets {resetLabel()}. Powered
-              by {plan.aiModelLabel}.
+              by the {plan.aiModelLabel}.
             </p>
           </div>
         )}
         {isLocked && (
           <p className="text-sm text-zinc-500">
-            No AI access yet. Start a free trial below to begin.
+            No active plan yet. Start a free trial below to begin.
           </p>
         )}
       </div>
