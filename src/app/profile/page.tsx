@@ -1,4 +1,9 @@
-export default function ProfilePage() {
+import { requireSession } from '@/lib/session'
+
+export default async function ProfilePage() {
+  const session = await requireSession()
+  const { name, email } = session.user
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="text-2xl font-bold text-zinc-900 mb-2">Profile</h1>
@@ -17,7 +22,7 @@ export default function ProfilePage() {
                 Name
               </span>
               <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
-                Samuel Lu
+                {name}
               </div>
             </div>
             <div>
@@ -25,30 +30,10 @@ export default function ProfilePage() {
                 Email
               </span>
               <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
-                samuelbolu@gmail.com
+                {email}
               </div>
             </div>
           </div>
-        </section>
-
-        <section className="rounded-xl border border-zinc-200 bg-white p-6">
-          <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider mb-4">
-            About
-          </h2>
-          <p className="text-sm text-zinc-500">
-            21-year-old Canadian student at the University of Toronto. Economics
-            Major, Statistics Minor. Running a software/app development company.
-          </p>
-        </section>
-
-        <section className="rounded-xl border border-zinc-200 bg-white p-6">
-          <h2 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider mb-4">
-            Career Direction
-          </h2>
-          <p className="text-sm text-zinc-500">
-            Applied Statistics / Data Science / Biostatistics / Health Data
-            Analytics
-          </p>
         </section>
       </div>
     </div>

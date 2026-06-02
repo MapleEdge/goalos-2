@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 interface AllocationEntry {
   valueId: string | null
@@ -26,6 +27,7 @@ const VALUE_COLORS = [
 const UNLINKED_KEY = '__unlinked__'
 
 export async function GET(request: Request) {
+  const session = await requireSession()
   const { searchParams } = new URL(request.url)
   const period = searchParams.get('period') || 'week' // day, week, month, all
 
@@ -59,6 +61,7 @@ export async function GET(request: Request) {
   // Fetch schedule events within the period
   const events = await prisma.scheduleEvent.findMany({
     where: {
+      userId: session.user.id,
       startTime: { gte: start, lt: end },
     },
   })

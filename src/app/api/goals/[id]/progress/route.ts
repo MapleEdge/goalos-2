@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server'
 import { recordEvent } from '@/lib/events/store'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await requireSession()
     const { id } = await params
     const body = await request.json()
 
-    const goal = await prisma.goal.findUnique({ where: { id } })
+    const goal = await prisma.goal.findUnique({ where: { id, userId: session.user.id } })
     if (!goal) {
       return NextResponse.json({ error: 'Goal not found' }, { status: 404 })
     }

@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function GET() {
+  const session = await requireSession()
   const types = await prisma.resourceType.findMany({
+    where: { userId: session.user.id },
     orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
     include: { _count: { select: { flows: true } } },
   })
@@ -20,6 +23,7 @@ export async function POST(request: Request) {
     )
   }
 
+  const session = await requireSession()
   const type = await prisma.resourceType.create({
     data: {
       name: name.trim(),
@@ -27,6 +31,7 @@ export async function POST(request: Request) {
       icon: icon || null,
       color: color || null,
       description: description || null,
+      userId: session.user.id,
     },
   })
   return NextResponse.json(type, { status: 201 })

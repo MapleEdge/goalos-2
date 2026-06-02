@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { recordEvent } from '@/lib/events/store'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function GET() {
+  await requireSession()
   const prerequisites = await prisma.prerequisite.findMany({
     include: { evidence: true, goal: true },
     orderBy: { createdAt: 'desc' },
@@ -11,6 +13,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  await requireSession()
   const body = await request.json()
   const prerequisite = await prisma.prerequisite.create({
     data: {

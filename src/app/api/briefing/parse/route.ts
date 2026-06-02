@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getGeminiClient, getGeminiModel } from '@/lib/gemini'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function POST(request: Request) {
+  await requireSession()
   const client = getGeminiClient()
   if (!client) {
     return NextResponse.json(

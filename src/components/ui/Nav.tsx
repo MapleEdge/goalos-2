@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { authClient } from '@/lib/auth-client'
 
 const links = [
   { href: '/', label: 'Dashboard' },
@@ -16,6 +17,14 @@ const links = [
 
 export function Nav() {
   const pathname = usePathname()
+  const router = useRouter()
+  const { data: session } = authClient.useSession()
+
+  async function handleSignOut() {
+    await authClient.signOut()
+    router.push('/login')
+    router.refresh()
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur-sm">
@@ -95,6 +104,33 @@ export function Nav() {
               />
             </svg>
           </Link>
+          {session?.user && (
+            <>
+              <span className="mx-1 h-5 w-px bg-zinc-200" />
+              <span className="text-xs text-zinc-500 mr-1 hidden sm:inline">
+                {session.user.name}
+              </span>
+              <button
+                onClick={handleSignOut}
+                title="Sign out"
+                className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
+              >
+                <svg
+                  className="h-4.5 w-4.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={1.75}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"
+                  />
+                </svg>
+              </button>
+            </>
+          )}
         </nav>
       </div>
     </header>

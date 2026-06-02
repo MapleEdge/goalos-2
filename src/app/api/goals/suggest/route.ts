@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getGeminiClient, getGeminiModel } from '@/lib/gemini'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 interface ValueRow {
   id: string
@@ -440,9 +441,11 @@ function generateTemplateSuggestions(
 }
 
 export async function GET() {
+  const session = await requireSession()
   const [values, goals] = await Promise.all([
-    prisma.value.findMany({ orderBy: { rank: 'asc' } }),
+    prisma.value.findMany({ where: { userId: session.user.id }, orderBy: { rank: 'asc' } }),
     prisma.goal.findMany({
+      where: { userId: session.user.id },
       select: {
         title: true,
         description: true,

@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { recordEvent } from '@/lib/events/store'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function GET() {
+  const session = await requireSession()
   const stakeholders = await prisma.stakeholder.findMany({
+    where: { userId: session.user.id },
     include: { evidence: true },
     orderBy: { createdAt: 'desc' },
   })
@@ -11,6 +14,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const session = await requireSession()
   const body = await request.json()
   const stakeholder = await prisma.stakeholder.create({
     data: {
@@ -25,6 +29,7 @@ export async function POST(request: Request) {
       capabilities: body.capabilities ?? undefined,
       valueExchangeAssets: body.valueExchangeAssets ?? undefined,
       userAssets: body.userAssets ?? undefined,
+      userId: session.user.id,
     },
   })
 

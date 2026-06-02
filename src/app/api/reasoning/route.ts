@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { enhanceWithAI, isAIAvailable } from '@/lib/reasoning/ai'
 import { generateRecommendations } from '@/lib/reasoning/engine'
+import { requireSession } from '@/lib/session'
 
 export async function GET() {
+  await requireSession()
   const recommendations = await generateRecommendations()
   return NextResponse.json({
     ...recommendations,
@@ -11,6 +13,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  await requireSession()
   const body = await request.json()
   const recommendations = await generateRecommendations()
 

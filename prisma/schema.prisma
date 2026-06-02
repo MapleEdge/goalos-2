@@ -6,6 +6,77 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Auth (Better Auth) ──────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions      Session[]
+  accounts      Account[]
+
+  goals              Goal[]
+  stakeholders       Stakeholder[]
+  values             Value[]
+  vehicles           Vehicle[]
+  calendarConnections CalendarConnection[]
+  resourceTypes      ResourceType[]
+  scheduleEvents     ScheduleEvent[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("accounts")
+}
+
+model Verification {
+  id         String    @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verifications")
+}
+
 // ─── Core entities ───────────────────────────────────────────────
 
 enum GoalStatus {
@@ -29,6 +100,9 @@ model Goal {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   valueId         String?
   value           Value?       @relation("GoalPrimaryValue", fields: [valueId], references: [id], onDelete: SetNull)
   values          Value[]      @relation("GoalValues")
@@ -39,6 +113,7 @@ model Goal {
   relationshipsFrom Relationship[] @relation("from")
   relationshipsTo   Relationship[] @relation("to")
 
+  @@index([userId])
   @@map("goals")
 }
 
@@ -56,11 +131,15 @@ model Stakeholder {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   values             Value[]    @relation("StakeholderValues")
   evidence           Evidence[]
   relationshipsFrom  Relationship[] @relation("stakeholder_from")
   relationshipsTo    Relationship[] @relation("stakeholder_to")
 
+  @@index([userId])
   @@map("stakeholders")
 }
 
@@ -202,12 +281,15 @@ model Relationship {
 
 model Value {
   id          String   @id @default(uuid())
-  label       String   @unique // e.g. "financial security", "health", "relationships"
+  label       String   // e.g. "financial security", "health", "relationships"
   rank        Int      @default(0) // higher = more important
   description String?
   tags        String[] // domain tags for matching, e.g. ["money", "career", "wealth"]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Primary value FK relations (backward compat)
   goals              Goal[]          @relation("GoalPrimaryValue")
@@ -223,6 +305,8 @@ model Value {
   scheduleEventValues ScheduleEvent[] @relation("ScheduleEventValues")
   opportunityValues  Opportunity[]   @relation("OpportunityValues")
 
+  @@unique([userId, label])
+  @@index([userId])
   @@map("values")
 }
 
@@ -265,6 +349,9 @@ model Vehicle {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   valueId         String?
   value           Value?         @relation("VehiclePrimaryValue", fields: [valueId], references: [id], onDelete: SetNull)
   values          Value[]        @relation("VehicleValues")
@@ -275,6 +362,7 @@ model Vehicle {
   relationshipsFrom Relationship[] @relation("vehicle_from")
   relationshipsTo   Relationship[] @relation("vehicle_to")
 
+  @@index([userId])
   @@map("vehicles")
 }
 
@@ -328,6 +416,9 @@ model CalendarConnection {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   scheduleEvents ScheduleEvent[]
 
   @@unique([provider, accountEmail])
@@ -360,6 +451,9 @@ model ScheduleEvent {
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
+  userId               String
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   calendarConnection   CalendarConnection? @relation(fields: [calendarConnectionId], references: [id], onDelete: SetNull)
   values               Value[]             @relation("ScheduleEventValues")
 
@@ -390,7 +484,7 @@ enum FlowFrequency {
 
 model ResourceType {
   id          String   @id @default(uuid())
-  name        String   @unique // e.g. "Financial", "Emotional Energy", "Social Capital"
+  name        String   // e.g. "Financial", "Emotional Energy", "Social Capital"
   unit        String   // e.g. "USD", "points", "hours", "connections"
   icon        String?  // emoji or icon identifier
   color       String?  // hex color for charts
@@ -399,8 +493,13 @@ model ResourceType {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   flows       ResourceFlow[]
 
+  @@unique([userId, name])
+  @@index([userId])
   @@map("resource_types")
 }
 

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 const RECURRENCE_COUNTS: Record<string, number> = {
   daily: 30,
@@ -22,10 +23,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await requireSession()
   const { id } = await params
   const body = await request.json()
 
-  const existing = await prisma.scheduleEvent.findUnique({ where: { id } })
+  const existing = await prisma.scheduleEvent.findUnique({ where: { id, userId: session.user.id } })
   if (!existing) {
     return NextResponse.json({ error: 'Event not found' }, { status: 404 })
   }
@@ -80,6 +82,7 @@ export async function PATCH(
       color: string | null
       recurrence: string | null
       recurrenceGroupId: string | null
+      userId: string
     }> = []
 
     let curStart = advanceDate(startTime, newRecurrence)
@@ -98,6 +101,7 @@ export async function PATCH(
         color: updated.color,
         recurrence: newRecurrence,
         recurrenceGroupId: groupId,
+        userId: session.user.id,
       })
       curStart = advanceDate(curStart, newRecurrence)
       curEnd = advanceDate(curEnd, newRecurrence)
@@ -115,9 +119,10 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await requireSession()
   const { id } = await params
 
-  const existing = await prisma.scheduleEvent.findUnique({ where: { id } })
+  const existing = await prisma.scheduleEvent.findUnique({ where: { id, userId: session.user.id } })
   if (!existing) {
     return NextResponse.json({ error: 'Event not found' }, { status: 404 })
   }

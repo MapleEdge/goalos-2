@@ -1,13 +1,15 @@
 import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function GET(request: Request) {
+  const session = await requireSession()
   const { searchParams } = new URL(request.url)
   const start = searchParams.get('start')
   const end = searchParams.get('end')
 
-  const where: Record<string, unknown> = {}
+  const where: Record<string, unknown> = { userId: session.user.id }
   if (start || end) {
     where.startTime = {}
     if (start) (where.startTime as Record<string, Date>).gte = new Date(start)
@@ -45,6 +47,7 @@ function advanceDate(date: Date, recurrence: string): Date {
 
 export async function POST(request: Request) {
   try {
+    const session = await requireSession()
     const body = await request.json()
     const recurrence: string | null = body.recurrence || null
     const count =
@@ -69,6 +72,7 @@ export async function POST(request: Request) {
       color: string | null
       recurrence: string | null
       recurrenceGroupId: string | null
+      userId: string
     }> = []
 
     let curStart = baseStart
@@ -87,6 +91,7 @@ export async function POST(request: Request) {
         color: body.color || null,
         recurrence,
         recurrenceGroupId: groupId,
+        userId: session.user.id,
       })
       if (i < count - 1) {
         curStart = advanceDate(curStart, recurrence!)

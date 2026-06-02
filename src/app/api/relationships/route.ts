@@ -2,6 +2,7 @@ import type { NodeType } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import { recordEvent } from '@/lib/events/store'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 function getForeignKeyFields(
   type: NodeType,
@@ -28,6 +29,7 @@ function getForeignKeyFields(
 }
 
 export async function GET() {
+  await requireSession()
   const relationships = await prisma.relationship.findMany({
     orderBy: { createdAt: 'desc' },
   })
@@ -35,6 +37,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  await requireSession()
   const body = await request.json()
 
   const fromFK = getForeignKeyFields(

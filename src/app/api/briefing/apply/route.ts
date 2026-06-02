@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { recordEvent } from '@/lib/events/store'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 interface OpData {
   [key: string]: unknown
@@ -22,6 +23,7 @@ interface LinkOp {
 }
 
 export async function POST(request: Request) {
+  const session = await requireSession()
   const { operations, links } = (await request.json()) as {
     operations: Operation[]
     links?: LinkOp[]
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
               targetDate: op.data.targetDate
                 ? new Date(String(op.data.targetDate))
                 : null,
+              userId: session.user.id,
             },
           })
           await recordEvent('GOAL', goal.id, 'CREATED', {
@@ -111,6 +114,7 @@ export async function POST(request: Request) {
               institution: op.data.institution
                 ? String(op.data.institution)
                 : null,
+              userId: session.user.id,
             },
           })
           await recordEvent('VEHICLE', vehicle.id, 'CREATED', {
@@ -160,6 +164,7 @@ export async function POST(request: Request) {
               role: op.data.role ? String(op.data.role) : null,
               notes: op.data.notes ? String(op.data.notes) : null,
               relationshipStrength: Number(op.data.relationshipStrength) || 0,
+              userId: session.user.id,
             },
           })
           await recordEvent('STAKEHOLDER', stakeholder.id, 'CREATED', {
@@ -224,7 +229,7 @@ export async function POST(request: Request) {
       } else if (op.entity === 'value') {
         if (op.type === 'create') {
           const existing = await prisma.value.findUnique({
-            where: { label: String(op.data.label || '') },
+            where: { userId_label: { userId: session.user.id, label: String(op.data.label || '') } },
           })
           if (existing) {
             results.push({
@@ -242,6 +247,7 @@ export async function POST(request: Request) {
                 ? String(op.data.description)
                 : null,
               rank: Number(op.data.rank) || 0,
+              userId: session.user.id,
             },
           })
           results.push({

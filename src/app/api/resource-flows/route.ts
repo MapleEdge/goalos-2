@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function GET(request: Request) {
+  await requireSession()
   const { searchParams } = new URL(request.url)
   const entityType = searchParams.get('entityType')
   const entityId = searchParams.get('entityId')
@@ -25,6 +27,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  await requireSession()
   const body = await request.json()
   const {
     resourceTypeId,

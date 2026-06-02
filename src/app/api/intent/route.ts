@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getGeminiClient, getGeminiModel } from '@/lib/gemini'
+import { requireSession } from '@/lib/session'
 
 const VALID_INTENTS = [
   'review_all',
@@ -55,6 +56,7 @@ function extractNavPage(input: string): string | null {
 }
 
 export async function POST(request: Request) {
+  await requireSession()
   const { input } = await request.json()
   if (!input || typeof input !== 'string') {
     return NextResponse.json({ error: 'input is required' }, { status: 400 })

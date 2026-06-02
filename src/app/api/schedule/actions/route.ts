@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 // Import GoalOS actions with due dates as schedule events
 export async function POST() {
+  const session = await requireSession()
   const actions = await prisma.action.findMany({
     where: {
       dueDate: { not: null },
@@ -38,6 +40,7 @@ export async function POST() {
             action.priority === 'HIGH' || action.priority === 'CRITICAL'
               ? '#ef4444'
               : '#3b82f6',
+          userId: session.user.id,
         },
       })
       imported++
@@ -70,6 +73,7 @@ export async function POST() {
           source: 'GOALOS',
           goalId: goal.id,
           color: '#f59e0b',
+          userId: session.user.id,
         },
       })
       imported++

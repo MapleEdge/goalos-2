@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getConnector } from '@/lib/calendar'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function POST(request: Request) {
+  const session = await requireSession()
   const body = await request.json()
   const { connectionId, timeMin, timeMax } = body
 
@@ -102,6 +104,7 @@ export async function POST(request: Request) {
             externalId: ev.id,
             externalCalendarId: calendarId,
             calendarConnectionId: connectionId,
+            userId: session.user.id,
           },
         })
       }

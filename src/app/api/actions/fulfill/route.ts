@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 interface FulfillRequest {
   actionTitle: string
@@ -225,6 +226,7 @@ function deriveEmailBody(actionTitle: string, goalTitle: string): string {
 }
 
 export async function POST(request: Request) {
+  const session = await requireSession()
   const body: FulfillRequest = await request.json()
 
   if (!body.actionTitle || !body.goalTitle) {
@@ -236,6 +238,7 @@ export async function POST(request: Request) {
 
   // Fetch stakeholders for person extraction
   const stakeholders = await prisma.stakeholder.findMany({
+    where: { userId: session.user.id },
     select: { name: true, organization: true, role: true },
   })
 

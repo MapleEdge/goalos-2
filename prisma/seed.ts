@@ -26,12 +26,35 @@ async function main() {
   await prisma.stakeholder.deleteMany()
   await prisma.goal.deleteMany()
   await prisma.value.deleteMany()
+  await prisma.session.deleteMany()
+  await prisma.account.deleteMany()
+  await prisma.verification.deleteMany()
+  await prisma.user.deleteMany()
+
+  // Create seed user (password: "password123" — local dev only)
+  const seedUser = await prisma.user.create({
+    data: {
+      name: 'Samuel Lu',
+      email: 'samuel@goalos.dev',
+      emailVerified: true,
+    },
+  })
+  // Create an account record so Better Auth recognises the credential login
+  await prisma.account.create({
+    data: {
+      userId: seedUser.id,
+      accountId: seedUser.id,
+      providerId: 'credential',
+    },
+  })
+  const userId = seedUser.id
 
   // ─── Values (7 values, rank 1 = most important) ───────────────
 
   const values = await Promise.all([
     prisma.value.create({
       data: {
+        userId,
         label: 'Financial Security',
         rank: 1,
         description:
@@ -41,6 +64,7 @@ async function main() {
     }),
     prisma.value.create({
       data: {
+        userId,
         label: 'Career Growth',
         rank: 2,
         description: 'Advancing professionally and building expertise',
@@ -49,6 +73,7 @@ async function main() {
     }),
     prisma.value.create({
       data: {
+        userId,
         label: 'Knowledge & Learning',
         rank: 3,
         description: 'Continuous learning and intellectual growth',
@@ -57,6 +82,7 @@ async function main() {
     }),
     prisma.value.create({
       data: {
+        userId,
         label: 'Health & Fitness',
         rank: 4,
         description: 'Maintaining physical and mental health',
@@ -65,6 +91,7 @@ async function main() {
     }),
     prisma.value.create({
       data: {
+        userId,
         label: 'Family',
         rank: 5,
         description: 'Supporting and being present for family',
@@ -73,6 +100,7 @@ async function main() {
     }),
     prisma.value.create({
       data: {
+        userId,
         label: 'Impact & Giving Back',
         rank: 6,
         description: 'Making a positive difference in the world',
@@ -81,6 +109,7 @@ async function main() {
     }),
     prisma.value.create({
       data: {
+        userId,
         label: 'Romantic Relationships',
         rank: 7,
         description: 'Finding and nurturing a meaningful romantic partnership',
@@ -95,6 +124,7 @@ async function main() {
     // Financial Security
     prisma.goal.create({
       data: {
+        userId,
         valueId: values[0].id,
         title: 'Build $5K Emergency Fund',
         description:
@@ -108,6 +138,7 @@ async function main() {
     // Career Growth
     prisma.goal.create({
       data: {
+        userId,
         valueId: values[1].id,
         title: 'Complete AWS Cloud Practitioner Certification',
         description:
@@ -121,6 +152,7 @@ async function main() {
     // Career Growth
     prisma.goal.create({
       data: {
+        userId,
         valueId: values[1].id,
         title: 'Deliver Conference Talk at LocalDevConf',
         description:
@@ -134,6 +166,7 @@ async function main() {
     // Knowledge & Learning
     prisma.goal.create({
       data: {
+        userId,
         valueId: values[2].id,
         title: 'Complete Machine Learning Coursera Specialization',
         description: 'Finish all 5 courses in the Andrew Ng ML specialization',
@@ -146,6 +179,7 @@ async function main() {
     // Knowledge & Learning
     prisma.goal.create({
       data: {
+        userId,
         valueId: values[2].id,
         title: 'Read 12 Non-Fiction Books',
         description:
@@ -159,6 +193,7 @@ async function main() {
     // Health & Fitness
     prisma.goal.create({
       data: {
+        userId,
         valueId: values[3].id,
         title: 'Run a 10K Race',
         description: 'Train for and complete a 10K race under 55 minutes',
@@ -171,6 +206,7 @@ async function main() {
     // Health & Fitness
     prisma.goal.create({
       data: {
+        userId,
         valueId: values[3].id,
         title: 'Establish Morning Meditation Habit',
         description:
@@ -184,6 +220,7 @@ async function main() {
     // Family
     prisma.goal.create({
       data: {
+        userId,
         valueId: values[4].id,
         title: 'Plan Family Reunion',
         description:
@@ -197,6 +234,7 @@ async function main() {
     // Impact
     prisma.goal.create({
       data: {
+        userId,
         valueId: values[5].id,
         title: 'Mentor 2 Junior Developers',
         description:
@@ -211,6 +249,7 @@ async function main() {
     // Financial Security
     prisma.goal.create({
       data: {
+        userId,
         valueId: values[0].id,
         title: 'Negotiate 15% Salary Increase',
         description: 'Prepare and execute a salary negotiation for a 15% raise',
@@ -228,6 +267,7 @@ async function main() {
   // Financial Security (rank 1)
   const investGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[0].id,
       title: 'Start Index Fund Portfolio',
       description:
@@ -241,6 +281,7 @@ async function main() {
 
   const freelanceGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[0].id,
       title: 'Launch Freelance Consulting Practice',
       description:
@@ -253,6 +294,7 @@ async function main() {
 
   const budgetGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[0].id,
       title: 'Reduce Monthly Expenses by 20%',
       description:
@@ -267,6 +309,7 @@ async function main() {
   // Career Growth (rank 2)
   const taGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[1].id,
       title: 'Obtain TA Position',
       description:
@@ -279,6 +322,7 @@ async function main() {
 
   const startupGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[1].id,
       title: 'Raise Pre-Seed Round',
       description:
@@ -291,6 +335,7 @@ async function main() {
 
   const leadershipGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[1].id,
       title: 'Lead Open Source Project to 500 Stars',
       description:
@@ -304,6 +349,7 @@ async function main() {
   // Recommendation letter test goal — tests value gap / exchange suggestion system
   const recLetterGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[1].id,
       title: 'Get Recommendation Letter for Grad School',
       description:
@@ -319,6 +365,7 @@ async function main() {
   // Knowledge & Learning (rank 3)
   const researchGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[2].id,
       title: 'Publish Research Paper',
       description:
@@ -331,6 +378,7 @@ async function main() {
 
   const rustGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[2].id,
       title: 'Learn Rust Programming',
       description:
@@ -343,6 +391,7 @@ async function main() {
 
   const philosophyGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[2].id,
       title: 'Complete Philosophy Reading List',
       description:
@@ -356,6 +405,7 @@ async function main() {
   // Health & Fitness (rank 4)
   const marathonGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[3].id,
       title: 'Train for Half Marathon',
       description:
@@ -368,6 +418,7 @@ async function main() {
 
   const nutritionGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[3].id,
       title: 'Meal Prep Consistently for 3 Months',
       description:
@@ -380,6 +431,7 @@ async function main() {
 
   const sleepGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[3].id,
       title: 'Fix Sleep Schedule',
       description:
@@ -393,6 +445,7 @@ async function main() {
   // Family (rank 5)
   const dadGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[4].id,
       title: 'Weekly Video Calls with Parents',
       description:
@@ -405,6 +458,7 @@ async function main() {
 
   const siblingGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[4].id,
       title: 'Plan Sibling Road Trip',
       description:
@@ -417,6 +471,7 @@ async function main() {
 
   const familyFinanceGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[4].id,
       title: 'Help Parents Set Up Retirement Planning',
       description:
@@ -431,6 +486,7 @@ async function main() {
   // Impact & Giving Back (rank 6)
   const ossGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[5].id,
       title: 'Contribute to 5 Open Source Projects',
       description:
@@ -443,6 +499,7 @@ async function main() {
 
   const workshopGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[5].id,
       title: 'Run Free Coding Workshop for Beginners',
       description:
@@ -455,6 +512,7 @@ async function main() {
 
   const blogGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[5].id,
       title: 'Write 10 Technical Blog Posts',
       description:
@@ -468,6 +526,7 @@ async function main() {
   // Romantic Relationships (rank 7)
   const socialGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[6].id,
       title: 'Expand Social Circle',
       description:
@@ -480,6 +539,7 @@ async function main() {
 
   const boundariesGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[6].id,
       title: 'Develop Healthy Relationship Boundaries',
       description:
@@ -493,6 +553,7 @@ async function main() {
 
   const dateGoal = await prisma.goal.create({
     data: {
+      userId,
       valueId: values[6].id,
       title: 'Go on 12 First Dates',
       description:
@@ -515,6 +576,7 @@ async function main() {
 
   const profChen = await prisma.stakeholder.create({
     data: {
+      userId,
       name: 'Prof. Chen',
       organization: 'CS Department',
       role: 'Professor, CS 301',
@@ -572,6 +634,7 @@ async function main() {
   // Very high capability but essentially zero willingness due to unmet GPA requirement
   const profWilliams = await prisma.stakeholder.create({
     data: {
+      userId,
       name: 'Prof. Williams',
       organization: 'CS Department',
       role: 'Professor, CS 450 Advanced Algorithms',
@@ -628,6 +691,7 @@ async function main() {
 
   const sarahKim = await prisma.stakeholder.create({
     data: {
+      userId,
       name: 'Sarah Kim',
       organization: 'Sequoia Capital',
       role: 'Venture Partner',
@@ -683,6 +747,7 @@ async function main() {
 
   const drPatel = await prisma.stakeholder.create({
     data: {
+      userId,
       name: 'Dr. Patel',
       organization: 'ML Research Lab',
       role: 'Lab Director',
@@ -728,6 +793,7 @@ async function main() {
 
   const dad = await prisma.stakeholder.create({
     data: {
+      userId,
       name: 'Dad',
       organization: null,
       role: 'Family',
@@ -772,6 +838,7 @@ async function main() {
 
   const mom = await prisma.stakeholder.create({
     data: {
+      userId,
       name: 'Mom',
       organization: null,
       role: 'Family',
@@ -814,6 +881,7 @@ async function main() {
   // Landlord — can provide housing but unwilling without financial commitment
   const landlordMike = await prisma.stakeholder.create({
     data: {
+      userId,
       name: 'Mike Brennan',
       organization: 'Brennan Properties LLC',
       role: 'Landlord',
@@ -998,7 +1066,7 @@ async function main() {
   ]
 
   for (const s of additionalStakeholders) {
-    await prisma.stakeholder.create({ data: s })
+    await prisma.stakeholder.create({ data: { ...s, userId } })
   }
 
   // ─── Prerequisites ────────────────────────────────────────────
@@ -1360,6 +1428,7 @@ async function main() {
     end.setHours(15, 0, 0, 0)
     await prisma.scheduleEvent.create({
       data: {
+        userId,
         title: 'Study group session',
         description: 'Lead classmate study group for CS 301',
         startTime: start,
@@ -1379,6 +1448,7 @@ async function main() {
   taOfficeEnd.setHours(11, 0, 0, 0)
   await prisma.scheduleEvent.create({
     data: {
+      userId,
       title: 'Office hours with Prof. Chen',
       description: 'Weekly office hours to strengthen relationship',
       startTime: taOfficeHours,
@@ -1398,6 +1468,7 @@ async function main() {
     end.setHours(12, 0, 0, 0)
     await prisma.scheduleEvent.create({
       data: {
+        userId,
         title: 'MVP development sprint',
         description: 'Core feature development for AI productivity tool',
         startTime: start,
@@ -1417,6 +1488,7 @@ async function main() {
   investorEnd.setHours(18, 0, 0, 0)
   await prisma.scheduleEvent.create({
     data: {
+      userId,
       title: 'Investor outreach & follow-ups',
       description: 'Email warm intros, update pitch materials',
       startTime: investorBlock,
@@ -1436,6 +1508,7 @@ async function main() {
     end.setHours(16, 0, 0, 0)
     await prisma.scheduleEvent.create({
       data: {
+        userId,
         title: 'Literature review & note-taking',
         description:
           'Read and annotate papers for graph-based reasoning survey',
@@ -1456,6 +1529,7 @@ async function main() {
   satResearchEnd.setHours(13, 0, 0, 0)
   await prisma.scheduleEvent.create({
     data: {
+      userId,
       title: 'Experiment design work',
       description: 'Draft methodology section and plan experiments',
       startTime: satResearch,
@@ -1475,6 +1549,7 @@ async function main() {
     end.setHours(7, 30, 0, 0)
     await prisma.scheduleEvent.create({
       data: {
+        userId,
         title: 'Running training',
         description: 'Half marathon training run',
         startTime: start,
@@ -1493,6 +1568,7 @@ async function main() {
   mealPrepEnd.setHours(17, 0, 0, 0)
   await prisma.scheduleEvent.create({
     data: {
+      userId,
       title: 'Weekly meal prep',
       description: 'Prepare healthy meals for the week',
       startTime: mealPrepStart,
@@ -1508,6 +1584,7 @@ async function main() {
   // EDUCATION: CS Degree (active, linked to research & TA goals)
   const csDegree = await prisma.vehicle.create({
     data: {
+      userId,
       title: 'CS Degree at MIT',
       description:
         'Computer Science undergraduate degree — provides lab access, faculty network, research opportunities, and academic credentials',
@@ -1524,6 +1601,7 @@ async function main() {
   // EMPLOYMENT: Freelance Consulting (building)
   const consultingVehicle = await prisma.vehicle.create({
     data: {
+      userId,
       title: 'AI/ML Freelance Consulting',
       description:
         'Side consulting practice — generates income, builds industry reputation, creates client network',
@@ -1538,6 +1616,7 @@ async function main() {
   // BUSINESS: Startup (acquiring — fundraising)
   const startupVehicle = await prisma.vehicle.create({
     data: {
+      userId,
       title: 'AI Productivity Startup',
       description:
         'GoalOS — an AI productivity company. Vehicle for wealth creation, reputation building, and attracting talent',
@@ -1554,6 +1633,7 @@ async function main() {
   // PLATFORM: Open Source Project (building)
   const ossVehicle = await prisma.vehicle.create({
     data: {
+      userId,
       title: 'Graph-Reasoning OSS Project',
       description:
         'Open source project on graph-based reasoning — builds reputation, attracts contributors, demonstrates technical leadership',
@@ -1568,6 +1648,7 @@ async function main() {
   // PLATFORM: Tech Blog (identified, not yet started)
   const blogVehicle = await prisma.vehicle.create({
     data: {
+      userId,
       title: 'Technical Blog on Medium',
       description:
         'Content platform for sharing ML/systems insights — builds thought leadership, attracts speaking invites and consulting leads',
@@ -1583,6 +1664,7 @@ async function main() {
   // NETWORK: University Alumni Network (active)
   const alumniNetwork = await prisma.vehicle.create({
     data: {
+      userId,
       title: 'MIT Alumni Network',
       description:
         'Access to alumni connections across tech, finance, and academia — warm intros, mentorship, job referrals',
@@ -1599,6 +1681,7 @@ async function main() {
   // ORGANIZATION: Church community (active)
   const churchVehicle = await prisma.vehicle.create({
     data: {
+      userId,
       title: 'Grace Community Church',
       description:
         'Religious community providing deep social bonds, mentorship from elders, service opportunities, and a grounding support system',
@@ -1615,6 +1698,7 @@ async function main() {
   // EVENT_SERIES: Monthly dinner party (building)
   const dinnerParty = await prisma.vehicle.create({
     data: {
+      userId,
       title: 'Monthly Founder Dinner',
       description:
         'Hosted dinner for 8-12 founders and investors each month — creates high-trust connections, deal flow, and cross-pollination of ideas',
@@ -1630,6 +1714,7 @@ async function main() {
   // NETWORK: Running Club (active)
   const runningClub = await prisma.vehicle.create({
     data: {
+      userId,
       title: 'Boston Running Club',
       description:
         'Local running group — training accountability, social connections outside tech, mental health benefits',
@@ -1646,6 +1731,7 @@ async function main() {
   // ASSET: Honda Civic (the fun physical car)
   const hondaCivic = await prisma.vehicle.create({
     data: {
+      userId,
       title: '2019 Honda Civic',
       description:
         'Reliable daily driver — enables commute to campus, road trips with family, and client meetings across the city',
@@ -1660,6 +1746,7 @@ async function main() {
   // ASSET: Dream car (identified)
   const dreamCar = await prisma.vehicle.create({
     data: {
+      userId,
       title: 'Tesla Model 3',
       description:
         'Aspirational upgrade — lower operating costs, tech-forward image for client meetings, long-range road trips',
@@ -1673,6 +1760,7 @@ async function main() {
   // SKILL: Rust expertise (researching)
   const rustSkill = await prisma.vehicle.create({
     data: {
+      userId,
       title: 'Rust Systems Programming',
       description:
         'Deep Rust expertise — opens doors to high-performance systems roles, OSS credibility, and safety-critical domains',
@@ -1687,6 +1775,7 @@ async function main() {
   // Country of Genovia (dictator vehicle for control tracking demo)
   const genoviaVehicle = await prisma.vehicle.create({
     data: {
+      userId,
       title: 'Country of Genovia',
       description:
         'Sovereign nation-state under absolute rule — primary vehicle for geopolitical power, resource extraction, and population leverage',
@@ -2304,6 +2393,7 @@ async function main() {
 
   const financialType = await prisma.resourceType.create({
     data: {
+      userId,
       name: 'Financial',
       unit: 'USD',
       icon: '💰',
@@ -2315,6 +2405,7 @@ async function main() {
 
   const emotionalType = await prisma.resourceType.create({
     data: {
+      userId,
       name: 'Emotional Energy',
       unit: 'points',
       icon: '❤️',
@@ -2326,6 +2417,7 @@ async function main() {
 
   const socialType = await prisma.resourceType.create({
     data: {
+      userId,
       name: 'Social Capital',
       unit: 'connections',
       icon: '🤝',
@@ -2337,6 +2429,7 @@ async function main() {
 
   const timeType = await prisma.resourceType.create({
     data: {
+      userId,
       name: 'Time',
       unit: 'hours',
       icon: '⏱️',
@@ -2348,6 +2441,7 @@ async function main() {
 
   const knowledgeType = await prisma.resourceType.create({
     data: {
+      userId,
       name: 'Knowledge',
       unit: 'skills',
       icon: '🧠',

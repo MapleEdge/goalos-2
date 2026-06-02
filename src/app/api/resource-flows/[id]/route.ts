@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await requireSession()
   const { id } = await params
   const body = await request.json()
   const flow = await prisma.resourceFlow.update({
@@ -37,6 +39,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await requireSession()
   const { id } = await params
   await prisma.resourceFlow.delete({ where: { id } })
   return NextResponse.json({ ok: true })

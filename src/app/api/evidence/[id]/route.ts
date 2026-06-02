@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { recordEvent } from '@/lib/events/store'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await requireSession()
   const { id } = await params
   const evidence = await prisma.evidence.findUnique({
     where: { id },
@@ -21,6 +23,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await requireSession()
   const { id } = await params
   const body = await request.json()
   const evidence = await prisma.evidence.update({
@@ -46,6 +49,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await requireSession()
   const { id } = await params
   await recordEvent('EVIDENCE', id, 'DELETED', {})
   await prisma.evidence.delete({ where: { id } })

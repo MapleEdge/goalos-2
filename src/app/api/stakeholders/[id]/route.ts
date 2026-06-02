@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server'
 import { recordEvent } from '@/lib/events/store'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await requireSession()
   const { id } = await params
   const stakeholder = await prisma.stakeholder.findUnique({
-    where: { id },
+    where: { id, userId: session.user.id },
     include: { evidence: true },
   })
   if (!stakeholder) {
@@ -21,10 +23,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await requireSession()
   const { id } = await params
   const body = await request.json()
   const stakeholder = await prisma.stakeholder.update({
-    where: { id },
+    where: { id, userId: session.user.id },
     data: {
       name: body.name,
       organization: body.organization,
@@ -55,8 +58,9 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await requireSession()
   const { id } = await params
   await recordEvent('STAKEHOLDER', id, 'DELETED', {})
-  await prisma.stakeholder.delete({ where: { id } })
+  await prisma.stakeholder.delete({ where: { id, userId: session.user.id } })
   return NextResponse.json({ success: true })
 }

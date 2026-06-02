@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { recordEvent } from '@/lib/events/store'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function GET() {
+  const session = await requireSession()
   const goals = await prisma.goal.findMany({
+    where: { userId: session.user.id },
     include: {
       prerequisites: { include: { evidence: true } },
       actions: true,
@@ -16,6 +19,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const session = await requireSession()
   const body = await request.json()
   const goal = await prisma.goal.create({
     data: {
@@ -25,6 +29,7 @@ export async function POST(request: Request) {
       successCriteria: body.successCriteria,
       status: body.status || 'ACTIVE',
       valueId: body.valueId || null,
+      userId: session.user.id,
       ...(body.valueIds?.length
         ? { values: { connect: body.valueIds.map((id: string) => ({ id })) } }
         : {}),

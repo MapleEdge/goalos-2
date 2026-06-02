@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await requireSession()
   const { id } = await params
   const vehicle = await prisma.vehicle.findUnique({
-    where: { id },
+    where: { id, userId: session.user.id },
     include: {
       value: { select: { id: true, label: true, rank: true } },
       values: { select: { id: true, label: true } },
@@ -29,16 +31,17 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await requireSession()
   const { id } = await params
   const body = await request.json()
 
-  const existing = await prisma.vehicle.findUnique({ where: { id } })
+  const existing = await prisma.vehicle.findUnique({ where: { id, userId: session.user.id } })
   if (!existing) {
     return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 })
   }
 
   const vehicle = await prisma.vehicle.update({
-    where: { id },
+    where: { id, userId: session.user.id },
     data: {
       title: body.title,
       description: body.description,
@@ -70,7 +73,8 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await requireSession()
   const { id } = await params
-  await prisma.vehicle.delete({ where: { id } })
+  await prisma.vehicle.delete({ where: { id, userId: session.user.id } })
   return NextResponse.json({ success: true })
 }

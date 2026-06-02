@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getGeminiClient, getGeminiModel } from '@/lib/gemini'
 import { prisma } from '@/lib/prisma'
 import { desanitize, sanitize } from '@/lib/sanitize'
+import { requireSession } from '@/lib/session'
 
 interface CapabilityEntry {
   capability: string
@@ -330,6 +331,7 @@ JSON only, no markdown, no explanation.`
 // ─── Main endpoint ───────────────────────────────────────────────
 
 export async function POST(request: Request) {
+  const session = await requireSession()
   const body = await request.json()
   const goalText = [
     body.title || '',
@@ -343,7 +345,7 @@ export async function POST(request: Request) {
     return NextResponse.json([])
   }
 
-  const stakeholders = await prisma.stakeholder.findMany()
+  const stakeholders = await prisma.stakeholder.findMany({ where: { userId: session.user.id } })
   const suggestions: SuggestedStakeholder[] = []
 
   for (const s of stakeholders) {

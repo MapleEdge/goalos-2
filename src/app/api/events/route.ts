@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getEventTimeline, getRecentEvents } from '@/lib/events/store'
+import { requireSession } from '@/lib/session'
 
 export async function GET(request: Request) {
+  await requireSession()
   const { searchParams } = new URL(request.url)
   const since = searchParams.get('since')
   const limit = searchParams.get('limit')

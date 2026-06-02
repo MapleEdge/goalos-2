@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { allConnectors } from '@/lib/connectors/mock'
+import { requireSession } from '@/lib/session'
 
 export async function GET() {
+  await requireSession()
   const connectors = allConnectors.map((c) => ({
     name: c.name,
     configured: c.isConfigured(),
@@ -10,6 +12,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  await requireSession()
   const body = await request.json()
   const connector = allConnectors.find((c) => c.name === body.connector)
 

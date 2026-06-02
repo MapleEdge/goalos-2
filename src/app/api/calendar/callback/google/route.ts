@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getConnector, getRedirectUri } from '@/lib/calendar'
 import { prisma } from '@/lib/prisma'
+import { requireSession } from '@/lib/session'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
     const userInfo = await userInfoRes.json()
     const email = userInfo.email || 'unknown@gmail.com'
 
+    const session = await requireSession()
     await prisma.calendarConnection.upsert({
       where: {
         provider_accountEmail: { provider: 'GOOGLE', accountEmail: email },
@@ -43,6 +45,7 @@ export async function GET(request: Request) {
         refreshToken: tokens.refreshToken || null,
         tokenExpiry: tokens.expiresAt,
         calendarId: 'primary',
+        userId: session.user.id,
       },
       update: {
         accessToken: tokens.accessToken,
