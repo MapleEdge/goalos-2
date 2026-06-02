@@ -447,6 +447,17 @@ model ControlDimension {
   @@map("control_dimensions")
 }
 
+// ─── Idempotency ─────────────────────────────────────────────────
+
+model IdempotencyKey {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  response  Json
+  createdAt DateTime @default(now())
+
+  @@map("idempotency_keys")
+}
+
 // ─── Event sourcing ──────────────────────────────────────────────
 
 model Event {

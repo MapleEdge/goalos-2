@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import pino from 'pino'
 
 const isDev = process.env.NODE_ENV !== 'production'
@@ -19,3 +20,17 @@ const logger = pino({
 })
 
 export default logger
+
+/**
+ * Generate a random request ID for tracing a single HTTP request across logs.
+ */
+export function generateRequestId(): string {
+  return randomUUID()
+}
+
+/**
+ * Create a child logger scoped to a single request.
+ */
+export function requestLogger(requestId: string, endpoint?: string) {
+  return logger.child({ requestId, endpoint })
+}
