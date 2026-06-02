@@ -14,6 +14,12 @@ interface Operation {
   reason?: string
 }
 
+interface SuggestionInput {
+  operation: Operation
+  decision: 'accepted' | 'rejected' | 'skipped'
+  rejectionReason?: string
+}
+
 interface LinkOp {
   type: 'vehicleGoal'
   vehicleTitle: string
@@ -22,17 +28,41 @@ interface LinkOp {
 }
 
 export async function POST(request: Request) {
-  const { operations, links } = (await request.json()) as {
-    operations: Operation[]
-    links?: LinkOp[]
+  const body = await request.json()
+
+  // Support both legacy format (operations[]) and new format (suggestions[] + inputText)
+  const isNewFormat = 'suggestions' in body
+  const inputText: string = body.inputText || ''
+  const aiSummary: string = body.aiSummary || ''
+
+  let suggestions: SuggestionInput[]
+  let links: LinkOp[] = body.links || []
+
+  if (isNewFormat) {
+    suggestions = body.suggestions as SuggestionInput[]
+  } else {
+    // Legacy: all operations are accepted
+    const ops = body.operations as Operation[]
+    if (!ops || !Array.isArray(ops)) {
+      return NextResponse.json(
+        { error: 'Missing operations or suggestions array' },
+        { status: 400 }
+      )
+    }
+    suggestions = ops.map((op) => ({
+      operation: op,
+      decision: 'accepted' as const,
+    }))
+    links = body.links || []
   }
 
-  if (!operations || !Array.isArray(operations)) {
-    return NextResponse.json(
-      { error: 'Missing operations array' },
-      { status: 400 }
-    )
-  }
+  // Create briefing session
+  const session = await prisma.briefingSession.create({
+    data: {
+      inputText: inputText || '(not provided)',
+      aiSummary: aiSummary || null,
+    },
+  })
 
   const results: {
     entity: string
@@ -40,11 +70,40 @@ export async function POST(request: Request) {
     id: string
     title: string
   }[] = []
+
   // Track newly created entities for linking
   const createdGoals: Record<string, string> = {}
   const createdVehicles: Record<string, string> = {}
 
-  for (const op of operations) {
+  for (const suggestion of suggestions) {
+    const { operation: op, decision, rejectionReason } = suggestion
+    const entityTitle = String(
+      op.data.title || op.data.name || op.data.label || ''
+    )
+
+    // If rejected or skipped, just record the suggestion — don't apply
+    if (decision !== 'accepted') {
+      await prisma.briefingSuggestion.create({
+        data: {
+          sessionId: session.id,
+          operationType: op.type,
+          entityType: op.entity,
+          entityTitle,
+          reason: op.reason || null,
+          proposedData: op.data as never,
+          decision: decision === 'rejected' ? 'REJECTED' : 'SKIPPED',
+          rejectionReason: rejectionReason || null,
+          resultAction: null,
+          resultEntityId: null,
+        },
+      })
+      continue
+    }
+
+    // Apply the accepted operation
+    let resultAction = ''
+    let resultEntityId = ''
+
     try {
       if (op.entity === 'goal') {
         if (op.type === 'create') {
@@ -68,6 +127,8 @@ export async function POST(request: Request) {
             source: 'briefing',
           })
           createdGoals[goal.title] = goal.id
+          resultAction = 'created'
+          resultEntityId = goal.id
           results.push({
             entity: 'goal',
             action: 'created',
@@ -91,6 +152,8 @@ export async function POST(request: Request) {
           await recordEvent('GOAL', goal.id, 'UPDATED', {
             source: 'briefing',
           })
+          resultAction = 'updated'
+          resultEntityId = goal.id
           results.push({
             entity: 'goal',
             action: 'updated',
@@ -118,6 +181,8 @@ export async function POST(request: Request) {
             source: 'briefing',
           })
           createdVehicles[vehicle.title] = vehicle.id
+          resultAction = 'created'
+          resultEntityId = vehicle.id
           results.push({
             entity: 'vehicle',
             action: 'created',
@@ -142,6 +207,8 @@ export async function POST(request: Request) {
           await recordEvent('VEHICLE', vehicle.id, 'UPDATED', {
             source: 'briefing',
           })
+          resultAction = 'updated'
+          resultEntityId = vehicle.id
           results.push({
             entity: 'vehicle',
             action: 'updated',
@@ -166,6 +233,8 @@ export async function POST(request: Request) {
             name: stakeholder.name,
             source: 'briefing',
           })
+          resultAction = 'created'
+          resultEntityId = stakeholder.id
           results.push({
             entity: 'stakeholder',
             action: 'created',
@@ -189,6 +258,8 @@ export async function POST(request: Request) {
                 : {}),
             },
           })
+          resultAction = 'updated'
+          resultEntityId = stakeholder.id
           results.push({
             entity: 'stakeholder',
             action: 'updated',
@@ -214,6 +285,8 @@ export async function POST(request: Request) {
               color: op.data.color ? String(op.data.color) : null,
             },
           })
+          resultAction = 'created'
+          resultEntityId = dim.id
           results.push({
             entity: 'controlDimension',
             action: 'created',
@@ -227,39 +300,81 @@ export async function POST(request: Request) {
             where: { label: String(op.data.label || '') },
           })
           if (existing) {
+            resultAction = 'skipped (exists)'
+            resultEntityId = existing.id
             results.push({
               entity: 'value',
               action: 'skipped (exists)',
               id: existing.id,
               title: existing.label,
             })
-            continue
+          } else {
+            const value = await prisma.value.create({
+              data: {
+                label: String(op.data.label || ''),
+                description: op.data.description
+                  ? String(op.data.description)
+                  : null,
+                rank: Number(op.data.rank) || 0,
+              },
+            })
+            resultAction = 'created'
+            resultEntityId = value.id
+            results.push({
+              entity: 'value',
+              action: 'created',
+              id: value.id,
+              title: value.label,
+            })
           }
-          const value = await prisma.value.create({
+        } else if (op.type === 'update' && op.existingId) {
+          const value = await prisma.value.update({
+            where: { id: op.existingId },
             data: {
-              label: String(op.data.label || ''),
-              description: op.data.description
-                ? String(op.data.description)
-                : null,
-              rank: Number(op.data.rank) || 0,
+              ...(op.data.label ? { label: String(op.data.label) } : {}),
+              ...(op.data.description
+                ? { description: String(op.data.description) }
+                : {}),
+              ...(op.data.rank !== undefined
+                ? { rank: Number(op.data.rank) }
+                : {}),
             },
           })
+          resultAction = 'updated'
+          resultEntityId = value.id
           results.push({
             entity: 'value',
-            action: 'created',
+            action: 'updated',
             id: value.id,
             title: value.label,
           })
         }
       }
     } catch (err) {
+      resultAction = `error: ${err instanceof Error ? err.message : String(err)}`
       results.push({
         entity: op.entity,
-        action: `error: ${err instanceof Error ? err.message : String(err)}`,
+        action: resultAction,
         id: op.existingId || '',
-        title: String(op.data?.title || op.data?.name || op.data?.label || ''),
+        title: entityTitle,
       })
     }
+
+    // Record the accepted suggestion with its result
+    await prisma.briefingSuggestion.create({
+      data: {
+        sessionId: session.id,
+        operationType: op.type,
+        entityType: op.entity,
+        entityTitle,
+        reason: op.reason || null,
+        proposedData: op.data as never,
+        decision: 'ACCEPTED',
+        rejectionReason: null,
+        resultAction: resultAction || null,
+        resultEntityId: resultEntityId || null,
+      },
+    })
   }
 
   // Process links
@@ -267,7 +382,6 @@ export async function POST(request: Request) {
     for (const link of links) {
       try {
         if (link.type === 'vehicleGoal') {
-          // Find vehicle
           let vehicleId = createdVehicles[link.vehicleTitle]
           if (!vehicleId) {
             const v = await prisma.vehicle.findFirst({
@@ -275,7 +389,6 @@ export async function POST(request: Request) {
             })
             if (v) vehicleId = v.id
           }
-          // Find goal
           let goalId = createdGoals[link.goalTitle]
           if (!goalId) {
             const g = await prisma.goal.findFirst({
@@ -311,5 +424,9 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ results, count: results.length })
+  return NextResponse.json({
+    results,
+    count: results.length,
+    sessionId: session.id,
+  })
 }
