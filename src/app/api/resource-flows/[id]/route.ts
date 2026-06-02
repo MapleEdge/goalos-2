@@ -10,6 +10,11 @@ export async function PATCH(
   const flow = await prisma.resourceFlow.update({
     where: { id },
     data: {
+      ...(body.resourceTypeId !== undefined
+        ? { resourceTypeId: body.resourceTypeId }
+        : {}),
+      ...(body.entityType !== undefined ? { entityType: body.entityType } : {}),
+      ...(body.entityId !== undefined ? { entityId: body.entityId } : {}),
       ...(body.amount !== undefined ? { amount: Number(body.amount) } : {}),
       ...(body.frequency !== undefined ? { frequency: body.frequency } : {}),
       ...(body.label !== undefined ? { label: body.label } : {}),

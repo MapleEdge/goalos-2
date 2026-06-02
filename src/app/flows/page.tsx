@@ -132,6 +132,25 @@ export default function FlowsPage() {
     'overview'
   )
 
+  // Edit flow state
+  const [editingFlow, setEditingFlow] = useState<ResourceFlow | null>(null)
+  const [editFlowTypeId, setEditFlowTypeId] = useState('')
+  const [editFlowEntityType, setEditFlowEntityType] = useState('VEHICLE')
+  const [editFlowEntityId, setEditFlowEntityId] = useState('')
+  const [editFlowDirection, setEditFlowDirection] = useState<
+    'INFLOW' | 'OUTFLOW'
+  >('INFLOW')
+  const [editFlowAmount, setEditFlowAmount] = useState('')
+  const [editFlowFrequency, setEditFlowFrequency] = useState('MONTHLY')
+  const [editFlowLabel, setEditFlowLabel] = useState('')
+  const [editFlowNotes, setEditFlowNotes] = useState('')
+
+  // Delete confirmation state
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    id: string
+    label: string
+  } | null>(null)
+
   // Fetch data
   const fetchTypes = useCallback(() => {
     fetch('/api/resource-types')
@@ -141,7 +160,7 @@ export default function FlowsPage() {
   }, [])
 
   const fetchFlows = useCallback(() => {
-    fetch('/api/resource-flows')
+    fetch('/api/resource-flows?activeOnly=false')
       .then((r) => r.json())
       .then(setFlows)
       .catch(() => setFlows([]))
@@ -250,6 +269,47 @@ export default function FlowsPage() {
 
   async function deleteFlow(id: string) {
     await fetch(`/api/resource-flows/${id}`, { method: 'DELETE' })
+    setDeleteConfirm(null)
+    fetchFlows()
+    fetchSummary()
+  }
+
+  function openEditFlow(f: ResourceFlow) {
+    setEditingFlow(f)
+    setEditFlowTypeId(f.resourceTypeId)
+    setEditFlowEntityType(f.entityType)
+    setEditFlowEntityId(f.entityId)
+    setEditFlowDirection(f.direction)
+    setEditFlowAmount(String(f.amount))
+    setEditFlowFrequency(f.frequency)
+    setEditFlowLabel(f.label)
+    setEditFlowNotes(f.notes || '')
+  }
+
+  async function updateFlow() {
+    if (
+      !editingFlow ||
+      !editFlowTypeId ||
+      !editFlowEntityId ||
+      !editFlowLabel.trim() ||
+      !editFlowAmount
+    )
+      return
+    await fetch(`/api/resource-flows/${editingFlow.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        resourceTypeId: editFlowTypeId,
+        entityType: editFlowEntityType,
+        entityId: editFlowEntityId,
+        direction: editFlowDirection,
+        amount: Number(editFlowAmount),
+        frequency: editFlowFrequency,
+        label: editFlowLabel,
+        notes: editFlowNotes || null,
+      }),
+    })
+    setEditingFlow(null)
     fetchFlows()
     fetchSummary()
   }
@@ -265,6 +325,9 @@ export default function FlowsPage() {
   }
 
   const filteredEntities = entities.filter((e) => e.type === flowEntityType)
+  const editFilteredEntities = entities.filter(
+    (e) => e.type === editFlowEntityType
+  )
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
@@ -488,6 +551,13 @@ export default function FlowsPage() {
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
                     <button
+                      onClick={() => openEditFlow(f)}
+                      className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
+                      title="Edit"
+                    >
+                      ✎
+                    </button>
+                    <button
                       onClick={() => toggleFlowActive(f.id, f.isActive)}
                       className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600"
                       title={f.isActive ? 'Pause' : 'Resume'}
@@ -495,7 +565,9 @@ export default function FlowsPage() {
                       {f.isActive ? '⏸' : '▶'}
                     </button>
                     <button
-                      onClick={() => deleteFlow(f.id)}
+                      onClick={() =>
+                        setDeleteConfirm({ id: f.id, label: f.label })
+                      }
                       className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-600"
                       title="Delete"
                     >
@@ -800,6 +872,199 @@ export default function FlowsPage() {
                 className="rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-800 disabled:opacity-50"
               >
                 Add Flow
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ─── Edit Flow Modal ─── */}
+      {editingFlow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-lg rounded-xl bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-semibold text-zinc-900 mb-3">
+              Edit Resource Flow
+            </h3>
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-zinc-600 mb-1">
+                    Resource Type *
+                  </label>
+                  <select
+                    value={editFlowTypeId}
+                    onChange={(e) => setEditFlowTypeId(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                  >
+                    <option value="">Select type...</option>
+                    {types.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.icon ? `${t.icon} ` : ''}
+                        {t.name} ({t.unit})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-32">
+                  <label className="block text-xs font-medium text-zinc-600 mb-1">
+                    Direction *
+                  </label>
+                  <select
+                    value={editFlowDirection}
+                    onChange={(e) =>
+                      setEditFlowDirection(
+                        e.target.value as 'INFLOW' | 'OUTFLOW'
+                      )
+                    }
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                  >
+                    <option value="INFLOW">Inflow</option>
+                    <option value="OUTFLOW">Outflow</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-zinc-600 mb-1">
+                    Entity Type *
+                  </label>
+                  <select
+                    value={editFlowEntityType}
+                    onChange={(e) => {
+                      setEditFlowEntityType(e.target.value)
+                      setEditFlowEntityId('')
+                    }}
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                  >
+                    {Object.entries(ENTITY_TYPE_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-zinc-600 mb-1">
+                    Entity *
+                  </label>
+                  <select
+                    value={editFlowEntityId}
+                    onChange={(e) => setEditFlowEntityId(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                  >
+                    <option value="">Select...</option>
+                    {editFilteredEntities.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-zinc-600 mb-1">
+                    Amount *
+                  </label>
+                  <input
+                    type="number"
+                    value={editFlowAmount}
+                    onChange={(e) => setEditFlowAmount(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-zinc-600 mb-1">
+                    Frequency *
+                  </label>
+                  <select
+                    value={editFlowFrequency}
+                    onChange={(e) => setEditFlowFrequency(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                  >
+                    {FREQ_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-600 mb-1">
+                  Label *
+                </label>
+                <input
+                  value={editFlowLabel}
+                  onChange={(e) => setEditFlowLabel(e.target.value)}
+                  placeholder="e.g. Monthly salary, Therapy sessions"
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-600 mb-1">
+                  Notes
+                </label>
+                <input
+                  value={editFlowNotes}
+                  onChange={(e) => setEditFlowNotes(e.target.value)}
+                  placeholder="Additional context"
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setEditingFlow(null)}
+                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={updateFlow}
+                disabled={
+                  !editFlowTypeId ||
+                  !editFlowEntityId ||
+                  !editFlowLabel.trim() ||
+                  !editFlowAmount
+                }
+                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-800 disabled:opacity-50"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Delete Confirmation Modal ─── */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-semibold text-zinc-900 mb-2">
+              Delete Flow
+            </h3>
+            <p className="text-sm text-zinc-600 mb-4">
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-zinc-800">
+                &ldquo;{deleteConfirm.label}&rdquo;
+              </span>
+              ? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteFlow(deleteConfirm.id)}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+              >
+                Delete
               </button>
             </div>
           </div>
