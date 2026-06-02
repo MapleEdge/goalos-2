@@ -36,9 +36,8 @@ export default function ProfilePage() {
             About
           </h2>
           <p className="text-sm text-zinc-500">
-            21-year-old Canadian student at the University of Toronto.
-            Economics Major, Statistics Minor. Running a software/app
-            development company.
+            21-year-old Canadian student at the University of Toronto. Economics
+            Major, Statistics Minor. Running a software/app development company.
           </p>
         </section>
 

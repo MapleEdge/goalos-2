@@ -52,9 +52,7 @@ export default function SettingsPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-zinc-700">
-                  Export Data
-                </p>
+                <p className="text-sm font-medium text-zinc-700">Export Data</p>
                 <p className="text-xs text-zinc-500 mt-0.5">
                   Download all your goals, vehicles, and stakeholders as JSON.
                 </p>
