@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useTimezone } from '@/lib/useTimezone'
 import { useTokens } from '@/lib/useTokens'
-
-const TIMEZONE_KEY = 'goalos-timezone'
 
 const ALL_TIMEZONES: string[] = (() => {
   try {
@@ -22,19 +21,21 @@ interface TzInfo {
 
 function getTzInfo(tz: string, now: Date): TzInfo {
   try {
-    const short = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
-      timeZoneName: 'short',
-    })
-      .formatToParts(now)
-      .find((p) => p.type === 'timeZoneName')?.value || ''
+    const short =
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        timeZoneName: 'short',
+      })
+        .formatToParts(now)
+        .find((p) => p.type === 'timeZoneName')?.value || ''
 
-    const long = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
-      timeZoneName: 'longOffset',
-    })
-      .formatToParts(now)
-      .find((p) => p.type === 'timeZoneName')?.value || ''
+    const long =
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        timeZoneName: 'longOffset',
+      })
+        .formatToParts(now)
+        .find((p) => p.type === 'timeZoneName')?.value || ''
 
     const offset = long.replace('GMT', 'UTC') || 'UTC'
     return {
@@ -48,28 +49,9 @@ function getTzInfo(tz: string, now: Date): TzInfo {
   }
 }
 
-function loadTimezone(): string {
-  try {
-    return (
-      localStorage.getItem(TIMEZONE_KEY) ||
-      Intl.DateTimeFormat().resolvedOptions().timeZone
-    )
-  } catch {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone
-  }
-}
-
-function saveTimezone(tz: string) {
-  try {
-    localStorage.setItem(TIMEZONE_KEY, tz)
-  } catch {
-    // localStorage unavailable
-  }
-}
-
 export default function SettingsPage() {
   const { tokensEnabled, setTokensEnabled } = useTokens()
-  const [timezone, setTimezone] = useState('')
+  const { timezone, setTimezone } = useTimezone()
   const [tzSearch, setTzSearch] = useState('')
   const [tzDropdownOpen, setTzDropdownOpen] = useState(false)
 
@@ -83,11 +65,10 @@ export default function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    const tz = loadTimezone()
-    setTimezone(tz)
-    const info = tzInfoMap.get(tz)
-    setTzSearch(info ? info.label : tz.replace(/_/g, ' '))
-  }, [tzInfoMap])
+    if (!timezone) return
+    const info = tzInfoMap.get(timezone)
+    setTzSearch(info ? info.label : timezone.replace(/_/g, ' '))
+  }, [tzInfoMap, timezone])
 
   const filteredTimezones = tzSearch
     ? ALL_TIMEZONES.filter((tz) => {
@@ -178,7 +159,6 @@ export default function SettingsPage() {
                             e.preventDefault()
                             setTimezone(tz)
                             setTzSearch(display)
-                            saveTimezone(tz)
                             setTzDropdownOpen(false)
                           }}
                           className={`w-full px-3 py-1.5 text-left text-xs hover:bg-zinc-50 ${
