@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ValuePills } from '@/components/ui/ValuePills'
+import { useTokens } from '@/lib/useTokens'
 import { TimeCommitmentStep } from './TimeCommitmentStep'
 
 interface TimeBlock {
@@ -74,6 +75,7 @@ export function CreateGoalForm({
   initialTargetDate?: string
   initialSuccessCriteria?: string
 }) {
+  const { tokensEnabled } = useTokens()
   const [title, setTitle] = useState(initialTitle)
   const [description, setDescription] = useState(initialDescription)
   const [targetDate, setTargetDate] = useState(initialTargetDate)
@@ -125,6 +127,10 @@ export function CreateGoalForm({
   }, [showStakeholders, allStakeholders.length])
 
   const fetchSuggestions = useCallback(() => {
+    if (!tokensEnabled) {
+      setSuggestions([])
+      return
+    }
     const goalText = [title, description, successCriteria].join(' ').trim()
     if (goalText.length < 5) {
       setSuggestions([])
@@ -138,7 +144,7 @@ export function CreateGoalForm({
       .then((r) => r.json())
       .then((data: SuggestedStakeholder[]) => setSuggestions(data))
       .catch(() => setSuggestions([]))
-  }, [title, description, successCriteria])
+  }, [title, description, successCriteria, tokensEnabled])
 
   useEffect(() => {
     if (suggestionsTimerRef.current) clearTimeout(suggestionsTimerRef.current)

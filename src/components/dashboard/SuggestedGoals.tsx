@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useTokens } from '@/lib/useTokens'
 
 interface GoalSuggestion {
   title: string
@@ -24,12 +25,18 @@ export function SuggestedGoals({
   refreshKey: number
   onCreateGoal: (title: string, description: string) => void
 }) {
+  const { tokensEnabled } = useTokens()
   const [data, setData] = useState<SuggestionsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [dismissedTitles, setDismissedTitles] = useState<Set<string>>(new Set())
 
   const fetchSuggestions = useCallback(() => {
+    if (!tokensEnabled) {
+      setLoading(false)
+      setRefreshing(false)
+      return () => {}
+    }
     let cancelled = false
     fetch('/api/goals/suggest')
       .then((r) => r.json())
@@ -49,7 +56,7 @@ export function SuggestedGoals({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [tokensEnabled])
 
   useEffect(() => {
     return fetchSuggestions()
@@ -60,6 +67,17 @@ export function SuggestedGoals({
     setRefreshing(true)
     setDismissedTitles(new Set())
     fetchSuggestions()
+  }
+
+  if (!tokensEnabled) {
+    return (
+      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+        <h3 className="text-sm font-semibold text-zinc-700 uppercase tracking-wider mb-2">
+          Suggested Next Goals
+        </h3>
+        <p className="text-xs text-zinc-400">Token usage is disabled. Enable &quot;Use Tokens&quot; to get AI-powered suggestions.</p>
+      </div>
+    )
   }
 
   if (!loading && !data && !refreshing) return null

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import { useTokens } from '@/lib/useTokens'
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -57,6 +58,7 @@ const ENTITY_LABELS: Record<string, string> = {
 // ── Component ────────────────────────────────────────────────────
 
 export default function BriefingPage() {
+  const { tokensEnabled } = useTokens()
   const [text, setText] = useState('')
   const [parsing, setParsing] = useState(false)
   const [applying, setApplying] = useState(false)
@@ -67,6 +69,10 @@ export default function BriefingPage() {
   const [error, setError] = useState<string | null>(null)
 
   const handleParse = useCallback(async () => {
+    if (!tokensEnabled) {
+      setError('Token usage is disabled. Enable "Use Tokens" on the dashboard to use briefing analysis.')
+      return
+    }
     setError(null)
     setParsing(true)
     setParseResult(null)
@@ -96,7 +102,7 @@ export default function BriefingPage() {
     } finally {
       setParsing(false)
     }
-  }, [text])
+  }, [text, tokensEnabled])
 
   const handleApply = useCallback(async () => {
     if (!parseResult) return

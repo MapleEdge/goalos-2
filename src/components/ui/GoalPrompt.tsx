@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { CreateGoalForm } from '@/components/dashboard/CreateGoalForm'
+import { useTokens } from '@/lib/useTokens'
 import { Modal } from './Modal'
 
 interface ParsedGoal {
@@ -205,22 +206,27 @@ function buildIntent(type: IntentType, input: string): IntentResult {
   }
 }
 
-async function detectIntent(input: string): Promise<IntentResult> {
+async function detectIntent(
+  input: string,
+  useAi = true
+): Promise<IntentResult> {
   const trimmed = input.trim()
 
-  try {
-    const res = await fetch('/api/intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: trimmed }),
-    })
-    const data = await res.json()
+  if (useAi) {
+    try {
+      const res = await fetch('/api/intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: trimmed }),
+      })
+      const data = await res.json()
 
-    if (data.llm && data.intent) {
-      return buildIntent(data.intent as IntentType, trimmed)
+      if (data.llm && data.intent) {
+        return buildIntent(data.intent as IntentType, trimmed)
+      }
+    } catch {
+      // LLM unavailable — fall through to regex
     }
-  } catch {
-    // LLM unavailable — fall through to regex
   }
 
   return detectIntentRegex(trimmed)
@@ -307,6 +313,7 @@ interface RecommendationsData {
 }
 
 export function GoalPrompt() {
+  const { tokensEnabled } = useTokens()
   const [inputValue, setInputValue] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [showProgress, setShowProgress] = useState(false)
@@ -443,7 +450,7 @@ export function GoalPrompt() {
     const trimmed = inputValue.trim()
     if (!trimmed) return
 
-    const intent = await detectIntent(trimmed)
+    const intent = await detectIntent(trimmed, tokensEnabled)
 
     switch (intent.type) {
       case 'review_all':
