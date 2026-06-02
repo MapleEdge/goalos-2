@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { CreateVehicleForm } from './CreateVehicleForm'
 
@@ -64,16 +64,16 @@ export function VehiclesList() {
   const [filter, setFilter] = useState<FilterStatus>('ALL')
   const [showCreate, setShowCreate] = useState(false)
 
-  async function load() {
+  const load = useCallback(async () => {
     const res = await fetch('/api/vehicles')
     const data: VehicleData[] = await res.json()
     setVehicles(data)
     setLoading(false)
-  }
+  }, [])
 
   useEffect(() => {
     load()
-  }, [])
+  }, [load])
 
   const filtered = vehicles.filter((v) => {
     if (filter === 'ALL') return true

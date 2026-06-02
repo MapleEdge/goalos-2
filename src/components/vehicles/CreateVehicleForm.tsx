@@ -82,96 +82,110 @@ export function CreateVehicleForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className={labelClass}>Title *</label>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder='e.g. "CS Degree at MIT"'
-          className={inputClass}
-          required
-        />
+        <label className={labelClass}>
+          Title *
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder='e.g. "CS Degree at MIT"'
+            className={inputClass}
+            required
+          />
+        </label>
       </div>
 
       <div>
-        <label className={labelClass}>Description</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="What leverage does this vehicle provide?"
-          className={inputClass}
-          rows={2}
-        />
+        <label className={labelClass}>
+          Description
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="What leverage does this vehicle provide?"
+            className={inputClass}
+            rows={2}
+          />
+        </label>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={labelClass}>Type *</label>
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            className={inputClass}
-          >
-            {VEHICLE_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.icon} {t.label}
-              </option>
-            ))}
-          </select>
+          <label className={labelClass}>
+            Type *
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className={inputClass}
+            >
+              {VEHICLE_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.icon} {t.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div>
-          <label className={labelClass}>Status</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className={inputClass}
-          >
-            {VEHICLE_STATUSES.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
+          <label className={labelClass}>
+            Status
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className={inputClass}
+            >
+              {VEHICLE_STATUSES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       </div>
 
       <div>
-        <label className={labelClass}>Institution / Organization</label>
-        <input
-          type="text"
-          value={institution}
-          onChange={(e) => setInstitution(e.target.value)}
-          placeholder='e.g. "MIT", "Stripe", "Grace Church"'
-          className={inputClass}
-        />
+        <label className={labelClass}>
+          Institution / Organization
+          <input
+            type="text"
+            value={institution}
+            onChange={(e) => setInstitution(e.target.value)}
+            placeholder='e.g. "MIT", "Stripe", "Grace Church"'
+            className={inputClass}
+          />
+        </label>
       </div>
 
       <div>
-        <label className={labelClass}>Aligned Value</label>
-        <select
-          value={valueId}
-          onChange={(e) => setValueId(e.target.value)}
-          className={inputClass}
-        >
-          <option value="">None</option>
-          {values.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.label}
-            </option>
-          ))}
-        </select>
+        <label className={labelClass}>
+          Aligned Value
+          <select
+            value={valueId}
+            onChange={(e) => setValueId(e.target.value)}
+            className={inputClass}
+          >
+            <option value="">None</option>
+            {values.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div>
-        <label className={labelClass}>Investment Notes</label>
-        <textarea
-          value={investmentNotes}
-          onChange={(e) => setInvestmentNotes(e.target.value)}
-          placeholder="Time, money, effort required..."
-          className={inputClass}
-          rows={2}
-        />
+        <label className={labelClass}>
+          Investment Notes
+          <textarea
+            value={investmentNotes}
+            onChange={(e) => setInvestmentNotes(e.target.value)}
+            placeholder="Time, money, effort required..."
+            className={inputClass}
+            rows={2}
+          />
+        </label>
       </div>
 
       <div className="flex justify-end gap-2 pt-2">
