@@ -212,15 +212,10 @@ function getMsalInstance(): PublicClientApplication {
 
 const MS_SCOPES = ['User.Read', 'Files.ReadWrite']
 
-async function signInWithMicrosoft(): Promise<MsUser> {
+async function signInWithMicrosoft(): Promise<void> {
   const msal = getMsalInstance()
   await msal.initialize()
-  const result = await msal.loginPopup({ scopes: MS_SCOPES })
-  return {
-    email: result.account.username,
-    name: result.account.name ?? result.account.username,
-    account: result.account,
-  }
+  await msal.loginRedirect({ scopes: MS_SCOPES })
 }
 
 async function getMsToken(account: AccountInfo): Promise<string> {
@@ -232,11 +227,11 @@ async function getMsToken(account: AccountInfo): Promise<string> {
     })
     return result.accessToken
   } catch {
-    const result = await msal.acquireTokenPopup({
+    await msal.acquireTokenRedirect({
       scopes: MS_SCOPES,
       account,
     })
-    return result.accessToken
+    throw new Error('Redirecting for token...')
   }
 }
 
@@ -317,11 +312,20 @@ export function BackupRestoreSection() {
   const hasGoogleConfig = Boolean(GOOGLE_CLIENT_ID && GOOGLE_API_KEY)
   const hasMsConfig = Boolean(MS_CLIENT_ID)
 
-  // Check for existing MSAL session on mount
+  // Handle MSAL redirect response + restore existing session on mount
   useEffect(() => {
     if (!hasMsConfig) return
     const msal = getMsalInstance()
-    msal.initialize().then(() => {
+    msal.initialize().then(async () => {
+      const response = await msal.handleRedirectPromise()
+      if (response?.account) {
+        setMsUser({
+          email: response.account.username,
+          name: response.account.name ?? response.account.username,
+          account: response.account,
+        })
+        return
+      }
       const accounts = msal.getAllAccounts()
       if (accounts[0]) {
         setMsUser({
@@ -355,13 +359,11 @@ export function BackupRestoreSection() {
     setAuthLoading('microsoft')
     setAuthError('')
     try {
-      const user = await signInWithMicrosoft()
-      setMsUser(user)
+      await signInWithMicrosoft()
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : 'Microsoft sign-in failed'
       if (!msg.includes('user_cancelled')) setAuthError(msg)
-    } finally {
       setAuthLoading(null)
     }
   }, [])
@@ -372,13 +374,14 @@ export function BackupRestoreSection() {
   }, [googleUser])
 
   const handleMsSignOut = useCallback(async () => {
+    const account = msUser?.account
     setMsUser(null)
     setOneDriveFiles([])
     setShowOneDrivePicker(false)
-    if (msUser) {
+    if (account) {
       const msal = getMsalInstance()
       try {
-        await msal.logoutPopup({ account: msUser.account })
+        await msal.logoutRedirect({ account })
       } catch {
         // Silent logout failure is OK
       }
