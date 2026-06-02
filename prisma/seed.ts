@@ -306,7 +306,8 @@ async function main() {
       description:
         'Obtain a strong recommendation letter from a CS professor for grad school applications. Need someone respected in the field who can speak to technical ability.',
       targetDate: new Date('2026-10-01'),
-      successCriteria: 'Signed recommendation letter submitted to 3 grad programs',
+      successCriteria:
+        'Signed recommendation letter submitted to 3 grad programs',
       status: 'ACTIVE',
     },
   })
@@ -541,9 +542,21 @@ async function main() {
         },
       ],
       valueExchangeAssets: [
-        { asset: 'academic recognition', category: 'status', notes: 'values having productive students to cite' },
-        { asset: 'research assistance', category: 'labor', notes: 'always needs help with grading and lab work' },
-        { asset: 'conference co-authorship', category: 'career', notes: 'wants more publications' },
+        {
+          asset: 'academic recognition',
+          category: 'status',
+          notes: 'values having productive students to cite',
+        },
+        {
+          asset: 'research assistance',
+          category: 'labor',
+          notes: 'always needs help with grading and lab work',
+        },
+        {
+          asset: 'conference co-authorship',
+          category: 'career',
+          notes: 'wants more publications',
+        },
       ],
       userAssets: [
         { asset: 'grading assistance', category: 'labor' },
@@ -562,7 +575,8 @@ async function main() {
       role: 'Professor, CS 450 Advanced Algorithms',
       relationshipStrength: 25,
       lastInteraction: new Date('2026-01-15'),
-      notes: 'Tough grader. Known to write very strong recommendation letters for students who impress him. Has a reputation for enjoying attention from attractive women.',
+      notes:
+        'Tough grader. Known to write very strong recommendation letters for students who impress him. Has a reputation for enjoying attention from attractive women.',
       capabilities: [
         {
           type: 'capability',
@@ -580,10 +594,26 @@ async function main() {
         },
       ],
       valueExchangeAssets: [
-        { asset: 'sexual favors from attractive women', category: 'sexual', notes: 'known to respond to physical attention from pretty women' },
-        { asset: 'research publication credit', category: 'career', notes: 'wants more first-author papers' },
-        { asset: 'grant writing assistance', category: 'labor', notes: 'behind on NSF grant proposals' },
-        { asset: 'flattery and public praise', category: 'ego', notes: 'responds well to being told he is brilliant' },
+        {
+          asset: 'sexual favors from attractive women',
+          category: 'sexual',
+          notes: 'known to respond to physical attention from pretty women',
+        },
+        {
+          asset: 'research publication credit',
+          category: 'career',
+          notes: 'wants more first-author papers',
+        },
+        {
+          asset: 'grant writing assistance',
+          category: 'labor',
+          notes: 'behind on NSF grant proposals',
+        },
+        {
+          asset: 'flattery and public praise',
+          category: 'ego',
+          notes: 'responds well to being told he is brilliant',
+        },
       ],
       userAssets: [
         { asset: 'attractive appearance', category: 'physical' },
@@ -626,9 +656,21 @@ async function main() {
         },
       ],
       valueExchangeAssets: [
-        { asset: 'deal flow / promising startups', category: 'career', notes: 'needs to source good deals to maintain partner status' },
-        { asset: 'portfolio company introductions', category: 'network', notes: 'looking for synergies across portfolio' },
-        { asset: 'speaking invitations', category: 'status', notes: 'building personal brand as thought leader' },
+        {
+          asset: 'deal flow / promising startups',
+          category: 'career',
+          notes: 'needs to source good deals to maintain partner status',
+        },
+        {
+          asset: 'portfolio company introductions',
+          category: 'network',
+          notes: 'looking for synergies across portfolio',
+        },
+        {
+          asset: 'speaking invitations',
+          category: 'status',
+          notes: 'building personal brand as thought leader',
+        },
       ],
       userAssets: [
         { asset: 'demo of AI product', category: 'product' },
@@ -669,7 +711,11 @@ async function main() {
         },
       ],
       valueExchangeAssets: [
-        { asset: 'novel research contributions', category: 'career', notes: 'needs publications for tenure review' },
+        {
+          asset: 'novel research contributions',
+          category: 'career',
+          notes: 'needs publications for tenure review',
+        },
         { asset: 'grant writing support', category: 'labor' },
         { asset: 'data annotation labor', category: 'labor' },
       ],
@@ -776,7 +822,8 @@ async function main() {
       role: 'Landlord',
       relationshipStrength: 20,
       lastInteraction: new Date('2026-03-01'),
-      notes: 'Owns several apartments near campus. Strict about payments but negotiable on lease terms.',
+      notes:
+        'Owns several apartments near campus. Strict about payments but negotiable on lease terms.',
       capabilities: [
         {
           type: 'capability',
@@ -788,7 +835,11 @@ async function main() {
       ],
       valueExchangeAssets: [
         { asset: 'money / rent payments', category: 'financial' },
-        { asset: 'property maintenance help', category: 'labor', notes: 'always looking for handy tenants' },
+        {
+          asset: 'property maintenance help',
+          category: 'labor',
+          notes: 'always looking for handy tenants',
+        },
         { asset: 'long-term lease commitment', category: 'financial' },
         { asset: 'tenant referrals', category: 'network' },
       ],
@@ -849,9 +900,7 @@ async function main() {
         { asset: 'co-authorship credit', category: 'career' },
         { asset: 'coding help', category: 'labor' },
       ],
-      userAssets: [
-        { asset: 'data visualization skills', category: 'labor' },
-      ],
+      userAssets: [{ asset: 'data visualization skills', category: 'labor' }],
     },
     {
       name: 'Emily Zhang',
