@@ -173,5 +173,5 @@ echo ""
 if groups "$USER" 2>/dev/null | grep -qw docker; then
   true
 else
-  warn "You were added to the 'docker' group. Log out and back in (or run 'newgrp docker') for it to take effect."
+  warn "You are not in the 'docker' group. Run 'sudo usermod -aG docker $USER' then log out and back in (or run 'newgrp docker')."
 fi

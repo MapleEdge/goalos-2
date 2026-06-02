@@ -35,8 +35,13 @@ fi
 if ! docker compose ps --status running 2>/dev/null | grep -q db; then
   info "Starting PostgreSQL..."
   docker compose up -d
-  # Wait for readiness
+  # Wait for readiness (with timeout)
+  RETRIES=0
   until docker compose exec -T db pg_isready -U goalos -d goalos &>/dev/null 2>&1; do
+    RETRIES=$((RETRIES + 1))
+    if [[ $RETRIES -ge 30 ]]; then
+      fail "PostgreSQL did not become ready within 30 seconds"
+    fi
     sleep 1
   done
   ok "PostgreSQL is ready"
