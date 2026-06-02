@@ -38,7 +38,7 @@ const geminiCircuitBreaker = createCircuitBreakerPolicy({
   halfOpenAfter: 30_000,
 })
 
-const geminiPolicy = wrap(geminiRetry, geminiCircuitBreaker)
+const geminiPolicy = wrap(geminiCircuitBreaker, geminiRetry)
 
 // ── Resilient wrapper for Gemini API calls ──────────────────────
 

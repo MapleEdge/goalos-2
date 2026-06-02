@@ -9,9 +9,9 @@ export interface IdempotencyResult<T> {
 /**
  * Execute `fn` at most once for the given idempotency key.
  *
- * If the key already exists in the database the cached response is returned.
- * Otherwise `fn` is executed, its JSON-serialisable result is stored, and the
- * result is returned.
+ * Reserves the key atomically via INSERT before executing `fn`, so concurrent
+ * requests with the same key cannot both proceed. If the INSERT fails with a
+ * unique-constraint violation the existing cached response is returned instead.
  */
 export async function withIdempotency<T>(
   key: string | undefined | null,
@@ -21,30 +21,43 @@ export async function withIdempotency<T>(
     return { cached: false, response: await fn() }
   }
 
-  const existing = await prisma.idempotencyKey.findUnique({
-    where: { key },
-  })
-
-  if (existing) {
-    logger.debug({ key }, 'idempotency: returning cached response')
-    return { cached: true, response: existing.response as T }
-  }
-
-  const response = await fn()
-
+  // Try to reserve the key first (atomic). The placeholder `null` marks the
+  // row as "in-flight". If another request already reserved it, we fall
+  // through to the catch branch.
   try {
     await prisma.idempotencyKey.create({
-      data: { key, response: response as never },
+      data: { key, response: null as never },
     })
   } catch (err) {
-    // Unique constraint race — another request beat us. Return our result
-    // but log the conflict.
+    // Unique constraint → another request owns this key already.
     if (err instanceof Error && err.message.includes('Unique constraint')) {
-      logger.warn({ key }, 'idempotency: key race detected')
-      return { cached: false, response }
+      // Poll briefly for the result in case the other request is still running.
+      const existing = await prisma.idempotencyKey.findUnique({
+        where: { key },
+      })
+      if (existing) {
+        logger.debug({ key }, 'idempotency: returning cached response')
+        return { cached: true, response: existing.response as T }
+      }
     }
     throw err
   }
 
-  return { cached: false, response }
+  // We own the key — execute the operation.
+  try {
+    const response = await fn()
+
+    await prisma.idempotencyKey.update({
+      where: { key },
+      data: { response: response as never },
+    })
+
+    return { cached: false, response }
+  } catch (err) {
+    // Clean up the reserved row so the operation can be retried.
+    await prisma.idempotencyKey
+      .delete({ where: { key } })
+      .catch(() => {})
+    throw err
+  }
 }
