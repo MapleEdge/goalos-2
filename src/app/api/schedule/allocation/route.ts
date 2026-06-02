@@ -40,8 +40,9 @@ export async function GET(request: Request) {
   } else if (period === 'month') {
     start = new Date(now.getFullYear(), now.getMonth(), 1)
     end = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-    daysInPeriod =
-      Math.ceil((now.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) || 1
+    daysInPeriod = Math.ceil(
+      (end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)
+    )
   } else if (period === 'all') {
     start = new Date(0)
     end = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000)
