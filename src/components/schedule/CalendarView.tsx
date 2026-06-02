@@ -25,6 +25,8 @@ export interface ScheduleEvent {
   goalId?: string | null
   actionId?: string | null
   color?: string | null
+  recurrence?: string | null
+  recurrenceGroupId?: string | null
   calendarConnection?: {
     provider: string
     accountEmail: string
@@ -131,8 +133,8 @@ export function CalendarView({
         nowIndicator={true}
         height="auto"
         expandRows={true}
-        slotMinTime="06:00:00"
-        slotMaxTime="22:00:00"
+        slotMinTime="00:00:00"
+        slotMaxTime="24:00:00"
         allDaySlot={true}
         eventTimeFormat={{
           hour: 'numeric',

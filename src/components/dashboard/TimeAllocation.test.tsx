@@ -16,6 +16,7 @@ interface AllocationEntry {
 interface AllocationData {
   period: string
   totalMinutes: number
+  periodTotalMinutes: number
   daysInPeriod: number
   avgMinutesPerDay: number
   allocations: AllocationEntry[]
@@ -27,6 +28,7 @@ function makeResponse(overrides: Partial<AllocationData> = {}): AllocationData {
   return {
     period: 'week',
     totalMinutes: 1620,
+    periodTotalMinutes: 10080, // 7 days × 24h × 60min
     daysInPeriod: 7,
     avgMinutesPerDay: 231,
     allocations: [
@@ -62,6 +64,7 @@ function makeResponse(overrides: Partial<AllocationData> = {}): AllocationData {
 const emptyResponse: AllocationData = {
   period: 'week',
   totalMinutes: 0,
+  periodTotalMinutes: 10080,
   daysInPeriod: 7,
   avgMinutesPerDay: 0,
   allocations: [],
@@ -210,7 +213,8 @@ describe('TimeAllocation component', () => {
       render(<TimeAllocation />)
 
       await waitFor(() => {
-        expect(screen.getByText('27h')).toBeInTheDocument()
+        // Donut center now shows period capacity: 10080min / 60 = 168h
+        expect(screen.getByText('168h')).toBeInTheDocument()
         expect(screen.getByText('total')).toBeInTheDocument()
       })
     })
@@ -305,8 +309,8 @@ describe('TimeAllocation component', () => {
     })
 
     it('rounds totalHours to one decimal place', async () => {
-      // 150 min = 2.5h
-      mockFetch(makeResponse({ totalMinutes: 150 }))
+      // periodTotalMinutes = 150 → 150/60 = 2.5h
+      mockFetch(makeResponse({ periodTotalMinutes: 150 }))
       render(<TimeAllocation />)
 
       await waitFor(() => {
@@ -346,6 +350,7 @@ describe('TimeAllocation component', () => {
         day: makeResponse({
           period: 'day',
           totalMinutes: 300,
+          periodTotalMinutes: 1440, // 24h × 60min
           daysInPeriod: 1,
           avgMinutesPerDay: 300,
         }),
@@ -353,13 +358,15 @@ describe('TimeAllocation component', () => {
       render(<TimeAllocation />)
 
       await waitFor(() => {
-        expect(screen.getByText('27h')).toBeInTheDocument()
+        // Week capacity: 168h
+        expect(screen.getByText('168h')).toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByText('day'))
 
       await waitFor(() => {
-        expect(screen.getByText('5h')).toBeInTheDocument()
+        // Day capacity: 24h
+        expect(screen.getByText('24h')).toBeInTheDocument()
       })
     })
 
@@ -369,6 +376,7 @@ describe('TimeAllocation component', () => {
         month: makeResponse({
           period: 'month',
           totalMinutes: 2400,
+          periodTotalMinutes: 43200, // 30 days × 24h × 60min = 720h
           daysInPeriod: 30,
           avgMinutesPerDay: 80,
         }),
@@ -376,13 +384,15 @@ describe('TimeAllocation component', () => {
       render(<TimeAllocation />)
 
       await waitFor(() => {
-        expect(screen.getByText('27h')).toBeInTheDocument()
+        // Week capacity: 168h
+        expect(screen.getByText('168h')).toBeInTheDocument()
       })
 
       fireEvent.click(screen.getByText('month'))
 
       await waitFor(() => {
-        expect(screen.getByText('40h')).toBeInTheDocument()
+        // Month capacity: 720h
+        expect(screen.getByText('720h')).toBeInTheDocument()
       })
     })
   })

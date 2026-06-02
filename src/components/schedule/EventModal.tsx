@@ -17,6 +17,7 @@ interface EventModalProps {
     allDay?: boolean
     location?: string
     color?: string
+    recurrence?: string
   }) => void
   onDelete?: () => void
   onClose: () => void
@@ -49,6 +50,7 @@ export function EventModal({
   const [endTime, setEndTime] = useState(toLocalDatetime(end))
   const [allDay, setAllDay] = useState(initialAllDay ?? event?.allDay ?? false)
   const [color, setColor] = useState(event?.color || '')
+  const [recurrence, setRecurrence] = useState(event?.recurrence || 'none')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   function handleSubmit(e: React.FormEvent) {
@@ -62,6 +64,7 @@ export function EventModal({
       allDay,
       location: location.trim() || undefined,
       color: color || undefined,
+      recurrence: recurrence !== 'none' ? recurrence : undefined,
     })
   }
 
@@ -203,6 +206,24 @@ export function EventModal({
                 className="w-full rounded-lg border border-zinc-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
+          </div>
+
+          {/* Repeat */}
+          <div>
+            <label className="text-xs font-medium text-zinc-500 mb-1 block">
+              Repeat
+            </label>
+            <select
+              value={recurrence}
+              onChange={(e) => setRecurrence(e.target.value)}
+              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="none">Does not repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
           </div>
 
           {/* Color picker */}

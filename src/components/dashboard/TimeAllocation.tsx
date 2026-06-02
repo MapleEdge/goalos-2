@@ -15,6 +15,7 @@ interface AllocationEntry {
 interface AllocationData {
   period: string
   totalMinutes: number
+  periodTotalMinutes: number
   daysInPeriod: number
   avgMinutesPerDay: number
   allocations: AllocationEntry[]
@@ -105,8 +106,10 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
     )
   }
 
-  const totalHours = Math.round((data.totalMinutes / 60) * 10) / 10
+  const periodHours = Math.round((data.periodTotalMinutes / 60) * 10) / 10
   const avgPerDay = formatMinutes(data.avgMinutesPerDay || 0)
+  const allocatedPct = data.allocations.reduce((s, a) => s + a.percentage, 0)
+  const unallocatedPct = Math.max(0, 100 - allocatedPct)
 
   return (
     <Card>
@@ -116,6 +119,17 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
       <div className="flex items-center gap-4 mb-3">
         <div className="relative h-24 w-24 shrink-0">
           <svg viewBox="0 0 36 36" className="h-24 w-24 -rotate-90">
+            {/* Grey background ring for unallocated time */}
+            {unallocatedPct > 0 && (
+              <circle
+                cx="18"
+                cy="18"
+                r="15.9155"
+                fill="none"
+                stroke="#e4e4e7"
+                strokeWidth="3.5"
+              />
+            )}
             {
               data.allocations.reduce(
                 (acc, entry) => {
@@ -143,7 +157,7 @@ export function TimeAllocation({ refreshKey = 0 }: { refreshKey?: number }) {
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-sm font-bold text-zinc-900">
-              {totalHours}h
+              {periodHours}h
             </span>
             <span className="text-[9px] text-zinc-500">total</span>
           </div>
