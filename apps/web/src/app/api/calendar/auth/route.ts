@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getConnector, getRedirectUri } from '@/lib/calendar'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function GET(request: Request) {
+  await requireAuthUserId()
   const { searchParams } = new URL(request.url)
   const provider = searchParams.get('provider')?.toUpperCase()
 

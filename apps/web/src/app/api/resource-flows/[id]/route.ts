@@ -1,10 +1,12 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await requireAuthUserId()
   const { id } = await params
   const body = await request.json()
   const flow = await prisma.resourceFlow.update({
@@ -37,6 +39,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await requireAuthUserId()
   const { id } = await params
   await prisma.resourceFlow.delete({ where: { id } })
   return NextResponse.json({ ok: true })

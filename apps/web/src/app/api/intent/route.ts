@@ -1,5 +1,6 @@
 import { getGeminiClient } from '@goalos/shared/lib/gemini'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 import {
   consumeCredit,
   resolveEntitlementFromRequest,
@@ -59,6 +60,7 @@ function extractNavPage(input: string): string | null {
 }
 
 export async function POST(request: Request) {
+  await requireAuthUserId()
   const { input } = await request.json()
   if (!input || typeof input !== 'string') {
     return NextResponse.json({ error: 'input is required' }, { status: 400 })

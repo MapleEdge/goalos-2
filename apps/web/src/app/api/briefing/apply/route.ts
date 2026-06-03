@@ -5,6 +5,7 @@ import { trackError } from '@/lib/errors/monitoring'
 import { errorResponse } from '@/lib/errors/response'
 import { ValidationError } from '@/lib/errors/types'
 import { recordEvent } from '@/lib/events/store'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 interface OpData {
   [key: string]: unknown
@@ -26,6 +27,7 @@ interface LinkOp {
 }
 
 export async function POST(request: Request) {
+  const userId = await requireAuthUserId()
   const requestId = generateRequestId()
   try {
     const { operations, links } = (await request.json()) as {
@@ -65,6 +67,7 @@ export async function POST(request: Request) {
                 targetDate: op.data.targetDate
                   ? new Date(String(op.data.targetDate))
                   : null,
+                userId,
               },
             })
             await recordEvent('GOAL', goal.id, 'CREATED', {
@@ -115,6 +118,7 @@ export async function POST(request: Request) {
                 institution: op.data.institution
                   ? String(op.data.institution)
                   : null,
+                userId,
               },
             })
             await recordEvent('VEHICLE', vehicle.id, 'CREATED', {
@@ -164,6 +168,7 @@ export async function POST(request: Request) {
                 role: op.data.role ? String(op.data.role) : null,
                 notes: op.data.notes ? String(op.data.notes) : null,
                 relationshipStrength: Number(op.data.relationshipStrength) || 0,
+                userId,
               },
             })
             await recordEvent('STAKEHOLDER', stakeholder.id, 'CREATED', {
@@ -248,6 +253,7 @@ export async function POST(request: Request) {
                   ? String(op.data.description)
                   : null,
                 rank: Number(op.data.rank) || 0,
+                userId,
               },
             })
             results.push({

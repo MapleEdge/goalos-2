@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react'
 import { useState } from 'react'
 
 export default function SignupPage() {
@@ -33,23 +32,8 @@ export default function SignupPage() {
         return
       }
 
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      })
-
-      setLoading(false)
-
-      if (result?.error) {
-        setError(
-          'Account created but failed to sign in. Please try logging in.'
-        )
-        return
-      }
-
-      router.push('/')
-      router.refresh()
+      // Redirect to verify-email page — user must confirm before signing in
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`)
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
@@ -126,7 +110,7 @@ export default function SignupPage() {
               placeholder="••••••••"
             />
             <p className="mt-1 text-xs text-zinc-400">
-              Must be at least 8 characters
+              Min 8 characters, with uppercase, lowercase, and a digit
             </p>
           </div>
 

@@ -1,5 +1,6 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 import { appBaseUrl, getStripe } from '@/lib/server/stripe'
 
 /**
@@ -7,6 +8,7 @@ import { appBaseUrl, getStripe } from '@/lib/server/stripe'
  * their plan. Requires a token already linked to a Stripe customer (i.e. paid).
  */
 export async function POST(request: Request) {
+  await requireAuthUserId()
   const stripe = getStripe()
   if (!stripe) {
     return NextResponse.json(

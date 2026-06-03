@@ -1,6 +1,7 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import type { FlowDirection, FlowFrequency, NodeType } from '@prisma/client'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 // Normalize any frequency to a monthly multiplier
 const MONTHLY_MULTIPLIER: Record<FlowFrequency, number> = {
@@ -99,6 +100,7 @@ async function resolveEntityName(
 }
 
 export async function GET(request: Request) {
+  await requireAuthUserId()
   const { searchParams } = new URL(request.url)
   const entityType = searchParams.get('entityType') as NodeType | null
   const entityId = searchParams.get('entityId')

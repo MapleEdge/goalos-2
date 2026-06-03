@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { allConnectors } from '@/lib/connectors/mock'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function GET() {
+  await requireAuthUserId()
   const connectors = allConnectors.map((c) => ({
     name: c.name,
     configured: c.isConfigured(),
@@ -10,6 +12,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  await requireAuthUserId()
   const body = await request.json()
   const connector = allConnectors.find((c) => c.name === body.connector)
 

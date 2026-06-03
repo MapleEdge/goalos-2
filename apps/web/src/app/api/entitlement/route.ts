@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 import {
   resolveEntitlementFromRequest,
   toPublicEntitlement,
@@ -9,6 +10,7 @@ import {
  * current tier, model labels, and credit usage. Never exposes the API key.
  */
 export async function GET(request: Request) {
+  await requireAuthUserId()
   const entitlement = await resolveEntitlementFromRequest(request)
   return NextResponse.json(toPublicEntitlement(entitlement))
 }

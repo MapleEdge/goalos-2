@@ -2,6 +2,7 @@ import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { isPlanId, type PlanId } from '@/lib/plan'
+import { requireAuthUserId } from '@/lib/server/auth'
 import { appBaseUrl, getStripe, priceIdForPlan } from '@/lib/server/stripe'
 
 /**
@@ -10,6 +11,7 @@ import { appBaseUrl, getStripe, priceIdForPlan } from '@/lib/server/stripe'
  * back to this install and provision the customer's API key.
  */
 export async function POST(request: Request) {
+  await requireAuthUserId()
   const stripe = getStripe()
   if (!stripe) {
     return NextResponse.json(

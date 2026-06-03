@@ -1126,6 +1126,7 @@ __metadata:
     prisma: "npm:^7.8.0"
     react: "npm:19.2.4"
     react-dom: "npm:19.2.4"
+    resend: "npm:^6.12.4"
     stripe: "npm:^22.2.0"
     tailwindcss: "npm:^4"
     tsx: "npm:^4.21.0"
@@ -3250,6 +3251,13 @@ __metadata:
   version: 1.2.0
   resolution: "@simple-libs/stream-utils@npm:1.2.0"
   checksum: 10/80a2602f0e96515cab1f4ab054dccd0ee570b0a0b1722189d29fe2625e96a63b83c87486259268101b8b15a77a129aaca22bf480cf111e0910650af0820d26ee
+  languageName: node
+  linkType: hard
+
+"@stablelib/base64@npm:^1.0.0":
+  version: 1.0.1
+  resolution: "@stablelib/base64@npm:1.0.1"
+  checksum: 10/93f3edb05d5a828a775d23ebde49884abeb456b8946942acbe6a0815630e769c59c06c7275983031c8707bdcefc1c62917aaa99522ff1ec5f457704c83b686da
   languageName: node
   linkType: hard
 
@@ -5422,6 +5430,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fast-sha256@npm:^1.3.0":
+  version: 1.3.0
+  resolution: "fast-sha256@npm:1.3.0"
+  checksum: 10/3bef0491f10a254348ec11dcddb26e4d951cfd3b4c0662ea5843ad1be3fe184ed74d640df68565fcc60f6437548cddf49e3ac886f88a69e05b5142e862840bf9
+  languageName: node
+  linkType: hard
+
 "fast-uri@npm:^3.0.1":
   version: 3.1.2
   resolution: "fast-uri@npm:3.1.2"
@@ -7516,6 +7531,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"postal-mime@npm:2.7.4":
+  version: 2.7.4
+  resolution: "postal-mime@npm:2.7.4"
+  checksum: 10/ba75fd12ab05dd44de5d87f3a7865078d94a41ea2ad22f028ee0aa7f934dd6a339db4c7877fae7abe5eefdfd7728d52d22b9d981adc465bebaca0a30481bd948
+  languageName: node
+  linkType: hard
+
 "postcss@npm:8.4.31":
   version: 8.4.31
   resolution: "postcss@npm:8.4.31"
@@ -7891,6 +7913,21 @@ __metadata:
     debug: "npm:^4.3.5"
     module-details-from-path: "npm:^1.0.3"
   checksum: 10/4ce98c681489d383a0ffccb79b06df7a1dffbb31c13f3b713ae2c5a1967597a259e67612507ef69748d83d531bba7c9bb0477211771fe78c685e1d52b1a44b64
+  languageName: node
+  linkType: hard
+
+"resend@npm:^6.12.4":
+  version: 6.12.4
+  resolution: "resend@npm:6.12.4"
+  dependencies:
+    postal-mime: "npm:2.7.4"
+    standardwebhooks: "npm:1.0.0"
+  peerDependencies:
+    "@react-email/render": "*"
+  peerDependenciesMeta:
+    "@react-email/render":
+      optional: true
+  checksum: 10/c7c6088fac8bb0925360abd565aff47de40f3593a6167c991f316eff2704c4f624bf8390f028a2843f47f7febd1cf3ac6ec7a7ed14f4970fc7ce93b1d113968f
   languageName: node
   linkType: hard
 
@@ -8397,6 +8434,16 @@ __metadata:
   dependencies:
     type-fest: "npm:^0.7.1"
   checksum: 10/1120cf716606ec6a8e25cc9b6ada79d7b91e6a599bba1a6664e6badc8b5f37987d7df7d9ad0344f717a042781fd8e1e999de08614a5afea451b68902421036b5
+  languageName: node
+  linkType: hard
+
+"standardwebhooks@npm:1.0.0":
+  version: 1.0.0
+  resolution: "standardwebhooks@npm:1.0.0"
+  dependencies:
+    "@stablelib/base64": "npm:^1.0.0"
+    fast-sha256: "npm:^1.3.0"
+  checksum: 10/02b74a3e4cd131affe8bf18945360747a5a0bf81c1d62a7bbbea3d40976b4fef4bb37de71a35cdc0fdc4d6f0d951a3b6031052e78bd086dc9b09b629b82d3919
   languageName: node
   linkType: hard
 

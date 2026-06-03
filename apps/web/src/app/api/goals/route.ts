@@ -6,15 +6,15 @@ import { trackError } from '@/lib/errors/monitoring'
 import { errorResponse } from '@/lib/errors/response'
 import { ValidationError } from '@/lib/errors/types'
 import { recordEventInTransaction } from '@/lib/events/store'
-import { getAuthUserId } from '@/lib/server/auth'
+import { requireAuthUserId } from '@/lib/server/auth'
 import { withIdempotency } from '@/lib/utils/idempotency'
 
 export async function GET() {
   const requestId = generateRequestId()
   try {
-    const userId = await getAuthUserId()
+    const userId = await requireAuthUserId()
     const goals = await prisma.goal.findMany({
-      where: userId ? { userId } : undefined,
+      where: { userId },
       include: {
         prerequisites: { include: { evidence: true } },
         actions: true,
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       idempotencyKey,
       () =>
         withTransaction(async (tx) => {
-          const userId = await getAuthUserId()
+          const userId = await requireAuthUserId()
           const created = await tx.goal.create({
             data: {
               title: body.title,
