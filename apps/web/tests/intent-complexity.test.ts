@@ -392,7 +392,7 @@ function detectQuickPatterns(input: string): QuickPattern | null {
   }
 
   if (
-    /\b(what(?:'s| is)? on my (calendar|schedule)|upcoming events|what (meetings|events) do i have|events (this|next) week)\b/.test(
+    /\b(what(?:'?s| is)? on my (calendar|schedule)|upcoming events|what (meetings|events) do i have|events (this|next) week)\b/.test(
       lower
     )
   ) {
@@ -800,5 +800,306 @@ describe('classifyWithComplexityRouting', () => {
       expect(result.intent).toBe('create_goal')
       expect(result.usedQuickPattern).toBe(false)
     })
+  })
+})
+
+// ===========================================================================
+// Large labeled dataset
+//
+// A broad, mostly template-generated corpus of (input, expected intent,
+// expected route) tuples used to exercise the router at volume and to make
+// tuning regressions obvious. Generators keep each category internally
+// consistent so a single threshold change surfaces as many failing rows.
+// ===========================================================================
+
+interface RoutingCase {
+  input: string
+  intent: Intent
+  route: Route
+  page?: string
+}
+
+// --- Navigation: templates x known pages (all cheap -> embeddings) ----------
+const NAV_TEMPLATES = [
+  'go to the',
+  'open the',
+  'navigate to the',
+  'take me to the',
+  'show me the',
+  'jump to the',
+]
+
+const NAV_PAGES: Array<[string, string]> = [
+  ['schedule', '/schedule'],
+  ['calendar', '/schedule'],
+  ['graph', '/graph'],
+  ['timeline', '/timeline'],
+  ['history', '/timeline'],
+  ['events', '/timeline'],
+  ['dashboard', '/'],
+  ['home', '/'],
+]
+
+const navigationCases: RoutingCase[] = NAV_TEMPLATES.flatMap((template) =>
+  NAV_PAGES.map(([keyword, page]) => ({
+    input: `${template} ${keyword}`,
+    intent: 'navigate' as const,
+    route: 'embeddings' as const,
+    page,
+  }))
+)
+
+// --- Help (all cheap -> embeddings) -----------------------------------------
+const helpCases: RoutingCase[] = [
+  'help',
+  'help me',
+  'what can you do',
+  'what can i say',
+  'what can i do',
+  'list the commands',
+  'list commands',
+  'how does this work',
+  'commands',
+].map((input) => ({ input, intent: 'help', route: 'embeddings' }))
+
+// --- Review all (all cheap -> embeddings) -----------------------------------
+const reviewAllCases: RoutingCase[] = [
+  'show me all my goals',
+  'review all my goals',
+  'list my goals',
+  'list all my goals',
+  'all my goals',
+  'give me an overview of my goals',
+  'overview of my goals',
+  'summarize my goals',
+  'summarise my goals',
+  'review all',
+  'see all my goals',
+].map((input) => ({ input, intent: 'review_all', route: 'embeddings' }))
+
+// --- Progress: short, topic-templated (medium -> embeddings) ----------------
+const PROGRESS_TOPICS = [
+  'goal',
+  'project',
+  'fitness goal',
+  'spanish learning',
+  'reading habit',
+  'side project',
+  'savings plan',
+  'marathon training',
+  'meditation practice',
+  'writing project',
+]
+
+const progressCases: RoutingCase[] = [
+  ...PROGRESS_TOPICS.map((topic) => ({
+    input: `how is my ${topic} going`,
+    intent: 'progress' as const,
+    route: 'embeddings' as const,
+  })),
+  ...[
+    'how am i doing',
+    'status of my project',
+    'progress on my fitness goal',
+    'progress of my plan',
+    'how are my goals progressing',
+  ].map((input) => ({
+    input,
+    intent: 'progress' as const,
+    route: 'embeddings' as const,
+  })),
+]
+
+// --- Work on: short (medium -> embeddings) ----------------------------------
+const WORK_ON_SUFFIXES = ['', 'next', 'first', 'right now', 'now']
+
+const workOnCases: RoutingCase[] = [
+  ...WORK_ON_SUFFIXES.map((suffix) => ({
+    input: `what should i work on ${suffix}`.trim(),
+    intent: 'work_on' as const,
+    route: 'embeddings' as const,
+  })),
+  ...[
+    'what should i do',
+    'what should i focus on',
+    'what is my next action',
+    'what are my next steps',
+    'what should i prioritize',
+    'prioritize my tasks',
+    'what should i tackle first',
+  ].map((input) => ({
+    input,
+    intent: 'work_on' as const,
+    route: 'embeddings' as const,
+  })),
+]
+
+// --- Schedule query: short (medium -> embeddings) ---------------------------
+const scheduleCases: RoutingCase[] = [
+  'what is on my calendar',
+  'whats on my calendar',
+  'what is on my schedule',
+  'whats on my schedule',
+  'my upcoming events',
+  'upcoming events',
+  'what meetings do i have',
+  'what events do i have',
+  'events this week',
+  'events next week',
+].map((input) => ({ input, intent: 'schedule_query', route: 'embeddings' }))
+
+// --- Create goal: verbs x objects + explicit (all -> llm) -------------------
+const GOAL_VERBS = [
+  'learn',
+  'master',
+  'build',
+  'start',
+  'finish',
+  'launch',
+  'write',
+  'save for',
+  'plan',
+]
+
+const GOAL_OBJECTS = [
+  'a new language',
+  'my side project',
+  'a marathon plan',
+  'a budget',
+  'a book',
+  'a morning routine',
+  'a fitness habit',
+  'a business plan',
+]
+
+const createGoalCases: RoutingCase[] = [
+  ...GOAL_VERBS.flatMap((verb) =>
+    GOAL_OBJECTS.map((object) => ({
+      input: `${verb} ${object}`,
+      intent: 'create_goal' as const,
+      route: 'llm' as const,
+    }))
+  ),
+  ...[
+    'learn to play guitar',
+    'run a marathon',
+    'save money for a house',
+    'read more books this year',
+    'start exercising every morning',
+    'learn spanish by december',
+    'save $5000 for a trip to Spain by December',
+    'launch the side project by friday and find beta users',
+    'i want to learn spanish fluently before my move to Madrid next year',
+    'lose ten pounds before the wedding in june',
+  ].map((input) => ({
+    input,
+    intent: 'create_goal' as const,
+    route: 'llm' as const,
+  })),
+]
+
+// --- Entity-rich medium queries that should escalate (-> llm) ---------------
+const mediumEscalationCases: RoutingCase[] = [
+  {
+    input:
+      'what meetings do i have tomorrow at 3pm with John about the urgent budget review',
+    intent: 'schedule_query',
+    route: 'llm',
+  },
+  {
+    input:
+      'how is my goal going, and what about the budget, because i am worried about the timeline next week',
+    intent: 'progress',
+    route: 'llm',
+  },
+  {
+    input:
+      'what should i do given the deadline on friday, the urgent review, and my meeting with Sarah',
+    intent: 'work_on',
+    route: 'llm',
+  },
+]
+
+// --- Vague / low-confidence input (no pattern -> llm) -----------------------
+const ambiguousCases: RoutingCase[] = [
+  'maybe do something',
+  'i guess work on stuff',
+  'not sure what to do',
+  'perhaps something later',
+  'idk maybe later',
+].map((input) => ({ input, intent: 'create_goal', route: 'llm' }))
+
+const DATASET: RoutingCase[] = [
+  ...navigationCases,
+  ...helpCases,
+  ...reviewAllCases,
+  ...progressCases,
+  ...workOnCases,
+  ...scheduleCases,
+  ...createGoalCases,
+  ...mediumEscalationCases,
+  ...ambiguousCases,
+]
+
+describe('large labeled dataset', () => {
+  it('contains a sizeable corpus', () => {
+    expect(DATASET.length).toBeGreaterThanOrEqual(150)
+  })
+
+  it('has no duplicate inputs', () => {
+    const inputs = DATASET.map((c) => c.input)
+    expect(new Set(inputs).size).toBe(inputs.length)
+  })
+
+  it.each(DATASET)('routes "$input" to $route as $intent', ({
+    input,
+    intent,
+    route,
+    page,
+  }) => {
+    const result = classifyWithComplexityRouting(input)
+    expect(result.intent).toBe(intent)
+    expect(result.route).toBe(route)
+    if (page) expect(result.page).toBe(page)
+  })
+
+  it('keeps every score within 0-100 and never throws', () => {
+    for (const { input } of DATASET) {
+      const result = classifyWithComplexityRouting(input)
+      expect(result.score).toBeGreaterThanOrEqual(0)
+      expect(result.score).toBeLessThanOrEqual(100)
+    }
+  })
+
+  it('routes all simple intents to embeddings', () => {
+    const simple = DATASET.filter((c) =>
+      ['navigate', 'help', 'review_all'].includes(c.intent)
+    )
+    expect(simple.length).toBeGreaterThan(0)
+    for (const c of simple) {
+      expect(classifyWithComplexityRouting(c.input).route).toBe('embeddings')
+    }
+  })
+
+  it('routes all create_goal inputs to the llm', () => {
+    const goals = DATASET.filter((c) => c.intent === 'create_goal')
+    expect(goals.length).toBeGreaterThan(0)
+    for (const c of goals) {
+      expect(classifyWithComplexityRouting(c.input).route).toBe('llm')
+    }
+  })
+
+  it('produces a sane route distribution (both routes well represented)', () => {
+    const counts = DATASET.reduce(
+      (acc, c) => {
+        const route = classifyWithComplexityRouting(c.input).route
+        acc[route] += 1
+        return acc
+      },
+      { embeddings: 0, llm: 0 } as Record<Route, number>
+    )
+    expect(counts.embeddings).toBeGreaterThan(20)
+    expect(counts.llm).toBeGreaterThan(20)
+    expect(counts.embeddings + counts.llm).toBe(DATASET.length)
   })
 })
