@@ -6,12 +6,15 @@ import { trackError } from '@/lib/errors/monitoring'
 import { errorResponse } from '@/lib/errors/response'
 import { ValidationError } from '@/lib/errors/types'
 import { recordEventInTransaction } from '@/lib/events/store'
+import { getAuthUserId } from '@/lib/server/auth'
 import { withIdempotency } from '@/lib/utils/idempotency'
 
 export async function GET() {
   const requestId = generateRequestId()
   try {
+    const userId = await getAuthUserId()
     const stakeholders = await prisma.stakeholder.findMany({
+      where: userId ? { userId } : undefined,
       include: { evidence: true },
       orderBy: { createdAt: 'desc' },
     })
@@ -39,6 +42,7 @@ export async function POST(request: Request) {
       idempotencyKey,
       () =>
         withTransaction(async (tx) => {
+          const userId = await getAuthUserId()
           const created = await tx.stakeholder.create({
             data: {
               name: body.name,
@@ -52,6 +56,7 @@ export async function POST(request: Request) {
               capabilities: body.capabilities ?? undefined,
               valueExchangeAssets: body.valueExchangeAssets ?? undefined,
               userAssets: body.userAssets ?? undefined,
+              userId,
             },
           })
 

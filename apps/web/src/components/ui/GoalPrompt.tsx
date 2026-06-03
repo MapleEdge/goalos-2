@@ -341,6 +341,7 @@ export function GoalPrompt() {
   const { tokensEnabled } = useTokens()
   const ai = useAiAccess()
   const [inputValue, setInputValue] = useState('')
+  const [minimized, setMinimized] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [showProgress, setShowProgress] = useState(false)
   const [showRecommendations, setShowRecommendations] = useState(false)
@@ -564,33 +565,72 @@ export function GoalPrompt() {
   return (
     <>
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
-        <form onSubmit={handleSubmit} className="relative">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Try &quot;review all goals&quot; or &quot;what should I work on&quot;"
-            className="w-[420px] rounded-full border border-zinc-300 bg-white/95 px-5 py-3 text-sm text-zinc-800 shadow-lg backdrop-blur-sm placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 transition-shadow hover:shadow-xl"
-          />
-          {inputValue.trim() && (
+        {minimized ? (
+          <button
+            type="button"
+            onClick={() => setMinimized(false)}
+            className="rounded-full border border-zinc-300 bg-white/95 p-2.5 shadow-lg backdrop-blur-sm hover:bg-zinc-50 transition-colors"
+            title="Expand prompt"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <path d="M4 6l4 4 4-4" />
+            </svg>
+          </button>
+        ) : (
+          <form onSubmit={handleSubmit} className="relative">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Try &quot;review all goals&quot; or &quot;what should I work on&quot;"
+              className="w-[420px] rounded-full border border-zinc-300 bg-white/95 px-5 py-3 text-sm text-zinc-800 shadow-lg backdrop-blur-sm placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200 transition-shadow hover:shadow-xl"
+            />
+            {inputValue.trim() && (
+              <button
+                type="submit"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-zinc-900 p-1.5 text-white hover:bg-zinc-700 transition-colors"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <path d="M3 8h10M9 4l4 4-4 4" />
+                </svg>
+              </button>
+            )}
             <button
-              type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-zinc-900 p-1.5 text-white hover:bg-zinc-700 transition-colors"
+              type="button"
+              onClick={() => setMinimized(true)}
+              className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full border border-zinc-300 bg-white shadow-sm hover:bg-zinc-100 transition-colors"
+              title="Minimize prompt"
             >
               <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
               >
-                <path d="M3 8h10M9 4l4 4-4 4" />
+                <path d="M2 5h6" />
               </svg>
             </button>
-          )}
-        </form>
+          </form>
+        )}
       </div>
 
       <Modal open={showModal} onClose={handleCancel} title="Create New Goal">
