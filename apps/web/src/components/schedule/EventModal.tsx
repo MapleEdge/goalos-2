@@ -9,6 +9,10 @@ interface EventModalProps {
   end: Date
   allDay?: boolean
   event?: ScheduleEvent
+  /** Pre-filled content for create mode (e.g. parsed from a natural-language command). */
+  initialTitle?: string
+  initialDescription?: string
+  initialLocation?: string
   onSave: (data: {
     title: string
     description?: string
@@ -39,13 +43,20 @@ export function EventModal({
   end,
   allDay: initialAllDay,
   event,
+  initialTitle,
+  initialDescription,
+  initialLocation,
   onSave,
   onDelete,
   onClose,
 }: EventModalProps) {
-  const [title, setTitle] = useState(event?.title || '')
-  const [description, setDescription] = useState(event?.description || '')
-  const [location, setLocation] = useState(event?.location || '')
+  const [title, setTitle] = useState(event?.title || initialTitle || '')
+  const [description, setDescription] = useState(
+    event?.description || initialDescription || ''
+  )
+  const [location, setLocation] = useState(
+    event?.location || initialLocation || ''
+  )
   const [startTime, setStartTime] = useState(toLocalDatetime(start))
   const [endTime, setEndTime] = useState(toLocalDatetime(end))
   const [allDay, setAllDay] = useState(initialAllDay ?? event?.allDay ?? false)
