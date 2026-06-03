@@ -1,3 +1,4 @@
+import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 
@@ -20,6 +21,53 @@ export async function requireAuthUserId(): Promise<string> {
     throw NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   return userId
+}
+
+/**
+ * Return all entity IDs owned by the given user.
+ * Used to scope resource-flows, events, etc. that reference entities
+ * via entityType/entityId rather than a direct userId FK.
+ */
+export async function getUserEntityIds(userId: string): Promise<string[]> {
+  const [goals, vehicles, stakeholders] = await Promise.all([
+    prisma.goal.findMany({ where: { userId }, select: { id: true } }),
+    prisma.vehicle.findMany({ where: { userId }, select: { id: true } }),
+    prisma.stakeholder.findMany({ where: { userId }, select: { id: true } }),
+  ])
+
+  const goalIds = goals.map((g) => g.id)
+  const vehicleIds = vehicles.map((v) => v.id)
+  const stakeholderIds = stakeholders.map((s) => s.id)
+
+  const [actions, prerequisites, evidence] = await Promise.all([
+    goalIds.length
+      ? prisma.action.findMany({
+          where: { goalId: { in: goalIds } },
+          select: { id: true },
+        })
+      : [],
+    goalIds.length
+      ? prisma.prerequisite.findMany({
+          where: { goalId: { in: goalIds } },
+          select: { id: true },
+        })
+      : [],
+    goalIds.length
+      ? prisma.evidence.findMany({
+          where: { prerequisite: { goalId: { in: goalIds } } },
+          select: { id: true },
+        })
+      : [],
+  ])
+
+  return [
+    ...goalIds,
+    ...vehicleIds,
+    ...stakeholderIds,
+    ...actions.map((a) => a.id),
+    ...prerequisites.map((p) => p.id),
+    ...evidence.map((e) => e.id),
+  ]
 }
 
 /**
