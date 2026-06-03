@@ -2,6 +2,7 @@ import { prisma } from '@goalos/shared/lib/prisma'
 import type { NodeType } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import { recordEvent } from '@/lib/events/store'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 function getForeignKeyFields(
   type: NodeType,
@@ -28,6 +29,7 @@ function getForeignKeyFields(
 }
 
 export async function GET() {
+  await requireAuthUserId()
   const relationships = await prisma.relationship.findMany({
     orderBy: { createdAt: 'desc' },
   })
@@ -35,6 +37,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  await requireAuthUserId()
   const body = await request.json()
 
   const fromFK = getForeignKeyFields(

@@ -1,5 +1,6 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 interface FulfillRequest {
   actionTitle: string
@@ -225,6 +226,7 @@ function deriveEmailBody(actionTitle: string, goalTitle: string): string {
 }
 
 export async function POST(request: Request) {
+  const userId = await requireAuthUserId()
   const body: FulfillRequest = await request.json()
 
   if (!body.actionTitle || !body.goalTitle) {
@@ -234,8 +236,9 @@ export async function POST(request: Request) {
     )
   }
 
-  // Fetch stakeholders for person extraction
+  // Fetch stakeholders scoped to the authenticated user
   const stakeholders = await prisma.stakeholder.findMany({
+    where: { userId },
     select: { name: true, organization: true, role: true },
   })
 

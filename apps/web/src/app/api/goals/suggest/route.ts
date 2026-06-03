@@ -2,6 +2,7 @@ import { getGeminiClient } from '@goalos/shared/lib/gemini'
 import { prisma } from '@goalos/shared/lib/prisma'
 import type { GoalSuggestion, ValueRow } from '@goalos/shared/types'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 import {
   consumeCredit,
   resolveEntitlementFromRequest,
@@ -430,10 +431,12 @@ function generateTemplateSuggestions(
 }
 
 export async function GET(request: Request) {
+  const userId = await requireAuthUserId()
   const entitlement = await resolveEntitlementFromRequest(request)
   const [values, goals] = await Promise.all([
-    prisma.value.findMany({ orderBy: { rank: 'asc' } }),
+    prisma.value.findMany({ where: { userId }, orderBy: { rank: 'asc' } }),
     prisma.goal.findMany({
+      where: { userId },
       select: {
         title: true,
         description: true,

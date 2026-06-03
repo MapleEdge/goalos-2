@@ -33,6 +33,9 @@ export default function SignupPage() {
         return
       }
 
+      // The signup endpoint now returns a generic message for both new and
+      // existing accounts to prevent user enumeration. We attempt to sign in
+      // — if the account was actually created, this will succeed.
       const result = await signIn('credentials', {
         email,
         password,
@@ -43,7 +46,7 @@ export default function SignupPage() {
 
       if (result?.error) {
         setError(
-          'Account created but failed to sign in. Please try logging in.'
+          'Account created. Please check your email to verify your account, then sign in.'
         )
         return
       }
@@ -126,7 +129,7 @@ export default function SignupPage() {
               placeholder="••••••••"
             />
             <p className="mt-1 text-xs text-zinc-400">
-              Must be at least 8 characters
+              Min 8 characters, with uppercase, lowercase, and a digit
             </p>
           </div>
 

@@ -9,6 +9,7 @@ import type {
   ValueExchangeSuggestion,
 } from '@goalos/shared/types'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 import {
   consumeCredit,
   resolveEntitlementFromRequest,
@@ -304,6 +305,7 @@ JSON only, no markdown, no explanation.`
 // ─── Main endpoint ───────────────────────────────────────────────
 
 export async function POST(request: Request) {
+  const userId = await requireAuthUserId()
   const entitlement = await resolveEntitlementFromRequest(request)
   const body = await request.json()
   const goalText = [
@@ -318,7 +320,7 @@ export async function POST(request: Request) {
     return NextResponse.json([])
   }
 
-  const stakeholders = await prisma.stakeholder.findMany()
+  const stakeholders = await prisma.stakeholder.findMany({ where: { userId } })
   const suggestions: SuggestedStakeholder[] = []
 
   for (const s of stakeholders) {

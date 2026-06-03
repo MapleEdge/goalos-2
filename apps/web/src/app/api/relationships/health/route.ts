@@ -2,12 +2,14 @@ import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
 import { isAIAvailable } from '@/lib/reasoning/ai'
 import { computeRelationshipHealth } from '@/lib/reasoning/relationships'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function GET() {
+  const userId = await requireAuthUserId()
   const [stakeholders, goals, relationships] = await Promise.all([
-    prisma.stakeholder.findMany({ orderBy: { createdAt: 'desc' } }),
+    prisma.stakeholder.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }),
     prisma.goal.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE', userId },
       select: { id: true, title: true, status: true },
     }),
     prisma.relationship.findMany({

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getEventTimeline, getRecentEvents } from '@/lib/events/store'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function GET(request: Request) {
+  await requireAuthUserId()
   const { searchParams } = new URL(request.url)
   const since = searchParams.get('since')
   const limit = searchParams.get('limit')

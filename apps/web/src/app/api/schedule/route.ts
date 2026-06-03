@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function GET(request: Request) {
+  await requireAuthUserId()
   const { searchParams } = new URL(request.url)
   const start = searchParams.get('start')
   const end = searchParams.get('end')
@@ -45,6 +47,7 @@ function advanceDate(date: Date, recurrence: string): Date {
 
 export async function POST(request: Request) {
   try {
+    await requireAuthUserId()
     const body = await request.json()
     const recurrence: string | null = body.recurrence || null
     const count =

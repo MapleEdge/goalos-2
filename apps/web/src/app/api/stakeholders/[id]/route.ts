@@ -1,14 +1,16 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
 import { recordEvent } from '@/lib/events/store'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await requireAuthUserId()
   const { id } = await params
   const stakeholder = await prisma.stakeholder.findUnique({
-    where: { id },
+    where: { id, userId },
     include: { evidence: true },
   })
   if (!stakeholder) {
@@ -21,7 +23,12 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await requireAuthUserId()
   const { id } = await params
+  const existing = await prisma.stakeholder.findUnique({ where: { id, userId } })
+  if (!existing) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
   const body = await request.json()
   const stakeholder = await prisma.stakeholder.update({
     where: { id },
@@ -55,7 +62,12 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await requireAuthUserId()
   const { id } = await params
+  const existing = await prisma.stakeholder.findUnique({ where: { id, userId } })
+  if (!existing) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
   await recordEvent('STAKEHOLDER', id, 'DELETED', {})
   await prisma.stakeholder.delete({ where: { id } })
   return NextResponse.json({ success: true })

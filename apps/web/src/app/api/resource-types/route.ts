@@ -1,7 +1,9 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function GET() {
+  await requireAuthUserId()
   const types = await prisma.resourceType.findMany({
     orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
     include: { _count: { select: { flows: true } } },
@@ -10,6 +12,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  await requireAuthUserId()
   const body = await request.json()
   const { name, unit, icon, color, description } = body
 

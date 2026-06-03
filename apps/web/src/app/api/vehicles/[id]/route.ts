@@ -1,13 +1,15 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await requireAuthUserId()
   const { id } = await params
   const vehicle = await prisma.vehicle.findUnique({
-    where: { id },
+    where: { id, userId },
     include: {
       value: { select: { id: true, label: true, rank: true } },
       values: { select: { id: true, label: true } },
@@ -29,10 +31,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await requireAuthUserId()
   const { id } = await params
   const body = await request.json()
 
-  const existing = await prisma.vehicle.findUnique({ where: { id } })
+  const existing = await prisma.vehicle.findUnique({ where: { id, userId } })
   if (!existing) {
     return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 })
   }
@@ -70,7 +73,12 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await requireAuthUserId()
   const { id } = await params
+  const existing = await prisma.vehicle.findUnique({ where: { id, userId } })
+  if (!existing) {
+    return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 })
+  }
   await prisma.vehicle.delete({ where: { id } })
   return NextResponse.json({ success: true })
 }

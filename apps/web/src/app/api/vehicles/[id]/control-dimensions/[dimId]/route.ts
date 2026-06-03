@@ -1,11 +1,17 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string; dimId: string }> }
 ) {
-  const { dimId } = await params
+  const userId = await requireAuthUserId()
+  const { id: vehicleId, dimId } = await params
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId, userId } })
+  if (!vehicle) {
+    return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 })
+  }
   const body = await request.json()
   const dimension = await prisma.controlDimension.update({
     where: { id: dimId },
@@ -26,7 +32,12 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; dimId: string }> }
 ) {
-  const { dimId } = await params
+  const userId = await requireAuthUserId()
+  const { id: vehicleId, dimId } = await params
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId, userId } })
+  if (!vehicle) {
+    return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 })
+  }
   await prisma.controlDimension.delete({ where: { id: dimId } })
   return NextResponse.json({ ok: true })
 }

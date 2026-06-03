@@ -5,6 +5,9 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 
+const MAX_FAILED_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000 // 15 minutes
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: 'jwt' },
@@ -31,8 +34,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await prisma.user.findUnique({ where: { email } })
         if (!user?.password) return null
 
+        // Account lockout check
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
+          return null
+        }
+
         const valid = await bcrypt.compare(password, user.password)
-        if (!valid) return null
+
+        if (!valid) {
+          const attempts = user.failedLoginAttempts + 1
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: attempts,
+              ...(attempts >= MAX_FAILED_ATTEMPTS
+                ? { lockedUntil: new Date(Date.now() + LOCKOUT_DURATION_MS) }
+                : {}),
+            },
+          })
+          return null
+        }
+
+        // Successful login — reset lockout counters
+        if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { failedLoginAttempts: 0, lockedUntil: null },
+          })
+        }
 
         return {
           id: user.id,

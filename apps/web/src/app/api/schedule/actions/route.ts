@@ -1,12 +1,15 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 // Import GoalOS actions with due dates as schedule events
 export async function POST() {
+  const userId = await requireAuthUserId()
   const actions = await prisma.action.findMany({
     where: {
       dueDate: { not: null },
       status: { in: ['TODO', 'IN_PROGRESS'] },
+      goal: { userId },
     },
     include: { goal: { select: { title: true } } },
   })
@@ -49,6 +52,7 @@ export async function POST() {
     where: {
       targetDate: { not: null },
       status: { in: ['ACTIVE', 'BLOCKED', 'WAITING'] },
+      userId,
     },
   })
 

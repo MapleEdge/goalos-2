@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 const RECURRENCE_COUNTS: Record<string, number> = {
   daily: 30,
@@ -22,6 +23,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await requireAuthUserId()
   const { id } = await params
   const body = await request.json()
 
@@ -115,6 +117,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  await requireAuthUserId()
   const { id } = await params
 
   const existing = await prisma.scheduleEvent.findUnique({ where: { id } })
