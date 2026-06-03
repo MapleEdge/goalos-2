@@ -68,11 +68,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           email: user.email,
           image: user.image,
+          emailVerified: user.emailVerified,
         }
       },
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      // Google OAuth users are auto-verified
+      if (account?.provider === 'google') return true
+
+      // Block credentials users who haven't verified their email
+      if (account?.provider === 'credentials') {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id! },
+          select: { emailVerified: true },
+        })
+        if (!dbUser?.emailVerified) {
+          return `/verify-email?email=${encodeURIComponent(user.email || '')}`
+        }
+      }
+
+      return true
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id

@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react'
 import { useState } from 'react'
 
 export default function SignupPage() {
@@ -33,26 +32,8 @@ export default function SignupPage() {
         return
       }
 
-      // The signup endpoint now returns a generic message for both new and
-      // existing accounts to prevent user enumeration. We attempt to sign in
-      // — if the account was actually created, this will succeed.
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      })
-
-      setLoading(false)
-
-      if (result?.error) {
-        setError(
-          'Account created. Please check your email to verify your account, then sign in.'
-        )
-        return
-      }
-
-      router.push('/')
-      router.refresh()
+      // Redirect to verify-email page — user must confirm before signing in
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`)
     } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
