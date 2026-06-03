@@ -1,12 +1,17 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getAuthUserId } from '@/lib/server/auth'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
+  const userId = await getAuthUserId()
 
   const vehicles = await prisma.vehicle.findMany({
-    where: status ? { status: status as never } : undefined,
+    where: {
+      ...(status ? { status: status as never } : {}),
+      ...(userId ? { userId } : {}),
+    },
     include: {
       value: { select: { id: true, label: true, rank: true } },
       values: { select: { id: true, label: true } },
@@ -23,6 +28,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json()
+  const userId = await getAuthUserId()
   const vehicle = await prisma.vehicle.create({
     data: {
       title: body.title,
@@ -34,6 +40,7 @@ export async function POST(request: Request) {
       endDate: body.endDate ? new Date(body.endDate) : null,
       investmentNotes: body.investmentNotes,
       valueId: body.valueId || null,
+      userId,
       ...(body.valueIds?.length
         ? { values: { connect: body.valueIds.map((id: string) => ({ id })) } }
         : {}),

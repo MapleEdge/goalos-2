@@ -1,8 +1,9 @@
 'use client'
 
-import { Sparkles } from 'lucide-react'
+import { LogOut, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut, useSession } from 'next-auth/react'
 
 const links = [
   { href: '/', label: 'Dashboard' },
@@ -17,6 +18,7 @@ const links = [
 
 export function Nav() {
   const pathname = usePathname()
+  const { data: session } = useSession()
 
   return (
     <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur-sm">
@@ -107,6 +109,16 @@ export function Nav() {
               />
             </svg>
           </Link>
+          {session?.user && (
+            <button
+              type="button"
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              title="Sign out"
+              className="rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
+            >
+              <LogOut className="h-4.5 w-4.5" />
+            </button>
+          )}
         </nav>
       </div>
     </header>

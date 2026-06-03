@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
-import { GoalPrompt } from '@/components/ui/GoalPrompt'
-import { ModelStatus } from '@/components/ui/ModelStatus'
-import { Nav } from '@/components/ui/Nav'
+import { AuthShell } from '@/components/ui/AuthShell'
 import { Providers } from './providers'
 import './globals.css'
 
@@ -34,10 +32,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-zinc-50 font-sans">
         <Providers>
-          <Nav />
-          <main className="flex-1 pb-24">{children}</main>
-          <GoalPrompt />
-          <ModelStatus />
+          <AuthShell>{children}</AuthShell>
         </Providers>
       </body>
     </html>

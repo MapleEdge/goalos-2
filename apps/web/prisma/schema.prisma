@@ -6,6 +6,71 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Auth.js (NextAuth v5) ────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // bcrypt hash — null for OAuth-only users
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+
+  goals              Goal[]
+  stakeholders       Stakeholder[]
+  vehicles           Vehicle[]
+  calendarConnections CalendarConnection[]
+  subscriptions      Subscription[]
+  values             Value[]            @relation("UserValues")
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
 // ─── Core entities ───────────────────────────────────────────────
 
 enum GoalStatus {
@@ -28,6 +93,9 @@ model Goal {
   completedAt     DateTime?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
+
+  userId          String?
+  user            User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   valueId         String?
   value           Value?       @relation("GoalPrimaryValue", fields: [valueId], references: [id], onDelete: SetNull)
@@ -55,6 +123,9 @@ model Stakeholder {
   userAssets          Json?   // Array of { asset: string, category: string } — what the user can offer
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  userId             String?
+  user               User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   values             Value[]    @relation("StakeholderValues")
   evidence           Evidence[]
@@ -209,6 +280,9 @@ model Value {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  userId             String?
+  user               User?           @relation("UserValues", fields: [userId], references: [id], onDelete: Cascade)
+
   // Primary value FK relations (backward compat)
   goals              Goal[]          @relation("GoalPrimaryValue")
   vehicles           Vehicle[]       @relation("VehiclePrimaryValue")
@@ -264,6 +338,9 @@ model Vehicle {
   leverageScore   Int            @default(0) // computed: linked goals × priority
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+
+  userId          String?
+  user            User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   valueId         String?
   value           Value?         @relation("VehiclePrimaryValue", fields: [valueId], references: [id], onDelete: SetNull)
@@ -327,6 +404,9 @@ model CalendarConnection {
   lastSyncAt    DateTime?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
+
+  userId         String?
+  user           User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   scheduleEvents ScheduleEvent[]
 
@@ -502,6 +582,9 @@ model Subscription {
   token                String             @unique @default(uuid())
   tier                 PlanTier           @default(FREE)
   status               SubscriptionStatus @default(NONE)
+
+  userId               String?
+  user                 User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   stripeCustomerId     String?            @unique
   stripeSubscriptionId String?            @unique
