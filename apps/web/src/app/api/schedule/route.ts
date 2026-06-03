@@ -1,15 +1,37 @@
 import { randomUUID } from 'node:crypto'
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
-import { requireAuthUserId } from '@/lib/server/auth'
+import { getUserEntityIds, requireAuthUserId } from '@/lib/server/auth'
 
 export async function GET(request: Request) {
-  await requireAuthUserId()
+  const userId = await requireAuthUserId()
+  const entityIds = await getUserEntityIds(userId)
+
   const { searchParams } = new URL(request.url)
   const start = searchParams.get('start')
   const end = searchParams.get('end')
 
-  const where: Record<string, unknown> = {}
+  const userCalendars = await prisma.calendarConnection.findMany({
+    where: { userId },
+    select: { id: true },
+  })
+  const calIds = userCalendars.map((c) => c.id)
+
+  const ownershipFilter =
+    entityIds.length > 0 || calIds.length > 0
+      ? {
+          OR: [
+            ...(entityIds.length > 0
+              ? [{ goalId: { in: entityIds } }, { actionId: { in: entityIds } }]
+              : []),
+            ...(calIds.length > 0
+              ? [{ calendarConnectionId: { in: calIds } }]
+              : []),
+          ],
+        }
+      : { id: '__none__' }
+
+  const where: Record<string, unknown> = { ...ownershipFilter }
   if (start || end) {
     where.startTime = {}
     if (start) (where.startTime as Record<string, Date>).gte = new Date(start)
