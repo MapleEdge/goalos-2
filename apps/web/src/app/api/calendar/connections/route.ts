@@ -1,7 +1,9 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function GET() {
+  await requireAuthUserId()
   const connections = await prisma.calendarConnection.findMany({
     select: {
       id: true,
@@ -18,6 +20,7 @@ export async function GET() {
 }
 
 export async function DELETE(request: Request) {
+  await requireAuthUserId()
   const { searchParams } = new URL(request.url)
   const id = searchParams.get('id')
   if (!id) {

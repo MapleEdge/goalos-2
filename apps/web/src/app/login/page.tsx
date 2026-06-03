@@ -1,12 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const verified = searchParams.get('verified') === 'true'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -24,6 +26,11 @@ export default function LoginPage() {
     })
 
     setLoading(false)
+
+    if (result?.url && result.url.includes('/verify-email')) {
+      router.push(result.url)
+      return
+    }
 
     if (result?.error) {
       setError('Invalid email or password')
@@ -44,57 +51,65 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-zinc-500">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
-              {error}
+        <div className="space-y-4">
+          {verified && (
+            <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
+              Email verified successfully. You can now sign in.
             </div>
           )}
 
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-zinc-700"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200"
-              placeholder="you@example.com"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
+                {error}
+              </div>
+            )}
 
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-zinc-700"
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200"
-              placeholder="••••••••"
-            />
-          </div>
+            <div>
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-zinc-700"
+              >
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200"
+                placeholder="you@example.com"
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
-          >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-zinc-700"
+              >
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-200"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
+            >
+              {loading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </form>
+        </div>
 
         {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
           <>
@@ -135,16 +150,40 @@ export default function LoginPage() {
           </>
         )}
 
-        <p className="text-center text-sm text-zinc-500">
-          Don&apos;t have an account?{' '}
-          <Link
-            href="/signup"
-            className="font-medium text-zinc-900 hover:underline"
-          >
-            Sign up
-          </Link>
-        </p>
+        <div className="space-y-2 text-center text-sm text-zinc-500">
+          <p>
+            Don&apos;t have an account?{' '}
+            <Link
+              href="/signup"
+              className="font-medium text-zinc-900 hover:underline"
+            >
+              Sign up
+            </Link>
+          </p>
+          <p>
+            <Link
+              href="/forgot-password"
+              className="font-medium text-zinc-500 hover:text-zinc-700 hover:underline"
+            >
+              Forgot your password?
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-zinc-50">
+          <p className="text-sm text-zinc-500">Loading...</p>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   )
 }

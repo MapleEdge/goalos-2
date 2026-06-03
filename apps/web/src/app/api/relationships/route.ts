@@ -2,6 +2,7 @@ import { prisma } from '@goalos/shared/lib/prisma'
 import type { NodeType } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import { recordEvent } from '@/lib/events/store'
+import { getUserEntityIds, requireAuthUserId } from '@/lib/server/auth'
 
 function getForeignKeyFields(
   type: NodeType,
@@ -28,13 +29,24 @@ function getForeignKeyFields(
 }
 
 export async function GET() {
+  const userId = await requireAuthUserId()
+  const entityIds = await getUserEntityIds(userId)
+  if (entityIds.length === 0) return NextResponse.json([])
+
   const relationships = await prisma.relationship.findMany({
+    where: {
+      OR: [
+        { fromId: { in: entityIds } },
+        { toId: { in: entityIds } },
+      ],
+    },
     orderBy: { createdAt: 'desc' },
   })
   return NextResponse.json(relationships)
 }
 
 export async function POST(request: Request) {
+  await requireAuthUserId()
   const body = await request.json()
 
   const fromFK = getForeignKeyFields(

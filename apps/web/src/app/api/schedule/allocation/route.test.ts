@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GET } from './route'
 
+// ── Auth mock ───────────────────────────────────────────────────
+vi.mock('@/lib/server/auth', () => ({
+  requireAuthUserId: vi.fn().mockResolvedValue('test-user-id'),
+}))
+
 // ── Prisma mock ──────────────────────────────────────────────────
 vi.mock('@goalos/shared/lib/prisma', () => ({
   prisma: {

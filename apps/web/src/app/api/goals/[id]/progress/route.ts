@@ -6,6 +6,7 @@ import { trackError } from '@/lib/errors/monitoring'
 import { errorResponse } from '@/lib/errors/response'
 import { NotFoundError, ValidationError } from '@/lib/errors/types'
 import { recordEventInTransaction } from '@/lib/events/store'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function POST(
   request: Request,
@@ -13,10 +14,11 @@ export async function POST(
 ) {
   const requestId = generateRequestId()
   try {
+    const userId = await requireAuthUserId()
     const { id } = await params
     const body = await request.json()
 
-    const goal = await prisma.goal.findUnique({ where: { id } })
+    const goal = await prisma.goal.findUnique({ where: { id, userId } })
     if (!goal) {
       throw new NotFoundError('Goal', id)
     }

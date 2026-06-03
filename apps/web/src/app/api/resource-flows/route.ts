@@ -1,7 +1,12 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getUserEntityIds, requireAuthUserId } from '@/lib/server/auth'
 
 export async function GET(request: Request) {
+  const userId = await requireAuthUserId()
+  const entityIds = await getUserEntityIds(userId)
+  if (entityIds.length === 0) return NextResponse.json([])
+
   const { searchParams } = new URL(request.url)
   const entityType = searchParams.get('entityType')
   const entityId = searchParams.get('entityId')
@@ -9,7 +14,7 @@ export async function GET(request: Request) {
   const direction = searchParams.get('direction')
   const activeOnly = searchParams.get('activeOnly') !== 'false'
 
-  const where: Record<string, unknown> = {}
+  const where: Record<string, unknown> = { entityId: { in: entityIds } }
   if (entityType) where.entityType = entityType
   if (entityId) where.entityId = entityId
   if (resourceTypeId) where.resourceTypeId = resourceTypeId
@@ -25,6 +30,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  await requireAuthUserId()
   const body = await request.json()
   const {
     resourceTypeId,

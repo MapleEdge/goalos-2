@@ -5,6 +5,9 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 
+const MAX_FAILED_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000 // 15 minutes
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: 'jwt' },
@@ -31,19 +34,63 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await prisma.user.findUnique({ where: { email } })
         if (!user?.password) return null
 
+        // Account lockout check
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
+          return null
+        }
+
         const valid = await bcrypt.compare(password, user.password)
-        if (!valid) return null
+
+        if (!valid) {
+          const attempts = user.failedLoginAttempts + 1
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: attempts,
+              ...(attempts >= MAX_FAILED_ATTEMPTS
+                ? { lockedUntil: new Date(Date.now() + LOCKOUT_DURATION_MS) }
+                : {}),
+            },
+          })
+          return null
+        }
+
+        // Successful login — reset lockout counters
+        if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { failedLoginAttempts: 0, lockedUntil: null },
+          })
+        }
 
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           image: user.image,
+          emailVerified: user.emailVerified,
         }
       },
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      // Google OAuth users are auto-verified
+      if (account?.provider === 'google') return true
+
+      // Block credentials users who haven't verified their email
+      if (account?.provider === 'credentials') {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: user.id! },
+          select: { emailVerified: true },
+        })
+        if (!dbUser?.emailVerified) {
+          return `/verify-email?email=${encodeURIComponent(user.email || '')}`
+        }
+      }
+
+      return true
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id

@@ -1,11 +1,26 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { getUserEntityIds, requireAuthUserId } from '@/lib/server/auth'
+
+async function verifyFlowOwnership(userId: string, flowId: string) {
+  const flow = await prisma.resourceFlow.findUnique({
+    where: { id: flowId },
+    select: { entityId: true },
+  })
+  if (!flow) return false
+  const entityIds = await getUserEntityIds(userId)
+  return entityIds.includes(flow.entityId)
+}
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await requireAuthUserId()
   const { id } = await params
+  if (!(await verifyFlowOwnership(userId, id))) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
   const body = await request.json()
   const flow = await prisma.resourceFlow.update({
     where: { id },
@@ -37,7 +52,11 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await requireAuthUserId()
   const { id } = await params
+  if (!(await verifyFlowOwnership(userId, id))) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
   await prisma.resourceFlow.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }

@@ -2,6 +2,7 @@ import logger from '@goalos/shared/lib/logger'
 import { prisma } from '@goalos/shared/lib/prisma'
 import type { NodeType, Prisma } from '@prisma/client'
 import type { TxClient } from '@/lib/db/transaction'
+import { getUserEntityIds } from '@/lib/server/auth'
 
 export type EventPayload = Prisma.InputJsonObject
 
@@ -73,16 +74,26 @@ export async function getEntityEvents(entityType: NodeType, entityId: string) {
   })
 }
 
-export async function getRecentEvents(limit = 50) {
+export async function getRecentEvents(userId: string, limit = 50) {
+  const entityIds = await getUserEntityIds(userId)
+  if (entityIds.length === 0) return []
+
   return prisma.event.findMany({
+    where: { entityId: { in: entityIds } },
     orderBy: { occurredAt: 'desc' },
     take: limit,
   })
 }
 
-export async function getEventTimeline(since?: Date) {
+export async function getEventTimeline(userId: string, since?: Date) {
+  const entityIds = await getUserEntityIds(userId)
+  if (entityIds.length === 0) return []
+
   return prisma.event.findMany({
-    where: since ? { occurredAt: { gte: since } } : undefined,
+    where: {
+      entityId: { in: entityIds },
+      ...(since ? { occurredAt: { gte: since } } : {}),
+    },
     orderBy: { occurredAt: 'desc' },
     take: 200,
   })

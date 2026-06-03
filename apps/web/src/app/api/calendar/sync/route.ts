@@ -1,8 +1,10 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
 import { getConnector } from '@/lib/calendar'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 export async function POST(request: Request) {
+  await requireAuthUserId()
   const body = await request.json()
   const { connectionId, timeMin, timeMax } = body
 

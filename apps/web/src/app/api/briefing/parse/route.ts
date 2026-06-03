@@ -1,12 +1,14 @@
 import { getGeminiClient } from '@goalos/shared/lib/gemini'
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 import {
   consumeCredit,
   resolveEntitlementFromRequest,
 } from '@/lib/server/entitlement'
 
 export async function POST(request: Request) {
+  await requireAuthUserId()
   const entitlement = await resolveEntitlementFromRequest(request)
   if (!entitlement.hasCredits) {
     return NextResponse.json(

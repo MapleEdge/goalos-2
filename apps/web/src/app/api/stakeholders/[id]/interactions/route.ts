@@ -1,6 +1,7 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
 import { getEntityEvents, recordEvent } from '@/lib/events/store'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 type InteractionType = 'MEETING' | 'EMAIL' | 'CALL' | 'MESSAGE' | 'NOTE'
 
@@ -29,8 +30,9 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await requireAuthUserId()
   const { id } = await params
-  const stakeholder = await prisma.stakeholder.findUnique({ where: { id } })
+  const stakeholder = await prisma.stakeholder.findUnique({ where: { id, userId } })
   if (!stakeholder) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -51,10 +53,11 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userId = await requireAuthUserId()
   const { id } = await params
   const body = await request.json()
 
-  const stakeholder = await prisma.stakeholder.findUnique({ where: { id } })
+  const stakeholder = await prisma.stakeholder.findUnique({ where: { id, userId } })
   if (!stakeholder) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }

@@ -1,5 +1,6 @@
 import { prisma } from '@goalos/shared/lib/prisma'
 import { NextResponse } from 'next/server'
+import { requireAuthUserId } from '@/lib/server/auth'
 
 interface AllocationEntry {
   valueId: string | null
@@ -26,6 +27,7 @@ const VALUE_COLORS = [
 const UNLINKED_KEY = '__unlinked__'
 
 export async function GET(request: Request) {
+  await requireAuthUserId()
   const { searchParams } = new URL(request.url)
   const period = searchParams.get('period') || 'week' // day, week, month, all
 
