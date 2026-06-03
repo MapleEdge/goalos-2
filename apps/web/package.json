@@ -16,6 +16,7 @@
     "test:integration": "vitest --run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage --run",
+    "intent:try": "tsx tests/intent-complexity.cli.ts",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
