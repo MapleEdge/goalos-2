@@ -862,7 +862,7 @@ export function StateGraph() {
         proOptions={{ hideAttribution: true }}
       >
         <Background color="#e4e4e7" gap={20} />
-        <Controls />
+        <Controls position="top-left" style={{ top: 60, left: 4 }} />
         <ViewportPersistence />
         <GraphSearch nodes={nodes} />
       </ReactFlow>
@@ -986,7 +986,7 @@ export function StateGraph() {
         />
       )}
 
-      <div className="absolute bottom-4 left-4 flex flex-wrap gap-2 rounded-lg bg-white/90 p-2 shadow-sm backdrop-blur-sm max-w-md">
+      <div className="absolute bottom-4 right-4 z-10 flex flex-wrap gap-2 rounded-lg bg-white/90 p-2 shadow-sm backdrop-blur-sm max-w-sm">
         {Object.entries(typeColors).map(([type, color]) => (
           <div
             key={type}
