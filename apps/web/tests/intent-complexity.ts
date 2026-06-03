@@ -23,6 +23,7 @@ export type SemanticIntent =
   | 'work_on'
   | 'navigate'
   | 'schedule_query'
+  | 'schedule_event'
   | 'help'
 
 /** `create_goal` is the free-form fall-through, same as the production API. */
@@ -77,6 +78,7 @@ export const INTENT_COMPLEXITY: Record<Intent, number> = {
   schedule_query: 35,
   progress: 40,
   work_on: 45,
+  schedule_event: 48,
   create_goal: 70,
 }
 
@@ -394,6 +396,20 @@ export function detectQuickPatterns(input: string): QuickPattern | null {
   }
 
   if (
+    /\b(schedule|set ?up|book|arrange|plan)\s+(a|an|the|my)?\s*(meeting|event|call|appointment|catch[- ]?up|session|reminder|sync|interview|lunch|dinner|coffee)\b/.test(
+      lower
+    ) ||
+    /\b(add|put|create)\b.*\b(to|on|in)\b.*\b(calendar|schedule)\b/.test(
+      lower
+    ) ||
+    /\b(create|add|new)\s+(a|an)?\s*(calendar )?(event|meeting|appointment)\b/.test(
+      lower
+    )
+  ) {
+    return { intent: 'schedule_event', confidence: 0.8 }
+  }
+
+  if (
     /\b(what(?:'?s| is)? on my (calendar|schedule)|upcoming events|what (meetings|events) do i have|events (this|next) week)\b/.test(
       lower
     )
@@ -676,6 +692,36 @@ const mediumEscalationCases: RoutingCase[] = [
   },
 ]
 
+// --- Schedule event: short -> embeddings, entity-rich -> llm ----------------
+const scheduleEventCases: RoutingCase[] = [
+  ...[
+    'schedule a meeting',
+    'set up a meeting',
+    'book a call',
+    'schedule an appointment',
+    'create a calendar event',
+    'add a meeting to my calendar',
+    'put a reminder on my calendar',
+    'plan a lunch',
+    'book a dinner',
+    'arrange a sync',
+  ].map((input) => ({
+    input,
+    intent: 'schedule_event' as const,
+    route: 'embeddings' as const,
+  })),
+  ...[
+    'schedule a meeting with John tomorrow at 3pm about the budget',
+    'set up a call with Sarah on friday at 2pm to review the plan',
+    'book an appointment with the dentist next monday morning, it is important',
+    'set up a meeting with the Acme team on december 5 at 10am about the kickoff',
+  ].map((input) => ({
+    input,
+    intent: 'schedule_event' as const,
+    route: 'llm' as const,
+  })),
+]
+
 // --- Vague / low-confidence input (no pattern -> llm) -----------------------
 const ambiguousCases: RoutingCase[] = [
   'maybe do something',
@@ -693,6 +739,7 @@ export const SAMPLE_DATASET: RoutingCase[] = [
   ...workOnCases,
   ...scheduleCases,
   ...createGoalCases,
+  ...scheduleEventCases,
   ...mediumEscalationCases,
   ...ambiguousCases,
 ]

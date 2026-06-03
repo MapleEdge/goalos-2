@@ -236,6 +236,25 @@ describe('detectQuickPatterns', () => {
     )
   })
 
+  it('matches schedule_event phrasings before schedule_query', () => {
+    expect(detectQuickPatterns('schedule a meeting')?.intent).toBe(
+      'schedule_event'
+    )
+    expect(detectQuickPatterns('book a call with John tomorrow')?.intent).toBe(
+      'schedule_event'
+    )
+    expect(detectQuickPatterns('add a reminder to my calendar')?.intent).toBe(
+      'schedule_event'
+    )
+    expect(detectQuickPatterns('create a calendar event')?.intent).toBe(
+      'schedule_event'
+    )
+    // Still distinct from a read-only calendar query.
+    expect(detectQuickPatterns('what is on my calendar')?.intent).toBe(
+      'schedule_query'
+    )
+  })
+
   it('returns null for free-form goal text', () => {
     expect(detectQuickPatterns('I want to learn to play the guitar')).toBeNull()
   })
@@ -316,6 +335,25 @@ describe('classifyWithComplexityRouting', () => {
       expect(result.entities.dates).toContain('december')
       expect(result.entities.names).toContain('Sarah')
       expect(result.entities.priorities).toContain('urgent')
+    })
+  })
+
+  describe('schedule_event routing', () => {
+    it('routes a bare scheduling command to embeddings', () => {
+      const result = classifyWithComplexityRouting('schedule a meeting')
+      expect(result.intent).toBe('schedule_event')
+      expect(result.route).toBe('embeddings')
+    })
+
+    it('escalates an entity-rich scheduling command to the llm', () => {
+      const result = classifyWithComplexityRouting(
+        'schedule a meeting with John tomorrow at 3pm about the budget'
+      )
+      expect(result.intent).toBe('schedule_event')
+      expect(result.score).toBeGreaterThanOrEqual(
+        COMPLEXITY_THRESHOLDS.COMPLEX_MIN
+      )
+      expect(result.route).toBe('llm')
     })
   })
 
