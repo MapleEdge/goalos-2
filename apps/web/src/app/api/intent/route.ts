@@ -12,6 +12,7 @@ const VALID_INTENTS = [
   'work_on',
   'navigate',
   'schedule_query',
+  'schedule_event',
   'help',
   'create_goal',
 ] as const
@@ -26,6 +27,7 @@ Intents:
 - work_on: user asks what to focus on or do next (e.g. "what should I work on", "next steps", "priorities")
 - navigate: user wants to go to a specific app page (e.g. "go to schedule", "open graph", "show timeline", "dashboard")
 - schedule_query: user asks about their calendar or upcoming events (e.g. "whats on my calendar", "upcoming events")
+- schedule_event: user wants to CREATE a new calendar event/meeting/appointment, often with a time (e.g. "schedule a meeting with John tomorrow at 3pm", "book a call friday", "add a dentist appointment to my calendar")
 - help: user asks for help or available commands (e.g. "help", "what can you do")
 - create_goal: user describes something NEW they want to achieve that is NOT already a goal (e.g. "learn spanish by december", "save money for a house", "run a marathon")`
 

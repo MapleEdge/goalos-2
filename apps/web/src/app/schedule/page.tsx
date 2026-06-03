@@ -5,6 +5,11 @@ import { CalendarSettings } from '@/components/schedule/CalendarSettings'
 import type { ScheduleEvent } from '@/components/schedule/CalendarView'
 import { CalendarView } from '@/components/schedule/CalendarView'
 import { EventModal } from '@/components/schedule/EventModal'
+import {
+  NEW_EVENT_EVENT,
+  NEW_EVENT_KEY,
+  type PrefilledEvent,
+} from '@/lib/scheduleEvent'
 import { useOnlineTime } from '@/lib/useOnlineTime'
 import { useTimezone } from '@/lib/useTimezone'
 
@@ -35,6 +40,9 @@ export default function SchedulePage() {
   })
   const [modalAllDay, setModalAllDay] = useState(false)
   const [modalEvent, setModalEvent] = useState<ScheduleEvent | undefined>()
+  // Pre-filled content when the modal is opened from a parsed command.
+  const [modalTitle, setModalTitle] = useState('')
+  const [modalDescription, setModalDescription] = useState('')
 
   const fetchEvents = useCallback(async () => {
     const res = await fetch('/api/schedule')
@@ -71,8 +79,41 @@ export default function SchedulePage() {
     setModalEnd(end)
     setModalAllDay(allDay)
     setModalEvent(undefined)
+    setModalTitle('')
+    setModalDescription('')
     setModalOpen(true)
   }
+
+  const openPrefilledEvent = useCallback((data: PrefilledEvent) => {
+    setModalMode('create')
+    setModalStart(new Date(data.start))
+    setModalEnd(new Date(data.end))
+    setModalAllDay(data.allDay ?? false)
+    setModalEvent(undefined)
+    setModalTitle(data.title ?? '')
+    setModalDescription(data.description ?? '')
+    setModalOpen(true)
+  }, [])
+
+  // Open a pre-filled "new event" modal when arriving from a parsed command
+  // (via sessionStorage on navigation, or a live event when already here).
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(NEW_EVENT_KEY)
+      if (raw) {
+        sessionStorage.removeItem(NEW_EVENT_KEY)
+        openPrefilledEvent(JSON.parse(raw) as PrefilledEvent)
+      }
+    } catch {
+      // ignore malformed payloads
+    }
+
+    function onNewEvent(e: Event) {
+      openPrefilledEvent((e as CustomEvent<PrefilledEvent>).detail)
+    }
+    window.addEventListener(NEW_EVENT_EVENT, onNewEvent)
+    return () => window.removeEventListener(NEW_EVENT_EVENT, onNewEvent)
+  }, [openPrefilledEvent])
 
   function handleEventClick(event: ScheduleEvent) {
     setModalMode('edit')
@@ -80,6 +121,8 @@ export default function SchedulePage() {
     setModalEnd(new Date(event.endTime))
     setModalAllDay(event.allDay)
     setModalEvent(event)
+    setModalTitle('')
+    setModalDescription('')
     setModalOpen(true)
   }
 
@@ -258,6 +301,8 @@ export default function SchedulePage() {
           end={modalEnd}
           allDay={modalAllDay}
           event={modalEvent}
+          initialTitle={modalTitle}
+          initialDescription={modalDescription}
           onSave={modalMode === 'edit' ? handleUpdateEvent : handleCreateEvent}
           onDelete={modalMode === 'edit' ? handleDeleteEvent : undefined}
           onClose={closeModal}

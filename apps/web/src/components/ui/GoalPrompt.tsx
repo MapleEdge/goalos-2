@@ -4,6 +4,12 @@ import { Modal } from '@goalos/ui/components/Modal'
 import { ArrowRight, Circle, CircleCheck, CircleDot } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { CreateGoalForm } from '@/components/dashboard/CreateGoalForm'
+import {
+  NEW_EVENT_EVENT,
+  NEW_EVENT_KEY,
+  type PrefilledEvent,
+  parseEventInput,
+} from '@/lib/scheduleEvent'
 import { isEmbedderReady } from '@/lib/semantic/embedder'
 import {
   classifyIntentSemantic,
@@ -167,6 +173,7 @@ type IntentType =
   | 'work_on'
   | 'navigate'
   | 'schedule_query'
+  | 'schedule_event'
   | 'help'
   | 'create_goal'
 
@@ -176,6 +183,7 @@ interface IntentResult {
   page?: string
   label?: string
   input?: string
+  event?: PrefilledEvent
 }
 
 const NAV_KEYWORDS: Record<string, { page: string; label: string }> = {
@@ -204,6 +212,8 @@ function buildIntent(type: IntentType, input: string): IntentResult {
     }
     case 'schedule_query':
       return { type, page: '/schedule', label: 'Schedule' }
+    case 'schedule_event':
+      return { type, event: parseEventInput(input) }
     case 'progress':
       return { type, query: input }
     case 'create_goal':
@@ -293,6 +303,20 @@ function detectIntentRegex(input: string): IntentResult {
   if (/^(?:go\s+to|open|navigate\s+to)\s+/i.test(input)) {
     const nav = extractNavTarget(input)
     return { type: 'navigate', page: nav.page, label: nav.label }
+  }
+
+  if (
+    /^(?:schedule|set\s*up|book|arrange|plan)\s+(?:a|an|the|my)?\s*(?:meeting|event|call|appointment|catch[\s-]?up|session|reminder|sync|interview|lunch|dinner|coffee)\b/i.test(
+      input
+    ) ||
+    /^(?:add|put|create)\b.*\b(?:to|on|in)\b.*\b(?:calendar|schedule)\b/i.test(
+      input
+    ) ||
+    /^(?:create|add|new)\s+(?:a|an)?\s*(?:calendar\s+)?(?:event|meeting|appointment)\b/i.test(
+      input
+    )
+  ) {
+    return { type: 'schedule_event', event: parseEventInput(input) }
   }
 
   if (
@@ -509,6 +533,23 @@ export function GoalPrompt() {
         const schedTarget = intent.page || '/schedule'
         if (window.location.pathname !== schedTarget) {
           window.location.href = schedTarget
+        }
+        setInputValue('')
+        break
+      }
+      case 'schedule_event': {
+        const event = intent.event ?? parseEventInput(trimmed)
+        try {
+          sessionStorage.setItem(NEW_EVENT_KEY, JSON.stringify(event))
+        } catch {
+          // sessionStorage unavailable — the page falls back to a blank modal
+        }
+        if (window.location.pathname === '/schedule') {
+          window.dispatchEvent(
+            new CustomEvent<PrefilledEvent>(NEW_EVENT_EVENT, { detail: event })
+          )
+        } else {
+          window.location.href = '/schedule'
         }
         setInputValue('')
         break
@@ -1052,6 +1093,11 @@ const HELP_ITEMS = [
   {
     command: 'show schedule',
     description: 'Open the calendar / schedule view',
+  },
+  {
+    command: 'schedule a meeting with [who] [when]',
+    description:
+      'Open the schedule with a new event pre-filled from your description (title, date, time)',
   },
   {
     command: 'go to graph',

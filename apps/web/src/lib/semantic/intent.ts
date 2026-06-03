@@ -12,6 +12,7 @@ export type SemanticIntent =
   | 'work_on'
   | 'navigate'
   | 'schedule_query'
+  | 'schedule_event'
   | 'help'
 
 /** Minimum cosine similarity before we trust a semantic match over the regex. */
@@ -52,6 +53,13 @@ const INTENT_EXEMPLARS: Record<SemanticIntent, string[]> = {
     'what is on my schedule today',
     'events this week',
     'what meetings do I have',
+  ],
+  schedule_event: [
+    'schedule a meeting',
+    'set up a call with John tomorrow at 3pm',
+    'book an appointment next monday',
+    'add an event to my calendar',
+    'create a new calendar event',
   ],
   help: [
     'help',
